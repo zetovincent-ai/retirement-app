@@ -2,7 +2,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // === STATE MANAGEMENT ===
-    // Default state if nothing is saved
     let appState = {
         incomes: [],
         expenses: []
@@ -21,16 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // === FUNCTIONS ===
 
-    /**
-     * Saves the current appState to localStorage.
-     */
     function saveState() {
         localStorage.setItem('retirementAppData', JSON.stringify(appState));
     }
 
-    /**
-     * Loads the appState from localStorage.
-     */
     function loadState() {
         const savedState = localStorage.getItem('retirementAppData');
         if (savedState) {
@@ -38,40 +31,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Renders the list of incomes to the page.
-     */
     function renderIncomes() {
         incomeList.innerHTML = '';
-
         if (appState.incomes.length === 0) {
             incomeList.innerHTML = '<li>No income sources added yet.</li>';
             return;
         }
-
         appState.incomes.forEach(income => {
             const li = document.createElement('li');
-            const formattedAmount = income.amount.toLocaleString('en-US', {
-                style: 'currency',
-                currency: 'USD'
-            });
+            const formattedAmount = income.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
             
             li.innerHTML = `
-                <strong>${income.name}</strong> (${income.type})
-                <br>
-                <span>${formattedAmount} / ${income.interval}</span>
+                <div class="item-details">
+                    <strong>${income.name}</strong> (${income.type})
+                    <br>
+                    <span>${formattedAmount} / ${income.interval}</span>
+                </div>
+                <button class="delete-btn" data-id="${income.id}">X</button>
             `;
             incomeList.appendChild(li);
         });
     }
     
-    /**
-     * Handles the submission of the income form.
-     * @param {Event} event - The form submission event.
-     */
     function handleIncomeSubmit(event) {
         event.preventDefault();
-
         const newIncome = {
             id: Date.now(),
             type: incomeTypeInput.value,
@@ -79,26 +62,39 @@ document.addEventListener('DOMContentLoaded', () => {
             interval: incomeIntervalInput.value,
             amount: parseFloat(incomeAmountInput.value)
         };
-
         appState.incomes.push(newIncome);
-        
-        saveState();      // Save the new state after adding an item
-        renderIncomes();  // Re-render the list to show the new item
-        
+        saveState();
+        renderIncomes();
         incomeForm.reset();
     }
     
-    function initializeApp() {
-        loadState();      // Load any saved data first
-        renderIncomes();  // Then render the list
+    /**
+     * Handles clicks on the income list for deleting items.
+     * @param {Event} event - The click event.
+     */
+    function handleIncomeListClick(event) {
+        // Check if a delete button was the target of the click
+        if (event.target.classList.contains('delete-btn')) {
+            // Get the ID from the button's data-id attribute
+            const idToDelete = parseInt(event.target.dataset.id);
+            
+            // Filter the incomes array, keeping everything EXCEPT the item to delete
+            appState.incomes = appState.incomes.filter(income => income.id !== idToDelete);
+            
+            saveState();
+            renderIncomes();
+        }
     }
 
+    function initializeApp() {
+        loadState();
+        renderIncomes();
+    }
 
     // === EVENT LISTENERS ===
     incomeForm.addEventListener('submit', handleIncomeSubmit);
-
+    incomeList.addEventListener('click', handleIncomeListClick); // New listener for delete clicks
 
     // === INITIALIZATION ===
     initializeApp();
-
 });
