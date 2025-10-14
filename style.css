@@ -178,3 +178,6 @@ select {
 .btn-secondary:hover {
     background-color: #95a5a6;
 }
+.section-controls {
+    margin-bottom: 1rem;
+}
