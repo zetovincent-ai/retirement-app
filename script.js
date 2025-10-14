@@ -2,35 +2,57 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // === STATE MANAGEMENT ===
-    // This is where we will hold all our application data (income, expenses, etc.)
-    // We will initialize it from localStorage or with default values.
     let appState = {
         incomes: [],
         expenses: []
     };
 
     // === DOM SELECTORS ===
-    // Caching DOM elements for performance and convenience
-    const incomeSection = document.getElementById('income-section');
-    const expensesSection = document.getElementById('expenses-section');
-    const dashboardSection = document.getElementById('dashboard-section');
+    const incomeForm = document.getElementById('income-form');
+    const incomeTypeInput = document.getElementById('income-type');
+    const incomeNameInput = document.getElementById('income-name');
+    const incomeIntervalInput = document.getElementById('income-interval');
+    const incomeAmountInput = document.getElementById('income-amount');
+
     const importBtn = document.getElementById('import-btn');
     const exportBtn = document.getElementById('export-btn');
 
     // === FUNCTIONS ===
-    // All our functions for adding, deleting, rendering, and saving will go here.
+    
+    /**
+     * Handles the submission of the income form.
+     * @param {Event} event - The form submission event.
+     */
+    function handleIncomeSubmit(event) {
+        // 1. Prevent the default browser behavior of reloading the page.
+        event.preventDefault();
+
+        // 2. Create the new income object from the form values.
+        const newIncome = {
+            id: Date.now(), // Use a timestamp for a simple unique ID
+            type: incomeTypeInput.value,
+            name: incomeNameInput.value.trim(), // .trim() removes extra whitespace
+            interval: incomeIntervalInput.value,
+            amount: parseFloat(incomeAmountInput.value) // Convert amount to a number
+        };
+
+        // 3. For now, just log the new object to the console to verify.
+        console.log("New Income Added:", newIncome);
+        
+        // 4. Reset the form fields for the next entry.
+        incomeForm.reset();
+    }
+    
     function initializeApp() {
         console.log("App initialized!");
-        // Later, we'll load data from localStorage here.
     }
 
 
     // === EVENT LISTENERS ===
-    // All our event bindings will go here.
+    incomeForm.addEventListener('submit', handleIncomeSubmit);
 
 
     // === INITIALIZATION ===
-    // Kicks everything off when the page loads.
     initializeApp();
 
 });
