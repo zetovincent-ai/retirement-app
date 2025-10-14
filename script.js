@@ -8,14 +8,23 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // === DOM SELECTORS ===
+    // Income selectors
     const incomeForm = document.getElementById('income-form');
     const incomeTypeInput = document.getElementById('income-type');
     const incomeNameInput = document.getElementById('income-name');
     const incomeIntervalInput = document.getElementById('income-interval');
     const incomeAmountInput = document.getElementById('income-amount');
     const incomeList = document.getElementById('income-list');
-    const dashboardSummary = document.getElementById('dashboard-summary'); // New selector
+    
+    // Expense selectors
+    const expenseForm = document.getElementById('expense-form');
+    const expenseCategoryInput = document.getElementById('expense-category');
+    const expenseNameInput = document.getElementById('expense-name');
+    const expenseAmountInput = document.getElementById('expense-amount');
+    const expenseList = document.getElementById('expense-list');
 
+    // Dashboard & Global selectors
+    const dashboardSummary = document.getElementById('dashboard-summary');
     const importBtn = document.getElementById('import-btn');
     const exportBtn = document.getElementById('export-btn');
 
@@ -32,45 +41,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Calculates the total monthly income from all sources.
-     * @returns {number} The total monthly income.
-     */
-    function calculateTotalMonthlyIncome() {
-        return appState.incomes.reduce((total, income) => {
+    // --- RENDER FUNCTIONS ---
+    function renderDashboard() {
+        const totalMonthlyIncome = appState.incomes.reduce((total, income) => {
             switch (income.interval) {
-                case 'monthly':
-                    return total + income.amount;
-                case 'annually':
-                    return total + (income.amount / 12);
-                case 'quarterly':
-                    return total + (income.amount / 3);
-                case 'bi-weekly':
-                    return total + ((income.amount * 26) / 12); // 26 bi-weekly periods in a year
-                default:
-                    return total;
+                case 'monthly': return total + income.amount;
+                case 'annually': return total + (income.amount / 12);
+                case 'quarterly': return total + (income.amount / 3);
+                case 'bi-weekly': return total + ((income.amount * 26) / 12);
+                default: return total;
             }
         }, 0);
-    }
-
-    /**
-     * Renders the dashboard summary.
-     */
-    function renderDashboard() {
-        const totalMonthlyIncome = calculateTotalMonthlyIncome();
-        const formattedTotal = totalMonthlyIncome.toLocaleString('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        });
-
-        dashboardSummary.innerHTML = `
-            <h3>Total Monthly Income</h3>
-            <p>${formattedTotal}</p>
-        `;
+        const formattedTotal = totalMonthlyIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        dashboardSummary.innerHTML = `<h3>Total Monthly Income</h3><p>${formattedTotal}</p>`;
     }
 
     function renderIncomes() {
-        // ... (The rest of the renderIncomes function remains the same)
         incomeList.innerHTML = '';
         if (appState.incomes.length === 0) {
             incomeList.innerHTML = '<li>No income sources added yet.</li>';
@@ -79,46 +65,83 @@ document.addEventListener('DOMContentLoaded', () => {
         appState.incomes.forEach(income => {
             const li = document.createElement('li');
             const formattedAmount = income.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-            li.innerHTML = `
-                <div class="item-details">
-                    <strong>${income.name}</strong> (${income.type})<br>
-                    <span>${formattedAmount} / ${income.interval}</span>
-                </div>
-                <button class="delete-btn" data-id="${income.id}">X</button>
-            `;
+            li.innerHTML = `<div class="item-details"><strong>${income.name}</strong> (${income.type})<br><span>${formattedAmount} / ${income.interval}</span></div><button class="delete-btn" data-id="${income.id}">X</button>`;
             incomeList.appendChild(li);
         });
     }
-    
+
+    function renderExpenses() {
+        expenseList.innerHTML = '';
+        if (appState.expenses.length === 0) {
+            expenseList.innerHTML = '<li>No expenses added yet.</li>';
+            return;
+        }
+        appState.expenses.forEach(expense => {
+            const li = document.createElement('li');
+            const formattedAmount = expense.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+            li.innerHTML = `<div class="item-details"><strong>${expense.name}</strong> (${expense.category})<br><span>${formattedAmount}</span></div><button class="delete-btn" data-id="${expense.id}">X</button>`;
+            expenseList.appendChild(li);
+        });
+    }
+
+    // --- HANDLER FUNCTIONS ---
     function handleIncomeSubmit(event) {
         event.preventDefault();
         const newIncome = { id: Date.now(), type: incomeTypeInput.value, name: incomeNameInput.value.trim(), interval: incomeIntervalInput.value, amount: parseFloat(incomeAmountInput.value) };
         appState.incomes.push(newIncome);
         saveState();
         renderIncomes();
-        renderDashboard(); // Update dashboard
+        renderDashboard();
         incomeForm.reset();
     }
+
+    function handleExpenseSubmit(event) {
+        event.preventDefault();
+        const newExpense = {
+            id: Date.now(),
+            category: expenseCategoryInput.value,
+            name: expenseNameInput.value.trim(),
+            amount: parseFloat(expenseAmountInput.value)
+        };
+        appState.expenses.push(newExpense);
+        saveState();
+        renderExpenses();
+        // We will update the dashboard with expense info in the next step
+        expenseForm.reset();
+    }
     
-    function handleIncomeListClick(event) {
-        if (event.target.classList.contains('delete-btn')) {
-            const idToDelete = parseInt(event.target.dataset.id);
+    function handleListClick(event) {
+        if (!event.target.classList.contains('delete-btn')) return;
+        
+        const idToDelete = parseInt(event.target.dataset.id);
+        const list = event.currentTarget; // The list (<ul>) that was clicked inside
+
+        if (list.id === 'income-list') {
             appState.incomes = appState.incomes.filter(income => income.id !== idToDelete);
-            saveState();
             renderIncomes();
-            renderDashboard(); // Update dashboard
+            renderDashboard();
+        } else if (list.id === 'expense-list') {
+            appState.expenses = appState.expenses.filter(expense => expense.id !== idToDelete);
+            renderExpenses();
+            // We will update the dashboard with expense info in the next step
         }
+        saveState();
     }
 
     function initializeApp() {
         loadState();
         renderIncomes();
-        renderDashboard(); // Render initial dashboard state
+        renderExpenses(); // Render expenses on load
+        renderDashboard();
     }
 
     // === EVENT LISTENERS ===
     incomeForm.addEventListener('submit', handleIncomeSubmit);
-    incomeList.addEventListener('click', handleIncomeListClick);
+    expenseForm.addEventListener('submit', handleExpenseSubmit); // New listener for expenses
+    
+    // Using one handler for both lists
+    incomeList.addEventListener('click', handleListClick);
+    expenseList.addEventListener('click', handleListClick);
 
     // === INITIALIZATION ===
     initializeApp();
