@@ -115,3 +115,66 @@ select {
 .income-total { color: #27ae60; }
 .expense-total { color: #e74c3c; }
 .net-total { color: #2980b9; border-top: 1px solid #ddd; padding-top: 1rem; }
+/* Add these new modal styles to the end of style.css */
+#app-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+#app-modal.modal-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 500px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #ddd;
+    padding-top: 20px;
+    margin-top: 20px;
+}
+
+.btn-primary {
+    background-color: #2980b9;
+    color: white;
+}
+.btn-primary:hover {
+    background-color: #3498db;
+}
+
+.btn-secondary {
+    background-color: #7f8c8d;
+    color: white;
+}
+.btn-secondary:hover {
+    background-color: #95a5a6;
+}
