@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // === STATE MANAGEMENT ===
     let appState = { incomes: [], expenses: [] };
-    let onSave = null; // A variable to hold the save function for the modal
+    let onSave = null;
 
     // === DOM SELECTORS ===
     const appModal = document.getElementById('app-modal');
@@ -11,12 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
     const modalSaveBtn = document.getElementById('modal-save-btn');
     const showIncomeModalBtn = document.getElementById('show-income-modal-btn');
+    const showExpenseModalBtn = document.getElementById('show-expense-modal-btn'); // New selector
     const incomeList = document.getElementById('income-list');
-    const expenseForm = document.getElementById('expense-form');
-    const expenseCategoryInput = document.getElementById('expense-category');
-    const expenseNameInput = document.getElementById('expense-name');
-    const expenseIntervalInput = document.getElementById('expense-interval');
-    const expenseAmountInput = document.getElementById('expense-amount');
     const expenseList = document.getElementById('expense-list');
     const dashboardSummary = document.getElementById('dashboard-summary');
 
@@ -48,14 +44,38 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('modal-income-amount').value = incomeToEdit.amount;
         }
         onSave = () => {
-            const updatedIncome = { id: isEditMode ? incomeToEdit.id : Date.now(), type: document.getElementById('modal-income-type').value, name: document.getElementById('modal-income-name').value.trim(), interval: document.getElementById('modal-income-interval').value, amount: parseFloat(document.getElementById('modal-income-amount').value) };
-            if (!updatedIncome.type || !updatedIncome.name || isNaN(updatedIncome.amount)) { alert("Please fill out all fields correctly."); return; }
-            if (isEditMode) {
-                const index = appState.incomes.findIndex(i => i.id === incomeId);
-                appState.incomes[index] = updatedIncome;
-            } else {
-                appState.incomes.push(updatedIncome);
-            }
+            const item = { id: isEditMode ? incomeToEdit.id : Date.now(), type: document.getElementById('modal-income-type').value, name: document.getElementById('modal-income-name').value.trim(), interval: document.getElementById('modal-income-interval').value, amount: parseFloat(document.getElementById('modal-income-amount').value) };
+            if (!item.type || !item.name || isNaN(item.amount)) { alert("Please fill out all fields correctly."); return; }
+            if (isEditMode) { appState.incomes[appState.incomes.findIndex(i => i.id === incomeId)] = item; } 
+            else { appState.incomes.push(item); }
+            updateAndSave();
+            closeModal();
+        };
+        openModal();
+    }
+
+    // New function for handling the expense modal
+    function showExpenseModal(expenseId) {
+        const isEditMode = expenseId !== undefined;
+        const expenseToEdit = isEditMode ? appState.expenses.find(e => e.id === expenseId) : null;
+        modalTitle.textContent = isEditMode ? 'Edit Expense' : 'Add New Expense';
+        modalBody.innerHTML = `
+            <div class="form-group"><label for="modal-expense-category">Category:</label><select id="modal-expense-category" required><option value="">-- Select a Category --</option><option value="Housing">Housing</option><option value="Groceries">Groceries</option><option value="Utilities">Utilities</option><option value="Transport">Transport</option><option value="Health">Health</option><option value="Entertainment">Entertainment</option><option value="Other">Other</option></select></div>
+            <div class="form-group"><label for="modal-expense-name">Description / Name:</label><input type="text" id="modal-expense-name" placeholder="e.g., Electric Bill" required></div>
+            <div class="form-group"><label for="modal-expense-interval">Payment Interval:</label><select id="modal-expense-interval" required><option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option><option value="weekly">Weekly</option></select></div>
+            <div class="form-group"><label for="modal-expense-amount">Amount:</label><input type="number" id="modal-expense-amount" placeholder="100" min="0" step="0.01" required></div>
+        `;
+        if (isEditMode) {
+            document.getElementById('modal-expense-category').value = expenseToEdit.category;
+            document.getElementById('modal-expense-name').value = expenseToEdit.name;
+            document.getElementById('modal-expense-interval').value = expenseToEdit.interval;
+            document.getElementById('modal-expense-amount').value = expenseToEdit.amount;
+        }
+        onSave = () => {
+            const item = { id: isEditMode ? expenseToEdit.id : Date.now(), category: document.getElementById('modal-expense-category').value, name: document.getElementById('modal-expense-name').value.trim(), interval: document.getElementById('modal-expense-interval').value, amount: parseFloat(document.getElementById('modal-expense-amount').value) };
+            if (!item.category || !item.name || isNaN(item.amount)) { alert("Please fill out all fields correctly."); return; }
+            if (isEditMode) { appState.expenses[appState.expenses.findIndex(e => e.id === expenseId)] = item; } 
+            else { appState.expenses.push(item); }
             updateAndSave();
             closeModal();
         };
@@ -63,73 +83,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- RENDER & UTILITY FUNCTIONS ---
-    function renderDashboard() {
-        const totalMonthlyIncome = calculateMonthlyTotal(appState.incomes);
-        const totalMonthlyExpenses = calculateMonthlyTotal(appState.expenses);
-        const netMonthly = totalMonthlyIncome - totalMonthlyExpenses;
-        const format = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-        dashboardSummary.innerHTML = `<div class="summary-item"><h3 class="income-total">Total Monthly Income</h3><p class="income-total">${format(totalMonthlyIncome)}</p></div><div class="summary-item"><h3 class="expense-total">Total Monthly Expenses</h3><p class="expense-total">${format(totalMonthlyExpenses)}</p></div><div class="summary-item net-total"><h3>Net Monthly Balance</h3><p>${format(netMonthly)}</p></div>`;
-    }
+    function renderDashboard() { /* ... unchanged ... */ }
     function renderIncomes() { renderList(appState.incomes, incomeList); }
     function renderExpenses() { renderList(appState.expenses, expenseList); }
-    function renderList(items, listElement) {
-        listElement.innerHTML = '';
-        const listType = listElement.id.includes('income') ? 'income' : 'expense';
-        if (items.length === 0) { listElement.innerHTML = `<li>No ${listType}s added yet.</li>`; return; }
-        items.forEach(item => {
-            const li = document.createElement('li');
-            const formattedAmount = item.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-            const intervalText = item.interval ? ` / ${item.interval}` : '';
-            li.innerHTML = `<div class="item-details"><strong>${item.name}</strong> (${item.type || item.category})<br><span>${formattedAmount}${intervalText}</span></div><div class="item-controls"><button class="edit-btn" data-id="${item.id}">Edit</button><button class="delete-btn" data-id="${item.id}">X</button></div>`;
-            listElement.appendChild(li);
-        });
-    }
-    function handleExpenseSubmit(event) {
-        event.preventDefault();
-        const newExpense = { id: Date.now(), category: expenseCategoryInput.value, name: expenseNameInput.value.trim(), interval: expenseIntervalInput.value, amount: parseFloat(expenseAmountInput.value) };
-        appState.expenses.push(newExpense);
-        updateAndSave();
-        expenseForm.reset();
-    }
+    function renderList(items, listElement) { /* ... unchanged ... */ }
     function handleListClick(event) {
         const target = event.target;
+        if (!target.classList.contains('edit-btn') && !target.classList.contains('delete-btn')) return;
+        
         const id = parseInt(target.dataset.id);
+        const listId = target.closest('.item-list').id;
+
         if (target.classList.contains('edit-btn')) {
-            const listId = target.closest('.item-list').id;
-            if (listId === 'income-list') { showIncomeModal(id); }
+            if (listId === 'income-list') showIncomeModal(id);
+            else if (listId === 'expense-list') showExpenseModal(id); // Added edit functionality for expenses
         }
         if (target.classList.contains('delete-btn')) {
-            const listId = target.closest('.item-list').id;
             if (listId === 'income-list') appState.incomes = appState.incomes.filter(i => i.id !== id);
             else if (listId === 'expense-list') appState.expenses = appState.expenses.filter(e => e.id !== id);
             updateAndSave();
         }
     }
-    function calculateMonthlyTotal(items) {
-        return items.reduce((total, item) => {
-            switch (item.interval) {
-                case 'monthly': return total + item.amount;
-                case 'annually': return total + (item.amount / 12);
-                case 'quarterly': return total + (item.amount / 3);
-                case 'bi-weekly': return total + ((item.amount * 26) / 12);
-                case 'weekly': return total + ((item.amount * 52) / 12);
-                default: return total;
-            }
-        }, 0);
-    }
+    function calculateMonthlyTotal(items) { /* ... unchanged ... */ }
     function updateAndSave() { saveState(); renderIncomes(); renderExpenses(); renderDashboard(); }
     function initializeApp() { loadState(); updateAndSave(); }
 
     // === EVENT LISTENERS ===
     showIncomeModalBtn.addEventListener('click', () => showIncomeModal());
+    showExpenseModalBtn.addEventListener('click', () => showExpenseModal()); // New listener
     modalSaveBtn.addEventListener('click', () => { if (onSave) onSave(); });
     modalCloseBtn.addEventListener('click', closeModal);
     modalCancelBtn.addEventListener('click', closeModal);
     appModal.addEventListener('click', (event) => { if (event.target === appModal) closeModal(); });
-    expenseForm.addEventListener('submit', handleExpenseSubmit);
     incomeList.addEventListener('click', handleListClick);
     expenseList.addEventListener('click', handleListClick);
 
     // === INITIALIZATION ===
     initializeApp();
+
+    // --- PASTE IN THE HIDDEN FUNCTIONS ---
+    function renderDashboard(){const totalMonthlyIncome=calculateMonthlyTotal(appState.incomes);const totalMonthlyExpenses=calculateMonthlyTotal(appState.expenses);const netMonthly=totalMonthlyIncome-totalMonthlyExpenses;const format=num=>num.toLocaleString('en-US',{style:'currency',currency:'USD'});dashboardSummary.innerHTML=`<div class="summary-item"><h3 class="income-total">Total Monthly Income</h3><p class="income-total">${format(totalMonthlyIncome)}</p></div><div class="summary-item"><h3 class="expense-total">Total Monthly Expenses</h3><p class="expense-total">${format(totalMonthlyExpenses)}</p></div><div class="summary-item net-total"><h3>Net Monthly Balance</h3><p>${format(netMonthly)}</p></div>`;}
+    function renderList(items,listElement){listElement.innerHTML='';const listType=listElement.id.includes('income')?'income':'expense';if(items.length===0){listElement.innerHTML=`<li>No ${listType}s added yet.</li>`;return;}
+    items.forEach(item=>{const li=document.createElement('li');const formattedAmount=item.amount.toLocaleString('en-US',{style:'currency',currency:'USD'});const intervalText=item.interval?` / ${item.interval}`:'';li.innerHTML=`<div class="item-details"><strong>${item.name}</strong> (${item.type||item.category})<br><span>${formattedAmount}${intervalText}</span></div><div class="item-controls"><button class="edit-btn" data-id="${item.id}">Edit</button><button class="delete-btn" data-id="${item.id}">X</button></div>`;listElement.appendChild(li);});}
+    function calculateMonthlyTotal(items){return items.reduce((total,item)=>{switch(item.interval){case'monthly':return total+item.amount;case'annually':return total+(item.amount/12);case'quarterly':return total+(item.amount/3);case'bi-weekly':return total+((item.amount*26)/12);case'weekly':return total+((item.amount*52)/12);default:return total;}},0);}
 });
