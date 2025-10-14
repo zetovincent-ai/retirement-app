@@ -97,3 +97,21 @@ select {
     font-weight: bold;
     color: #27ae60;
 }
+/* Add this new rule to the end of style.css */
+.summary-item {
+    margin-bottom: 1rem;
+}
+.summary-item h3 {
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+    color: #555;
+    font-weight: normal;
+}
+.summary-item p {
+    font-size: 1.75rem;
+    font-weight: bold;
+    margin: 0;
+}
+.income-total { color: #27ae60; }
+.expense-total { color: #e74c3c; }
+.net-total { color: #2980b9; border-top: 1px solid #ddd; padding-top: 1rem; }
