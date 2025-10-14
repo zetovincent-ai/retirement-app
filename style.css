@@ -95,3 +95,8 @@ select {
 .delete-btn:hover {
     background-color: #c0392b;
 }
+#dashboard-summary p {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #27ae60;
+}
