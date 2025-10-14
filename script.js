@@ -1,9 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     // === STATE MANAGEMENT ===
     let appState = { incomes: [], expenses: [] };
+    let onSave = null; // A variable to hold the save function for the modal
 
     // === DOM SELECTORS ===
-    // Modal Selectors
     const appModal = document.getElementById('app-modal');
     const modalTitle = document.getElementById('modal-title');
     const modalBody = document.getElementById('modal-body');
@@ -11,20 +11,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
     const modalSaveBtn = document.getElementById('modal-save-btn');
     const showIncomeModalBtn = document.getElementById('show-income-modal-btn');
-
-    // Income selectors
     const incomeList = document.getElementById('income-list');
-    
-    // Expense selectors
     const expenseForm = document.getElementById('expense-form');
-    // ... (other expense selectors are still here)
     const expenseCategoryInput = document.getElementById('expense-category');
     const expenseNameInput = document.getElementById('expense-name');
     const expenseIntervalInput = document.getElementById('expense-interval');
     const expenseAmountInput = document.getElementById('expense-amount');
     const expenseList = document.getElementById('expense-list');
-
-    // Dashboard & Global selectors
     const dashboardSummary = document.getElementById('dashboard-summary');
 
     // === FUNCTIONS ===
@@ -36,40 +29,64 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- MODAL FUNCTIONS ---
     function openModal() { appModal.classList.remove('modal-hidden'); }
-    function closeModal() { appModal.classList.add('modal-hidden'); }
+    function closeModal() {
+        appModal.classList.add('modal-hidden');
+        modalBody.innerHTML = ''; // Clear the body when closing
+        onSave = null; // Reset the save function
+    }
 
-    // --- RENDER FUNCTIONS ---
-    // ... (All our render functions are still here)
-    function renderDashboard() { /* ... */ }
-    function renderIncomes() { /* ... */ }
-    function renderExpenses() { /* ... */ }
-    function renderList(items, listElement) { /* ... */ }
+    function showIncomeModal() {
+        modalTitle.textContent = 'Add New Income';
+        
+        // Create the form HTML as a string
+        modalBody.innerHTML = `
+            <div class="form-group"><label for="modal-income-type">Type:</label><select id="modal-income-type" required><option value="">-- Select a Type --</option><option value="Pension">Pension</option><option value="TSP">TSP</option><option value="TSP Supplement">TSP Supplement</option><option value="Social Security">Social Security</option><option value="Investment">Investment Dividend</option><option value="Other">Other</option></select></div>
+            <div class="form-group"><label for="modal-income-name">Description / Name:</label><input type="text" id="modal-income-name" placeholder="e.g., Vincent's TSP" required></div>
+            <div class="form-group"><label for="modal-income-interval">Payment Interval:</label><select id="modal-income-interval" required><option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option></select></div>
+            <div class="form-group"><label for="modal-income-amount">Payment Amount:</label><input type="number" id="modal-income-amount" placeholder="1500" min="0" step="0.01" required></div>
+        `;
 
+        // Define what the "Save" button should do for this specific modal
+        onSave = () => {
+            const newIncome = {
+                id: Date.now(),
+                type: document.getElementById('modal-income-type').value,
+                name: document.getElementById('modal-income-name').value.trim(),
+                interval: document.getElementById('modal-income-interval').value,
+                amount: parseFloat(document.getElementById('modal-income-amount').value)
+            };
+            // Basic validation
+            if (!newIncome.type || !newIncome.name || isNaN(newIncome.amount)) {
+                alert("Please fill out all fields correctly.");
+                return;
+            }
+            appState.incomes.push(newIncome);
+            updateAndSave();
+            closeModal();
+        };
 
-    // --- HANDLER FUNCTIONS ---
-    // Note: handleIncomeSubmit is removed as the old form is gone.
-    function handleExpenseSubmit(event) { /* ... */ }
-    function handleListClick(event) { /* ... */ }
+        openModal();
+    }
+
+    // --- RENDER & UTILITY FUNCTIONS (unchanged) ---
+    function renderDashboard(){/*...*/} function renderIncomes(){/*...*/} function renderExpenses(){/*...*/} function renderList(items,listElement){/*...*/} function handleExpenseSubmit(event){/*...*/} function handleListClick(event){/*...*/} function calculateMonthlyTotal(items){/*...*/} function updateAndSave(){/*...*/}
     
-    // --- UTILITY FUNCTIONS ---
-    function calculateMonthlyTotal(items) { /* ... */ }
-    function updateAndSave() { /* ... */ }
-
     function initializeApp() {
         loadState();
         updateAndSave();
     }
 
     // === EVENT LISTENERS ===
-    showIncomeModalBtn.addEventListener('click', openModal);
-    modalCloseBtn.addEventListener('click', closeModal);
-    modalCancelBtn.addEventListener('click', closeModal);
-    appModal.addEventListener('click', (event) => {
-        if (event.target === appModal) {
-            closeModal(); // Close if user clicks on the dark background
+    showIncomeModalBtn.addEventListener('click', showIncomeModal);
+    modalSaveBtn.addEventListener('click', () => {
+        if (onSave) {
+            onSave();
         }
     });
 
+    modalCloseBtn.addEventListener('click', closeModal);
+    modalCancelBtn.addEventListener('click', closeModal);
+    appModal.addEventListener('click', (event) => { if (event.target === appModal) closeModal(); });
     expenseForm.addEventListener('submit', handleExpenseSubmit);
     incomeList.addEventListener('click', handleListClick);
     expenseList.addEventListener('click', handleListClick);
@@ -78,7 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
 
     // --- PASTE IN THE HIDDEN FUNCTIONS ---
-    // (This is a placeholder for the functions we are not changing)
     function renderDashboard(){const totalMonthlyIncome=calculateMonthlyTotal(appState.incomes);const totalMonthlyExpenses=calculateMonthlyTotal(appState.expenses);const netMonthly=totalMonthlyIncome-totalMonthlyExpenses;const format=num=>num.toLocaleString('en-US',{style:'currency',currency:'USD'});dashboardSummary.innerHTML=`<div class="summary-item"><h3 class="income-total">Total Monthly Income</h3><p class="income-total">${format(totalMonthlyIncome)}</p></div><div class="summary-item"><h3 class="expense-total">Total Monthly Expenses</h3><p class="expense-total">${format(totalMonthlyExpenses)}</p></div><div class="summary-item net-total"><h3>Net Monthly Balance</h3><p>${format(netMonthly)}</p></div>`;}
     function renderIncomes(){renderList(appState.incomes,incomeList);}
     function renderExpenses(){renderList(appState.expenses,expenseList);}
