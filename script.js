@@ -1,7 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
     // === STATE MANAGEMENT ===
-    let appState = { incomes: [], expenses: [] };
-    let onSave = null;
+    let appState = {
+        incomes: [],
+        expenses: []
+    };
+    let onSave = null; // A variable to hold the save function for the modal
 
     // === DOM SELECTORS ===
     const appModal = document.getElementById('app-modal');
@@ -17,17 +20,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const dashboardSummary = document.getElementById('dashboard-summary');
     const importBtn = document.getElementById('import-btn');
     const exportBtn = document.getElementById('export-btn');
+    const importFileInput = document.getElementById('import-file-input');
 
     // === FUNCTIONS ===
-    function saveState() { localStorage.setItem('retirementAppData', JSON.stringify(appState)); }
+
+    function saveState() {
+        localStorage.setItem('retirementAppData', JSON.stringify(appState));
+    }
+
     function loadState() {
         const savedState = localStorage.getItem('retirementAppData');
-        if (savedState) appState = JSON.parse(savedState);
+        if (savedState) {
+            appState = JSON.parse(savedState);
+        }
     }
-    
+
     // --- MODAL FUNCTIONS ---
-    function openModal() { appModal.classList.remove('modal-hidden'); }
-    function closeModal() { appModal.classList.add('modal-hidden'); modalBody.innerHTML = ''; onSave = null; }
+    function openModal() {
+        appModal.classList.remove('modal-hidden');
+    }
+
+    function closeModal() {
+        appModal.classList.add('modal-hidden');
+        modalBody.innerHTML = '';
+        onSave = null;
+    }
 
     function showIncomeModal(incomeId) {
         const isEditMode = incomeId !== undefined;
@@ -46,14 +63,28 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('modal-income-amount').value = incomeToEdit.amount;
         }
         onSave = () => {
-            const item = { id: isEditMode ? incomeToEdit.id : Date.now(), type: document.getElementById('modal-income-type').value, name: document.getElementById('modal-income-name').value.trim(), interval: document.getElementById('modal-income-interval').value, amount: parseFloat(document.getElementById('modal-income-amount').value) };
-            if (!item.type || !item.name || isNaN(item.amount)) { alert("Please fill out all fields correctly."); return; }
-            if (isEditMode) { appState.incomes[appState.incomes.findIndex(i => i.id === incomeId)] = item; } else { appState.incomes.push(item); }
+            const item = {
+                id: isEditMode ? incomeToEdit.id : Date.now(),
+                type: document.getElementById('modal-income-type').value,
+                name: document.getElementById('modal-income-name').value.trim(),
+                interval: document.getElementById('modal-income-interval').value,
+                amount: parseFloat(document.getElementById('modal-income-amount').value)
+            };
+            if (!item.type || !item.name || isNaN(item.amount)) {
+                alert("Please fill out all fields correctly.");
+                return;
+            }
+            if (isEditMode) {
+                appState.incomes[appState.incomes.findIndex(i => i.id === incomeId)] = item;
+            } else {
+                appState.incomes.push(item);
+            }
             updateAndSave();
             closeModal();
         };
         openModal();
     }
+
     function showExpenseModal(expenseId) {
         const isEditMode = expenseId !== undefined;
         const expenseToEdit = isEditMode ? appState.expenses.find(e => e.id === expenseId) : null;
@@ -71,39 +102,78 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('modal-expense-amount').value = expenseToEdit.amount;
         }
         onSave = () => {
-            const item = { id: isEditMode ? expenseToEdit.id : Date.now(), category: document.getElementById('modal-expense-category').value, name: document.getElementById('modal-expense-name').value.trim(), interval: document.getElementById('modal-expense-interval').value, amount: parseFloat(document.getElementById('modal-expense-amount').value) };
-            if (!item.category || !item.name || isNaN(item.amount)) { alert("Please fill out all fields correctly."); return; }
-            if (isEditMode) { appState.expenses[appState.expenses.findIndex(e => e.id === expenseId)] = item; } else { appState.expenses.push(item); }
+            const item = {
+                id: isEditMode ? expenseToEdit.id : Date.now(),
+                category: document.getElementById('modal-expense-category').value,
+                name: document.getElementById('modal-expense-name').value.trim(),
+                interval: document.getElementById('modal-expense-interval').value,
+                amount: parseFloat(document.getElementById('modal-expense-amount').value)
+            };
+            if (!item.category || !item.name || isNaN(item.amount)) {
+                alert("Please fill out all fields correctly.");
+                return;
+            }
+            if (isEditMode) {
+                appState.expenses[appState.expenses.findIndex(e => e.id === expenseId)] = item;
+            } else {
+                appState.expenses.push(item);
+            }
             updateAndSave();
             closeModal();
         };
         openModal();
     }
+
+    // --- RENDER & UTILITY FUNCTIONS ---
     function renderDashboard() {
         const totalMonthlyIncome = calculateMonthlyTotal(appState.incomes);
         const totalMonthlyExpenses = calculateMonthlyTotal(appState.expenses);
         const netMonthly = totalMonthlyIncome - totalMonthlyExpenses;
-        const format = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-        dashboardSummary.innerHTML = `<div class="summary-item"><h3 class="income-total">Total Monthly Income</h3><p class="income-total">${format(totalMonthlyIncome)}</p></div><div class="summary-item"><h3 class="expense-total">Total Monthly Expenses</h3><p class="expense-total">${format(totalMonthlyExpenses)}</p></div><div class="summary-item net-total"><h3>Net Monthly Balance</h3><p>${format(netMonthly)}</p></div>`;
+        const format = num => num.toLocaleString('en-US', {
+            style: 'currency',
+            currency: 'USD'
+        });
+        dashboardSummary.innerHTML = `
+            <div class="summary-item"><h3 class="income-total">Total Monthly Income</h3><p class="income-total">${format(totalMonthlyIncome)}</p></div>
+            <div class="summary-item"><h3 class="expense-total">Total Monthly Expenses</h3><p class="expense-total">${format(totalMonthlyExpenses)}</p></div>
+            <div class="summary-item net-total"><h3>Net Monthly Balance</h3><p>${format(netMonthly)}</p></div>
+        `;
     }
-    function renderIncomes() { renderList(appState.incomes, incomeList); }
-    function renderExpenses() { renderList(appState.expenses, expenseList); }
+
+    function renderIncomes() {
+        renderList(appState.incomes, incomeList);
+    }
+
+    function renderExpenses() {
+        renderList(appState.expenses, expenseList);
+    }
+
     function renderList(items, listElement) {
         listElement.innerHTML = '';
         const listType = listElement.id.includes('income') ? 'income' : 'expense';
-        if (items.length === 0) { listElement.innerHTML = `<li>No ${listType}s added yet.</li>`; return; }
+        if (items.length === 0) {
+            listElement.innerHTML = `<li>No ${listType}s added yet.</li>`;
+            return;
+        }
         items.forEach(item => {
             const li = document.createElement('li');
-            const formattedAmount = item.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+            const formattedAmount = item.amount.toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            });
             const intervalText = item.interval ? ` / ${item.interval}` : '';
-            li.innerHTML = `<div class="item-details"><strong>${item.name}</strong> (${item.type || item.category})<br><span>${formattedAmount}${intervalText}</span></div><div class="item-controls"><button class="edit-btn" data-id="${item.id}">Edit</button><button class="delete-btn" data-id="${item.id}">X</button></div>`;
+            li.innerHTML = `
+                <div class="item-details"><strong>${item.name}</strong> (${item.type || item.category})<br><span>${formattedAmount}${intervalText}</span></div>
+                <div class="item-controls"><button class="edit-btn" data-id="${item.id}">Edit</button><button class="delete-btn" data-id="${item.id}">X</button></div>
+            `;
             listElement.appendChild(li);
         });
     }
+
     function handleListClick(event) {
         const target = event.target;
         if (!target.classList.contains('edit-btn') && !target.classList.contains('delete-btn')) return;
-        
+
         const id = parseInt(target.dataset.id);
         const listId = target.closest('.item-list').id;
 
@@ -123,22 +193,35 @@ document.addEventListener('DOMContentLoaded', () => {
             updateAndSave();
         }
     }
+
     function calculateMonthlyTotal(items) {
         return items.reduce((total, item) => {
             switch (item.interval) {
-                case 'monthly': return total + item.amount;
-                case 'annually': return total + (item.amount / 12);
-                case 'quarterly': return total + (item.amount / 3);
-                case 'bi-weekly': return total + ((item.amount * 26) / 12);
-                case 'weekly': return total + ((item.amount * 52) / 12);
-                default: return total;
+                case 'monthly':
+                    return total + item.amount;
+                case 'annually':
+                    return total + (item.amount / 12);
+                case 'quarterly':
+                    return total + (item.amount / 3);
+                case 'bi-weekly':
+                    return total + ((item.amount * 26) / 12);
+                case 'weekly':
+                    return total + ((item.amount * 52) / 12);
+                default:
+                    return total;
             }
         }, 0);
     }
+
     function handleExport() {
-        if (appState.incomes.length === 0 && appState.expenses.length === 0) { alert("There is no data to export."); return; }
+        if (appState.incomes.length === 0 && appState.expenses.length === 0) {
+            alert("There is no data to export.");
+            return;
+        }
         const jsonString = JSON.stringify(appState, null, 2);
-        const blob = new Blob([jsonString], { type: 'application/json' });
+        const blob = new Blob([jsonString], {
+            type: 'application/json'
+        });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -148,17 +231,56 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
-    function updateAndSave() { saveState(); renderIncomes(); renderExpenses(); renderDashboard(); }
-    function initializeApp() { loadState(); updateAndSave(); }
+
+    function handleImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importedState = JSON.parse(e.target.result);
+                if (!importedState.incomes || !importedState.expenses) {
+                    throw new Error("Invalid file format.");
+                }
+                if (confirm("This will overwrite all current data. Are you sure?")) {
+                    appState = importedState;
+                    updateAndSave();
+                }
+            } catch (error) {
+                alert(`Error importing file: ${error.message}`);
+            } finally {
+                importFileInput.value = null;
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function updateAndSave() {
+        saveState();
+        renderIncomes();
+        renderExpenses();
+        renderDashboard();
+    }
+
+    function initializeApp() {
+        loadState();
+        updateAndSave();
+    }
 
     // === EVENT LISTENERS ===
     showIncomeModalBtn.addEventListener('click', () => showIncomeModal());
     showExpenseModalBtn.addEventListener('click', () => showExpenseModal());
     exportBtn.addEventListener('click', handleExport);
-    modalSaveBtn.addEventListener('click', () => { if (onSave) onSave(); });
+    importBtn.addEventListener('click', () => importFileInput.click());
+    importFileInput.addEventListener('change', handleImport);
+    modalSaveBtn.addEventListener('click', () => {
+        if (onSave) onSave();
+    });
     modalCloseBtn.addEventListener('click', closeModal);
     modalCancelBtn.addEventListener('click', closeModal);
-    appModal.addEventListener('click', (event) => { if (event.target === appModal) closeModal(); });
+    appModal.addEventListener('click', (event) => {
+        if (event.target === appModal) closeModal();
+    });
     incomeList.addEventListener('click', handleListClick);
     expenseList.addEventListener('click', handleListClick);
 
