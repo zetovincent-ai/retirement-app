@@ -32,13 +32,43 @@
             <hr class="divider">
             <div id="income-list-container">
                 <h3>Current Incomes</h3>
-                <ul id="income-list"></ul>
+                <ul id="income-list" class="item-list"></ul>
             </div>
         </section>
 
         <section id="expenses-section" class="app-section">
             <h2>Expense Log</h2>
-            </section>
+            <form id="expense-form">
+                <div class="form-group">
+                    <label for="expense-category">Category:</label>
+                    <select id="expense-category" required>
+                        <option value="">-- Select a Category --</option>
+                        <option value="Housing">Housing</option>
+                        <option value="Groceries">Groceries</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Transport">Transport</option>
+                        <option value="Health">Health</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="expense-name">Description / Name:</label>
+                    <input type="text" id="expense-name" placeholder="e.g., Electric Bill" required>
+                </div>
+                <div class="form-group">
+                    <label for="expense-amount">Amount:</label>
+                    <input type="number" id="expense-amount" placeholder="100" min="0" step="0.01" required>
+                </div>
+                <button type="submit">Add Expense</button>
+            </form>
+            <hr class="divider">
+            <div id="expense-list-container">
+                <h3>Current Expenses</h3>
+                <ul id="expense-list" class="item-list">
+                    </ul>
+            </div>
+        </section>
     </main>
 
     <footer>
