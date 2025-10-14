@@ -2,6 +2,7 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // === STATE MANAGEMENT ===
+    // Default state if nothing is saved
     let appState = {
         incomes: [],
         expenses: []
@@ -13,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const incomeNameInput = document.getElementById('income-name');
     const incomeIntervalInput = document.getElementById('income-interval');
     const incomeAmountInput = document.getElementById('income-amount');
-    const incomeList = document.getElementById('income-list'); // New selector for our list
+    const incomeList = document.getElementById('income-list');
 
     const importBtn = document.getElementById('import-btn');
     const exportBtn = document.getElementById('export-btn');
@@ -21,19 +22,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // === FUNCTIONS ===
 
     /**
+     * Saves the current appState to localStorage.
+     */
+    function saveState() {
+        localStorage.setItem('retirementAppData', JSON.stringify(appState));
+    }
+
+    /**
+     * Loads the appState from localStorage.
+     */
+    function loadState() {
+        const savedState = localStorage.getItem('retirementAppData');
+        if (savedState) {
+            appState = JSON.parse(savedState);
+        }
+    }
+
+    /**
      * Renders the list of incomes to the page.
      */
     function renderIncomes() {
-        // 1. Clear the current list to prevent duplicates
         incomeList.innerHTML = '';
 
-        // 2. If there are no incomes, show a message
         if (appState.incomes.length === 0) {
             incomeList.innerHTML = '<li>No income sources added yet.</li>';
             return;
         }
 
-        // 3. Loop through each income in the state and create an HTML list item for it
         appState.incomes.forEach(income => {
             const li = document.createElement('li');
             const formattedAmount = income.amount.toLocaleString('en-US', {
@@ -65,18 +80,17 @@ document.addEventListener('DOMContentLoaded', () => {
             amount: parseFloat(incomeAmountInput.value)
         };
 
-        // Push the new object into our state array
         appState.incomes.push(newIncome);
-
-        // Re-render the list to show the new item
-        renderIncomes();
+        
+        saveState();      // Save the new state after adding an item
+        renderIncomes();  // Re-render the list to show the new item
         
         incomeForm.reset();
     }
     
     function initializeApp() {
-        console.log("App initialized!");
-        renderIncomes(); // Render the initial list on page load
+        loadState();      // Load any saved data first
+        renderIncomes();  // Then render the list
     }
 
 
