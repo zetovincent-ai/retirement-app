@@ -77,16 +77,13 @@ select {
 }
 
 .delete-btn {
+    padding: 4px 8px; /* Matches the edit button */
     background-color: #e74c3c;
     color: white;
     border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
+    border-radius: 4px; /* Matches the edit button */
     cursor: pointer;
     font-weight: bold;
-    line-height: 24px;
-    text-align: center;
 }
 
 .delete-btn:hover {
