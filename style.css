@@ -59,3 +59,16 @@ select {
     border-radius: 4px;
     background-color: white; /* Ensures consistent background */
 }
+/* Add these new rules to the end of style.css */
+#income-list {
+    list-style: none;
+    padding: 0;
+}
+
+#income-list li {
+    background-color: #f9f9f9;
+    border: 1px solid #eee;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+}
