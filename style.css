@@ -1,0 +1,53 @@
+/* Basic Reset and Global Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+header, footer {
+    background-color: #333;
+    color: #fff;
+    padding: 1rem;
+    text-align: center;
+}
+
+main {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 1rem;
+    gap: 1rem;
+}
+
+.app-section {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    /* Each section will take up the full width on small screens, and roughly half on larger ones */
+    flex: 1 1 400px; 
+}
+
+h1, h2 {
+    margin-bottom: 1rem;
+}
+
+button {
+    padding: 0.5rem 1rem;
+    border: none;
+    background-color: #555;
+    color: white;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+button:hover {
+    background-color: #777;
+}
