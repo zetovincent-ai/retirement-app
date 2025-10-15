@@ -25,9 +25,9 @@ header, footer {
 
 main { 
     display: flex; 
-    flex-wrap: nowrap;
     padding: 1rem; 
     gap: 1rem; 
+    overflow: hidden; /* Prevent content overflow during transition */
 }
 
 .app-section { 
@@ -35,12 +35,10 @@ main {
     border: 1px solid #ddd; 
     border-radius: 8px; 
     padding: 1rem; 
-    transition: flex-basis var(--transition-speed) ease, flex-grow var(--transition-speed) ease;
-}
-
-/* Default state for all sections */
-#dashboard-section, #income-section, #expenses-section {
-    flex: 1 1 33%;
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0; /* Allow sections to shrink fully */
+    transition: all var(--transition-speed) ease;
 }
 
 .section-header {
@@ -54,24 +52,12 @@ main {
     transform: none;
     margin: 0 0 1rem 0;
     transition: all var(--transition-speed) ease;
+    white-space: nowrap;
 }
 
-h1 { 
-    margin-bottom: 1rem; 
-}
-
-button { 
-    padding: 0.5rem 1rem; 
-    border: none; 
-    background-color: #555; 
-    color: white; 
-    cursor: pointer; 
-    border-radius: 4px; 
-}
-
-button:hover { 
-    background-color: #777; 
-}
+h1 { margin-bottom: 1rem; }
+button { padding: 0.5rem 1rem; border: none; background-color: #555; color: white; cursor: pointer; border-radius: 4px; }
+button:hover { background-color: #777; }
 
 #toggle-dashboard-btn {
     background: none; border: 1px solid #ccc; color: #555;
@@ -79,7 +65,7 @@ button:hover {
 }
 #toggle-dashboard-btn:hover { background-color: #f0f0f0; }
 
-/* Styles for other elements are unchanged */
+/* --- Other Styles (Unchanged) --- */
 select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background-color: white; }
 .item-list { list-style: none; padding: 0; }
 .item-list li { background-color: #f9f9f9; border: 1px solid #eee; padding: 10px; margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
@@ -109,13 +95,13 @@ select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; 
 .chart-container { margin-top: 2rem; position: relative; height: 300px; }
 .divider { margin-top: 1.5rem; margin-bottom: 1.5rem; border: 0; border-top: 1px solid #eee; }
 
-/* Corrected styles for the expanded state */
+/* --- Corrected Sliding Logic --- */
 main.dashboard-expanded #dashboard-section {
-    flex: 10 0 90%; /* flex-grow, flex-shrink, flex-basis */
+    flex-grow: 20; /* Give it a much larger growth factor */
 }
 main.dashboard-expanded #income-section,
 main.dashboard-expanded #expenses-section {
-    flex: 1 1 5%;
+    flex-grow: 1;
     overflow: hidden;
     cursor: pointer;
 }
