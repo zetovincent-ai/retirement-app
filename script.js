@@ -2,17 +2,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // === SUPABASE INITIALIZATION ===
     const SUPABASE_URL = 'https://mwuxrrwbgytbqrlhzwsc.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13dXhycndiZ3l0YnFybGh6d3NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MjcxNTYsImV4cCI6MjA3NjEwMzE1Nn0.up3JOKKXEyw6axEGhI2eESJbrZzoH-93zRmCSXukYZY';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Renamed to avoid conflict
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // === STATE MANAGEMENT ===
-    let appState = {
-        incomes: [],
-        expenses: []
-    };
+    let appState = { incomes: [], expenses: [] };
     let onSave = null;
 
     // === DOM SELECTORS ===
     const userStatus = document.getElementById('user-status');
+    // ... all other selectors are correct
     const appModal = document.getElementById('app-modal');
     const modalTitle = document.getElementById('modal-title');
     const modalBody = document.getElementById('modal-body');
@@ -28,60 +27,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportBtn = document.getElementById('export-btn');
     const importFileInput = document.getElementById('import-file-input');
 
-    // === FUNCTIONS ===
 
-    // --- NEW AUTH FUNCTIONS ---
+    // === FUNCTIONS ===
     async function handleLogin() {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'github',
-        });
+        const { error } = await supabaseClient.auth.signInWithOAuth({ provider: 'github' });
         if (error) console.error('Error logging in:', error);
     }
 
     async function handleLogout() {
-        const { error } = await supabase.auth.signOut();
+        const { error } = await supabaseClient.auth.signOut();
         if (error) console.error('Error logging out:', error);
     }
 
     function updateUserStatus(user) {
         if (user) {
-            userStatus.innerHTML = `
-                Logged in as ${user.email}
-                <button id="logout-btn" class="btn-secondary">Logout</button>
-            `;
+            userStatus.innerHTML = `Logged in as ${user.email} <button id="logout-btn" class="btn-secondary">Logout</button>`;
             document.getElementById('logout-btn').addEventListener('click', handleLogout);
         } else {
-            userStatus.innerHTML = `
-                <button id="login-btn" class="btn-primary">Login with GitHub</button>
-            `;
+            userStatus.innerHTML = `<button id="login-btn" class="btn-primary">Login with GitHub</button>`;
             document.getElementById('login-btn').addEventListener('click', handleLogin);
         }
     }
 
-    // --- EXISTING FUNCTIONS ---
-    function saveState() {
-        localStorage.setItem('retirementAppData', JSON.stringify(appState));
-    }
-
+    // --- We will replace these localStorage functions next ---
+    function saveState() { localStorage.setItem('retirementAppData', JSON.stringify(appState)); }
     function loadState() {
         const savedState = localStorage.getItem('retirementAppData');
-        if (savedState) {
-            appState = JSON.parse(savedState);
-        }
+        if (savedState) appState = JSON.parse(savedState);
     }
+    
+    // ...The rest of the functions from your file are correct...
+    function openModal() { appModal.classList.remove('modal-hidden'); }
+    function closeModal() { appModal.classList.add('modal-hidden'); modalBody.innerHTML = ''; onSave = null; }
+    function showIncomeModal(incomeId){/*...unchanged...*/}
+    function showExpenseModal(expenseId){/*...unchanged...*/}
+    function renderDashboard(){/*...unchanged...*/}
+    function renderIncomes(){renderList(appState.incomes,incomeList)}
+    function renderExpenses(){renderList(appState.expenses,expenseList)}
+    function renderList(items,listElement){/*...unchanged...*/}
+    function handleListClick(event){/*...unchanged...*/}
+    function calculateMonthlyTotal(items){/*...unchanged...*/}
+    function handleExport(){/*...unchanged...*/}
+    function handleImport(event){/*...unchanged...*/}
 
-    function openModal() { /* ... unchanged ... */ }
-    function closeModal() { /* ... unchanged ... */ }
-    function showIncomeModal(incomeId) { /* ... unchanged ... */ }
-    function showExpenseModal(expenseId) { /* ... unchanged ... */ }
-    function renderDashboard() { /* ... unchanged ... */ }
-    function renderIncomes() { /* ... unchanged ... */ }
-    function renderExpenses() { /* ... unchanged ... */ }
-    function renderList(items, listElement) { /* ... unchanged ... */ }
-    function handleListClick(event) { /* ... unchanged ... */ }
-    function calculateMonthlyTotal(items) { /* ... unchanged ... */ }
-    function handleExport() { /* ... unchanged ... */ }
-    function handleImport(event) { /* ... unchanged ... */ }
     function updateAndSave() {
         saveState();
         renderIncomes();
@@ -90,40 +78,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function initializeApp() {
-        loadState(); // We will remove this soon
+        loadState(); 
         updateAndSave();
     }
 
     // === EVENT LISTENERS ===
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        updateUserStatus(session?.user);
+    });
+
+    // ...All other listeners are correct...
     showIncomeModalBtn.addEventListener('click', () => showIncomeModal());
     showExpenseModalBtn.addEventListener('click', () => showExpenseModal());
     exportBtn.addEventListener('click', handleExport);
     importBtn.addEventListener('click', () => importFileInput.click());
     importFileInput.addEventListener('change', handleImport);
-    modalSaveBtn.addEventListener('click', () => {
-        if (onSave) onSave();
-    });
+    modalSaveBtn.addEventListener('click', () => { if (onSave) onSave(); });
     modalCloseBtn.addEventListener('click', closeModal);
     modalCancelBtn.addEventListener('click', closeModal);
-    appModal.addEventListener('click', (event) => {
-        if (event.target === appModal) closeModal();
-    });
+    appModal.addEventListener('click', (event) => { if (event.target === appModal) closeModal(); });
     incomeList.addEventListener('click', handleListClick);
     expenseList.addEventListener('click', handleListClick);
-
-    // This is the new, key listener for authentication
-    supabase.auth.onAuthStateChange((event, session) => {
-        updateUserStatus(session?.user);
-        // In the next step, we'll add logic here to load data from the database when a user logs in.
-    });
-
 
     // === INITIALIZATION ===
     initializeApp();
 
     // --- UNCHANGED FUNCTIONS (for reference) ---
-    function openModal(){appModal.classList.remove('modal-hidden')}
-    function closeModal(){appModal.classList.add('modal-hidden');modalBody.innerHTML='';onSave=null}
     function showIncomeModal(incomeId){const isEditMode=incomeId!==undefined;const incomeToEdit=isEditMode?appState.incomes.find(i=>i.id===incomeId):null;modalTitle.textContent=isEditMode?'Edit Income':'Add New Income';modalBody.innerHTML=`<div class="form-group"><label for="modal-income-type">Type:</label><select id="modal-income-type" required><option value="">-- Select a Type --</option><option value="Pension">Pension</option><option value="TSP">TSP</option><option value="TSP Supplement">TSP Supplement</option><option value="Social Security">Social Security</option><option value="Investment">Investment Dividend</option><option value="Other">Other</option></select></div><div class="form-group"><label for="modal-income-name">Description / Name:</label><input type="text" id="modal-income-name" placeholder="e.g., Vincent's TSP" required></div><div class="form-group"><label for="modal-income-interval">Payment Interval:</label><select id="modal-income-interval" required><option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option></select></div><div class="form-group"><label for="modal-income-amount">Payment Amount:</label><input type="number" id="modal-income-amount" placeholder="1500" min="0" step="0.01" required></div>`;if(isEditMode){document.getElementById('modal-income-type').value=incomeToEdit.type;document.getElementById('modal-income-name').value=incomeToEdit.name;document.getElementById('modal-income-interval').value=incomeToEdit.interval;document.getElementById('modal-income-amount').value=incomeToEdit.amount}
 onSave=()=>{const item={id:isEditMode?incomeToEdit.id:Date.now(),type:document.getElementById('modal-income-type').value,name:document.getElementById('modal-income-name').value.trim(),interval:document.getElementById('modal-income-interval').value,amount:parseFloat(document.getElementById('modal-income-amount').value)};if(!item.type||!item.name||isNaN(item.amount)){alert("Please fill out all fields correctly.");return}
 if(isEditMode){appState.incomes[appState.incomes.findIndex(i=>i.id===incomeId)]=item}else{appState.incomes.push(item)}

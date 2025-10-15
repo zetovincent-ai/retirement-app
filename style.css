@@ -1,207 +1,35 @@
-/* Basic Reset and Global Styles */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.6;
-    background-color: #f4f4f4;
-    color: #333;
-}
-
-header, footer {
-    background-color: #333;
-    color: #fff;
-    padding: 1rem;
-    text-align: center;
-}
-
-main {
-    display: flex;
-    flex-wrap: wrap;
-    padding: 1rem;
-    gap: 1rem;
-}
-
-.app-section {
-    background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 1rem;
-    /* Each section will take up the full width on small screens, and roughly half on larger ones */
-    flex: 1 1 400px; 
-}
-
-h1, h2 {
-    margin-bottom: 1rem;
-}
-
-button {
-    padding: 0.5rem 1rem;
-    border: none;
-    background-color: #555;
-    color: white;
-    cursor: pointer;
-    border-radius: 4px;
-}
-
-button:hover {
-    background-color: #777;
-}
-/* Add this new rule to the end of style.css */
-select {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background-color: white; /* Ensures consistent background */
-}
-/* Add these new rules to the end of style.css */
-.item-list {
-    list-style: none;
-    padding: 0;
-}
-
-.item-list li {
-    background-color: #f9f9f9;
-    border: 1px solid #eee;
-    padding: 10px;
-    margin-bottom: 8px;
-    border-radius: 4px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.delete-btn {
-    padding: 4px 8px; /* Matches the edit button */
-    background-color: #e74c3c;
-    color: white;
-    border: none;
-    border-radius: 4px; /* Matches the edit button */
-    cursor: pointer;
-    font-weight: bold;
-}
-
-.delete-btn:hover {
-    background-color: #c0392b;
-}
-#dashboard-summary p {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #27ae60;
-}
-/* Add this new rule to the end of style.css */
-.summary-item {
-    margin-bottom: 1rem;
-}
-.summary-item h3 {
-    margin-bottom: 0.25rem;
-    font-size: 1rem;
-    color: #555;
-    font-weight: normal;
-}
-.summary-item p {
-    font-size: 1.75rem;
-    font-weight: bold;
-    margin: 0;
-}
+/* All of your existing styles */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; background-color: #f4f4f4; color: #333; }
+header, footer { background-color: #333; color: #fff; padding: 1rem; text-align: center; }
+main { display: flex; flex-wrap: wrap; padding: 1rem; gap: 1rem; }
+.app-section { background-color: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; flex: 1 1 400px; }
+h1, h2 { margin-bottom: 1rem; }
+button { padding: 0.5rem 1rem; border: none; background-color: #555; color: white; cursor: pointer; border-radius: 4px; }
+button:hover { background-color: #777; }
+select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background-color: white; }
+.item-list { list-style: none; padding: 0; }
+.item-list li { background-color: #f9f9f9; border: 1px solid #eee; padding: 10px; margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+.delete-btn { padding: 4px 8px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+.delete-btn:hover { background-color: #c0392b; }
+.summary-item { margin-bottom: 1rem; }
+.summary-item h3 { margin-bottom: 0.25rem; font-size: 1rem; color: #555; font-weight: normal; }
+.summary-item p { font-size: 1.75rem; font-weight: bold; margin: 0; }
 .income-total { color: #27ae60; }
 .expense-total { color: #e74c3c; }
 .net-total { color: #2980b9; border-top: 1px solid #ddd; padding-top: 1rem; }
-/* Add these new modal styles to the end of style.css */
-#app-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    opacity: 1;
-    transition: opacity 0.3s ease;
-}
-
-#app-modal.modal-hidden {
-    opacity: 0;
-    pointer-events: none;
-}
-
-.modal-content {
-    background-color: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    width: 90%;
-    max-width: 500px;
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 10px;
-    margin-bottom: 20px;
-}
-
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    border-top: 1px solid #ddd;
-    padding-top: 20px;
-    margin-top: 20px;
-}
-
-.btn-primary {
-    background-color: #2980b9;
-    color: white;
-}
-.btn-primary:hover {
-    background-color: #3498db;
-}
-
-.btn-secondary {
-    background-color: #7f8c8d;
-    color: white;
-}
-.btn-secondary:hover {
-    background-color: #95a5a6;
-}
-.section-controls {
-    margin-bottom: 1rem;
-}
-/* Add these new rules to the end of style.css */
-.item-controls {
-    display: flex;
-    gap: 8px;
-}
-
-.edit-btn {
-    padding: 4px 8px;
-    background-color: #f39c12;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.edit-btn:hover {
-    background-color: #e67e22;
-}
-#user-status {
-    position: absolute;
-    top: 10px;
-    right: 20px;
-    font-size: 0.9rem;
-}
-#user-status button {
-    margin-left: 10px;
-}
+#app-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 1; transition: opacity 0.3s ease; }
+#app-modal.modal-hidden { opacity: 0; pointer-events: none; }
+.modal-content { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); width: 90%; max-width: 500px; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 20px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #ddd; padding-top: 20px; margin-top: 20px; }
+.btn-primary { background-color: #2980b9; color: white; }
+.btn-primary:hover { background-color: #3498db; }
+.btn-secondary { background-color: #7f8c8d; color: white; }
+.btn-secondary:hover { background-color: #95a5a6; }
+.section-controls { margin-bottom: 1rem; }
+.item-controls { display: flex; gap: 8px; }
+.edit-btn { padding: 4px 8px; background-color: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.edit-btn:hover { background-color: #e67e22; }
+#user-status { position: absolute; top: 10px; right: 20px; font-size: 0.9rem; }
+#user-status button { margin-left: 10px; }
