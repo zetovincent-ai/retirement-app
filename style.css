@@ -33,3 +33,4 @@ select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; 
 .edit-btn:hover { background-color: #e67e22; }
 #user-status { position: absolute; top: 10px; right: 20px; font-size: 0.9rem; }
 #user-status button { margin-left: 10px; }
+.chart-container {margin-top: 2rem; position: relative; height: 300px;}

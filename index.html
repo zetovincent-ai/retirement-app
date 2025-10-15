@@ -6,6 +6,7 @@
     <title>Retirement Finance Tracker</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js" defer></script>
 </head>
 <body>
@@ -16,8 +17,13 @@
     <main>
         <section id="dashboard-section" class="app-section">
             <h2>Dashboard</h2>
-            <div id="dashboard-summary"></div>
+            <div id="dashboard-summary">
+                </div>
+            <div class="chart-container">
+                <canvas id="expense-chart"></canvas>
+            </div>
         </section>
+
         <section id="income-section" class="app-section">
             <h2>Income Sources</h2>
             <div class="section-controls">
@@ -29,6 +35,7 @@
                 <ul id="income-list" class="item-list"></ul>
             </div>
         </section>
+
         <section id="expenses-section" class="app-section">
             <h2>Expense Log</h2>
             <div class="section-controls">
@@ -41,11 +48,13 @@
             </div>
         </section>
     </main>
+
     <footer>
         <button id="import-btn">Import Data</button>
         <button id="export-btn">Export Data</button>
         <input type="file" id="import-file-input" accept=".json" style="display: none;">
     </footer>
+
     <div id="app-modal" class="modal-hidden">
         <div class="modal-content">
             <div class="modal-header"><h2 id="modal-title">Modal Title</h2><button id="modal-close-btn" class="delete-btn">X</button></div>
