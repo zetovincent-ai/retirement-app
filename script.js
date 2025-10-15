@@ -7,9 +7,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // === STATE MANAGEMENT ===
     let appState = { incomes: [], expenses: [] };
     let onSave = null;
-    let expenseChartInstance = null; // To hold our chart object
+    let expenseChartInstance = null;
 
     // === DOM SELECTORS ===
+    const mainContainer = document.querySelector('main');
+    const toggleDashboardBtn = document.getElementById('toggle-dashboard-btn');
     const userStatus = document.getElementById('user-status');
     const appModal = document.getElementById('app-modal');
     const modalTitle = document.getElementById('modal-title');
@@ -22,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const incomeList = document.getElementById('income-list');
     const expenseList = document.getElementById('expense-list');
     const dashboardSummary = document.getElementById('dashboard-summary');
-    const expenseChartCanvas = document.getElementById('expense-chart'); // New selector
+    const expenseChartCanvas = document.getElementById('expense-chart');
 
     // === FUNCTIONS ===
 
@@ -220,6 +222,11 @@ document.addEventListener('DOMContentLoaded', () => {
             renderAll();
         }
     });
+
+    toggleDashboardBtn.addEventListener('click', () => {
+        mainContainer.classList.toggle('dashboard-expanded');
+    });
+
     showIncomeModalBtn.addEventListener('click', () => showIncomeModal());
     showExpenseModalBtn.addEventListener('click', () => showExpenseModal());
     modalSaveBtn.addEventListener('click', () => { if (onSave) onSave(); });
