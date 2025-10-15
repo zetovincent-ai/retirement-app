@@ -25,7 +25,7 @@ header, footer {
 
 main { 
     display: flex; 
-    flex-wrap: nowrap; /* Prevent wrapping for sliding effect */
+    flex-wrap: nowrap;
     padding: 1rem; 
     gap: 1rem; 
     transition: all var(--transition-speed) ease;
@@ -36,7 +36,7 @@ main {
     border: 1px solid #ddd; 
     border-radius: 8px; 
     padding: 1rem; 
-    flex: 1 1 400px; 
+    flex: 1 1 33%; /* Changed for better initial distribution */
     transition: all var(--transition-speed) ease;
 }
 
@@ -46,7 +46,14 @@ main {
     align-items: center;
 }
 
-h1, h2 { 
+/* New rule to reset header styles */
+.section-header h2 {
+    writing-mode: horizontal-tb;
+    transform: none;
+    margin: 0 0 1rem 0;
+}
+
+h1 { 
     margin-bottom: 1rem; 
 }
 
@@ -63,115 +70,43 @@ button:hover {
     background-color: #777; 
 }
 
-select { 
-    width: 100%; 
-    padding: 8px; 
-    border: 1px solid #ccc; 
-    border-radius: 4px; 
-    background-color: white; 
-}
-
-.item-list { 
-    list-style: none; 
-    padding: 0; 
-}
-
-.item-list li { 
-    background-color: #f9f9f9; 
-    border: 1px solid #eee; 
-    padding: 10px; 
-    margin-bottom: 8px; 
-    border-radius: 4px; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-}
-
-.delete-btn { 
-    padding: 4px 8px; 
-    background-color: #e74c3c; 
-    color: white; 
-    border: none; 
-    border-radius: 4px; 
-    cursor: pointer; 
-    font-weight: bold; 
-}
-
-.delete-btn:hover { 
-    background-color: #c0392b; 
-}
-
-.summary-item { 
-    margin-bottom: 1rem; 
-}
-
-.summary-item h3 { 
-    margin-bottom: 0.25rem; 
-    font-size: 1rem; 
-    color: #555; 
-    font-weight: normal; 
-}
-
-.summary-item p { 
-    font-size: 1.75rem; 
-    font-weight: bold; 
-    margin: 0; 
-}
-
-.income-total { color: #27ae60; }
-.expense-total { color: #e74c3c; }
-.net-total { color: #2980b9; border-top: 1px solid #ddd; padding-top: 1rem; }
-
-#app-modal { 
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); 
-    display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 1; transition: opacity 0.3s ease; 
-}
-
-#app-modal.modal-hidden { 
-    opacity: 0; 
-    pointer-events: none; 
-}
-
-.modal-content { 
-    background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); 
-    width: 90%; max-width: 500px; 
-}
-
-.modal-header { 
-    display: flex; justify-content: space-between; align-items: center; 
-    border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 20px; 
-}
-
-.modal-footer { 
-    display: flex; justify-content: flex-end; gap: 10px; 
-    border-top: 1px solid #ddd; padding-top: 20px; margin-top: 20px; 
-}
-
-.btn-primary { background-color: #2980b9; color: white; }
-.btn-primary:hover { background-color: #3498db; }
-.btn-secondary { background-color: #7f8c8d; color: white; }
-.btn-secondary:hover { background-color: #95a5a6; }
-
-.section-controls { margin-bottom: 1rem; }
-.item-controls { display: flex; gap: 8px; }
-
-.edit-btn { 
-    padding: 4px 8px; background-color: #f39c12; color: white; 
-    border: none; border-radius: 4px; cursor: pointer; 
-}
-.edit-btn:hover { background-color: #e67e22; }
-
-#user-status { position: absolute; top: 10px; right: 20px; font-size: 0.9rem; }
-#user-status button { margin-left: 10px; }
-.chart-container { margin-top: 2rem; position: relative; height: 300px; }
-
 #toggle-dashboard-btn {
     background: none; border: 1px solid #ccc; color: #555;
     font-size: 1rem; padding: 2px 8px; cursor: pointer;
 }
 #toggle-dashboard-btn:hover { background-color: #f0f0f0; }
 
-/* New styles for the expanded state */
+/* Styles for other elements are unchanged */
+select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background-color: white; }
+.item-list { list-style: none; padding: 0; }
+.item-list li { background-color: #f9f9f9; border: 1px solid #eee; padding: 10px; margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+.delete-btn { padding: 4px 8px; background-color: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+.delete-btn:hover { background-color: #c0392b; }
+.summary-item { margin-bottom: 1rem; }
+.summary-item h3 { margin-bottom: 0.25rem; font-size: 1rem; color: #555; font-weight: normal; }
+.summary-item p { font-size: 1.75rem; font-weight: bold; margin: 0; }
+.income-total { color: #27ae60; }
+.expense-total { color: #e74c3c; }
+.net-total { color: #2980b9; border-top: 1px solid #ddd; padding-top: 1rem; }
+#app-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 1; transition: opacity 0.3s ease; }
+#app-modal.modal-hidden { opacity: 0; pointer-events: none; }
+.modal-content { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); width: 90%; max-width: 500px; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 20px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #ddd; padding-top: 20px; margin-top: 20px; }
+.btn-primary { background-color: #2980b9; color: white; }
+.btn-primary:hover { background-color: #3498db; }
+.btn-secondary { background-color: #7f8c8d; color: white; }
+.btn-secondary:hover { background-color: #95a5a6; }
+.section-controls { margin-bottom: 1rem; }
+.item-controls { display: flex; gap: 8px; }
+.edit-btn { padding: 4px 8px; background-color: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.edit-btn:hover { background-color: #e67e22; }
+#user-status { position: absolute; top: 10px; right: 20px; font-size: 0.9rem; }
+#user-status button { margin-left: 10px; }
+.chart-container { margin-top: 2rem; position: relative; height: 300px; }
+.divider { margin-top: 1.5rem; margin-bottom: 1.5rem; border: 0; border-top: 1px solid #eee; }
+
+/* Corrected styles for the expanded state */
 main.dashboard-expanded #dashboard-section {
     flex-grow: 10;
     flex-shrink: 0;
@@ -185,16 +120,14 @@ main.dashboard-expanded #expenses-section {
     overflow: hidden;
     cursor: pointer;
 }
-main.dashboard-expanded .section-controls,
-main.dashboard-expanded hr,
-main.dashboard-expanded #income-list-container,
-main.dashboard-expanded #expense-list-container,
-main.dashboard-expanded #dashboard-summary,
-main.dashboard-expanded .chart-container {
+
+/* This rule is now more specific */
+main.dashboard-expanded #income-section > :not(.section-header),
+main.dashboard-expanded #expenses-section > :not(.section-header) {
     display: none;
     opacity: 0;
-    transition: opacity var(--transition-speed) ease;
 }
+
 main.dashboard-expanded #income-section .section-header h2,
 main.dashboard-expanded #expenses-section .section-header h2 {
     writing-mode: vertical-rl;
