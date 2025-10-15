@@ -27,7 +27,7 @@ main {
     display: flex; 
     padding: 1rem; 
     gap: 1rem; 
-    overflow: hidden; /* Prevent content overflow during transition */
+    overflow: hidden;
 }
 
 .app-section { 
@@ -37,7 +37,8 @@ main {
     padding: 1rem; 
     flex-grow: 1;
     flex-shrink: 1;
-    flex-basis: 0; /* Allow sections to shrink fully */
+    flex-basis: 0;
+    min-width: 0; /* Crucial for allowing shrinking */
     transition: all var(--transition-speed) ease;
 }
 
@@ -97,13 +98,14 @@ select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; 
 
 /* --- Corrected Sliding Logic --- */
 main.dashboard-expanded #dashboard-section {
-    flex-grow: 20; /* Give it a much larger growth factor */
+    flex-grow: 20;
 }
 main.dashboard-expanded #income-section,
 main.dashboard-expanded #expenses-section {
     flex-grow: 1;
     overflow: hidden;
     cursor: pointer;
+    min-width: 60px; /* Force the sections to a smaller minimum width */
 }
 main.dashboard-expanded #income-section > :not(.section-header),
 main.dashboard-expanded #expenses-section > :not(.section-header) {
