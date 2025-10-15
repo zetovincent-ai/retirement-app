@@ -28,7 +28,6 @@ main {
     flex-wrap: nowrap;
     padding: 1rem; 
     gap: 1rem; 
-    transition: all var(--transition-speed) ease;
 }
 
 .app-section { 
@@ -36,8 +35,12 @@ main {
     border: 1px solid #ddd; 
     border-radius: 8px; 
     padding: 1rem; 
-    flex: 1 1 33%; /* Changed for better initial distribution */
-    transition: all var(--transition-speed) ease;
+    transition: flex-basis var(--transition-speed) ease, flex-grow var(--transition-speed) ease;
+}
+
+/* Default state for all sections */
+#dashboard-section, #income-section, #expenses-section {
+    flex: 1 1 33%;
 }
 
 .section-header {
@@ -46,11 +49,11 @@ main {
     align-items: center;
 }
 
-/* New rule to reset header styles */
 .section-header h2 {
     writing-mode: horizontal-tb;
     transform: none;
     margin: 0 0 1rem 0;
+    transition: all var(--transition-speed) ease;
 }
 
 h1 { 
@@ -108,26 +111,19 @@ select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; 
 
 /* Corrected styles for the expanded state */
 main.dashboard-expanded #dashboard-section {
-    flex-grow: 10;
-    flex-shrink: 0;
-    flex-basis: 90%;
+    flex: 10 0 90%; /* flex-grow, flex-shrink, flex-basis */
 }
 main.dashboard-expanded #income-section,
 main.dashboard-expanded #expenses-section {
-    flex-grow: 1;
-    flex-shrink: 1;
-    flex-basis: 5%;
+    flex: 1 1 5%;
     overflow: hidden;
     cursor: pointer;
 }
-
-/* This rule is now more specific */
 main.dashboard-expanded #income-section > :not(.section-header),
 main.dashboard-expanded #expenses-section > :not(.section-header) {
     display: none;
     opacity: 0;
 }
-
 main.dashboard-expanded #income-section .section-header h2,
 main.dashboard-expanded #expenses-section .section-header h2 {
     writing-mode: vertical-rl;
