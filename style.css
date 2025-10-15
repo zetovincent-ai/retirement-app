@@ -196,3 +196,12 @@ select {
 .edit-btn:hover {
     background-color: #e67e22;
 }
+#user-status {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 0.9rem;
+}
+#user-status button {
+    margin-left: 10px;
+}
