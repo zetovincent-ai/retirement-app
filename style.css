@@ -73,7 +73,7 @@ header {
 }
 .header-controls {
     display: flex;
-    flex-direction: row; 
+    flex-direction: column; 
     align-items: flex-end; 
 }
 footer {
