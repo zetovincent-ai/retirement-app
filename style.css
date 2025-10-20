@@ -1,12 +1,12 @@
-/* Define all our colors as variables in the :root (New Light/Default Theme) */
+/* Define all our colors as variables in the :root (Light/Default Theme) */
 :root {
     --background-color: #f4f7f6;
     --section-bg-color: #ffffff;
-    --header-bg-color: #097969; /* Cadmium Green */
+    --header-bg-color: #097969; 
     --header-text-color: #ffffff;
     --text-color: #334e68;
     --border-color: #dde1e7;
-    --primary-btn-bg: #097969; /* Cadmium Green */
+    --primary-btn-bg: #097969; 
     --primary-btn-hover: #0a8f7b;
     --secondary-btn-bg: #95a5a6;
     --secondary-btn-hover: #bdc3c7;
@@ -16,12 +16,11 @@
     --edit-btn-hover: #e67e22;
     --income-total-color: #27ae60;
     --expense-total-color: #e74c3c;
-    --net-total-color: #097969; /* Cadmium Green */
+    --net-total-color: #097969; 
     --list-item-bg: #f8f9fa;
     --transition-speed: 0.5s;
 }
-
-/* NEW: Dark Mode Theme Definition */
+/* Dark Mode Theme Definition */
 body.dark-mode {
     --background-color: #1a202c;
     --section-bg-color: #2d3748;
@@ -29,7 +28,7 @@ body.dark-mode {
     --header-text-color: #e2e8f0;
     --text-color: #cbd5e0;
     --border-color: #4a5568;
-    --primary-btn-bg: #097969; /* Keep brand color for primary actions */
+    --primary-btn-bg: #097969; 
     --primary-btn-hover: #0a8f7b;
     --secondary-btn-bg: #4a5568;
     --secondary-btn-hover: #718096;
@@ -38,13 +37,11 @@ body.dark-mode {
     --net-total-color: #27ae60;
     --list-item-bg: #4a5568;
 }
-
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
-
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     line-height: 1.6;
@@ -52,14 +49,12 @@ body {
     color: var(--text-color);
     transition: background-color 0.3s ease, color 0.3s ease;
 }
-
 header {
     background-color: var(--header-bg-color);
     color: var(--header-text-color);
     padding: 1rem;
     position: relative;
 }
-
 .header-content {
     display: flex;
     justify-content: space-between;
@@ -67,30 +62,25 @@ header {
     max-width: 1200px;
     margin: 0;
 }
-
 .header-title-group {
     display: flex;
     align-items: center;
     gap: 1rem;
 }
-
 .header-logo {
     height: 100px; /* Adjust size as needed */
 }
-
 .header-controls {
     display: flex;
     align-items: center;
     gap: 1.5rem;
 }
-
 footer {
     background-color: var(--header-bg-color);
     color: var(--header-text-color);
     padding: 1rem;
     font-size: 0.9rem;
 }
-
 .footer-content {
     display: flex;
     justify-content: space-between;
@@ -99,41 +89,34 @@ footer {
     margin: 0;
     flex-wrap: wrap;
 }
-
 .copyright-group {
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
-
 .footer-logo {
     height: 50px; /* Adjust size as needed */
 }
-
 .footer-content .contact-link {
     color: var(--header-text-color);
     text-decoration: none;
     transition: opacity 0.3s ease;
 }
-
 .footer-content .contact-link:hover {
     opacity: 0.8;
 }
-
 @media (max-width: 600px) {
     .footer-content {
         flex-direction: column;
         gap: 0.5rem;
     }
 }
-
 main {
     display: flex;
     padding: 1rem;
     gap: 1rem;
     overflow: hidden;
 }
-
 .app-section {
     background-color: var(--section-bg-color);
     border: 1px solid var(--border-color);
@@ -145,13 +128,11 @@ main {
     min-width: 0;
     transition: all var(--transition-speed) ease;
 }
-
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
-
 .section-header h2 {
     writing-mode: horizontal-tb;
     transform: none;
@@ -159,12 +140,10 @@ main {
     transition: all var(--transition-speed) ease;
     white-space: nowrap;
 }
-
 h1 { 
     margin-bottom: 0; 
     font-size: 40px;
 }
-
 button {
     padding: 0.5rem 1rem;
     border: none;
@@ -172,9 +151,9 @@ button {
     cursor: pointer;
     border-radius: 4px;
 }
-
-button:hover { background-color: #777; }
-
+button:hover { 
+    background-color: #777; 
+}
 select {
     width: 100%;
     padding: 8px;
@@ -183,12 +162,10 @@ select {
     background-color: var(--section-bg-color);
     color: var(--text-color);
 }
-
 .item-list li {
     background-color: var(--list-item-bg);
     border: 1px solid var(--border-color);
 }
-
 .btn-primary { background-color: var(--primary-btn-bg); }
 .btn-primary:hover { background-color: var(--primary-btn-hover); }
 .btn-secondary { background-color: var(--secondary-btn-bg); }
@@ -197,18 +174,15 @@ select {
 .delete-btn:hover { background-color: var(--delete-btn-hover); }
 .edit-btn { background-color: var(--edit-btn-bg); }
 .edit-btn:hover { background-color: var(--edit-btn-hover); }
-
 .income-total { color: var(--income-total-color); }
 .expense-total { color: var(--expense-total-color); }
 .net-total { color: var(--net-total-color); border-top: 1px solid var(--border-color); }
-
 #toggle-dashboard-btn {
     background: none;
     border: 1px solid var(--border-color);
     color: var(--text-color);
 }
 #toggle-dashboard-btn:hover { background-color: var(--background-color); }
-
 .item-list { list-style: none; padding: 0; }
 .item-list li { padding: 10px; margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
 .delete-btn { padding: 4px 8px; font-weight: bold; }
@@ -223,7 +197,12 @@ select {
 .section-controls { margin-bottom: 1rem; }
 .item-controls { display: flex; gap: 8px; }
 .edit-btn { padding: 4px 8px; }
-#user-status { position: absolute; top: 10px; right: 20px; font-size: 0.9rem; }
+#user-status {
+    display: flex;
+    align-items: center;
+    gap: 1rem; 
+    font-size: 0.9rem;
+}
 #user-status button { margin-left: 10px; }
 .chart-container { margin-top: 2rem; position: relative; height: 300px; }
 .divider { margin-top: 1.5rem; margin-bottom: 1.5rem; border: 0; border-top: 1px solid var(--border-color); }
@@ -231,8 +210,7 @@ main.dashboard-expanded #dashboard-section { flex-grow: 20; }
 main.dashboard-expanded #income-section, main.dashboard-expanded #expenses-section { flex-grow: 1; overflow: hidden; cursor: pointer; min-width: 60px; }
 main.dashboard-expanded #income-section > :not(.section-header), main.dashboard-expanded #expenses-section > :not(.section-header) { display: none; opacity: 0; }
 main.dashboard-expanded #income-section .section-header h2, main.dashboard-expanded #expenses-section .section-header h2 { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); margin: auto; }
-
-/* NEW: Styles for the Dark/Light Mode Toggle Switch */
+/* Styles for the Dark/Light Mode Toggle Switch */
 .theme-switch-wrapper {
     position: absolute;
     top: 45px;
@@ -300,7 +278,6 @@ input:checked + .slider:before {
 .auth-divider:not(:empty)::after {
     margin-left: .5em;
 }
-
 #github-login-btn {
     width: 100%;
     background-color: #333; /* GitHub brand color */
@@ -317,7 +294,6 @@ input:checked + .slider:before {
     flex-direction: column;
     gap: 10px;
 }
-
 .toast {
     padding: 1rem 1.5rem;
     border-radius: 6px;
@@ -327,22 +303,18 @@ input:checked + .slider:before {
     animation: slideIn 0.5s forwards, fadeOut 0.5s 2.5s forwards;
     transform: translateX(100%);
 }
-
 .toast--success {
     background-color: var(--income-total-color);
 }
-
 .toast--error {
     background-color: var(--expense-total-color);
 }
-
 @keyframes slideIn {
     to {
         transform: translateX(0);
         opacity: 1;
     }
 }
-
 @keyframes fadeOut {
     from {
         opacity: 1;

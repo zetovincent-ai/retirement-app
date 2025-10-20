@@ -136,22 +136,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     function updateUserStatus(user) {
-        if (user) {
-            userStatus.innerHTML = `<button id="logout-btn" class="btn-secondary">Logout</button>`;
-            const logoutBtn = document.getElementById('logout-btn');
-            if (logoutBtn) {
-                 logoutBtn.removeEventListener('click', handleLogout);
-                 logoutBtn.addEventListener('click', handleLogout);
-            }
-        } else {
-            userStatus.innerHTML = `<button id="login-btn" class="btn-primary">Login / Sign Up</button>`;
-            const loginBtn = document.getElementById('login-btn');
-            if (loginBtn) {
-                 loginBtn.removeEventListener('click', openAuthModal);
-                 loginBtn.addEventListener('click', openAuthModal);
-            }
+    if (user) {
+        // Re-add the user's email to the display
+        userStatus.innerHTML = `
+            <span>Logged in as ${user.email}</span>
+            <button id="logout-btn" class="btn-secondary">Logout</button>
+        `;
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+             logoutBtn.removeEventListener('click', handleLogout); // Clean up previous listener
+             logoutBtn.addEventListener('click', handleLogout);
+        }
+    } else {
+        userStatus.innerHTML = `<button id="login-btn" class="btn-primary">Login / Sign Up</button>`;
+        const loginBtn = document.getElementById('login-btn');
+        if (loginBtn) {
+             loginBtn.removeEventListener('click', openAuthModal); // Clean up previous listener
+             loginBtn.addEventListener('click', openAuthModal);
         }
     }
+}
     // --- DATA MODAL FUNCTIONS ---
     function openModal() { appModal.classList.remove('modal-hidden'); }
     function closeModal() { appModal.classList.add('modal-hidden'); modalBody.innerHTML = ''; onSave = null; }
