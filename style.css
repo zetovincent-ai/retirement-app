@@ -72,7 +72,7 @@ header {
     height: 100px; /* Adjust size as needed */
 }
 .header-controls {
-    display: flex;
+    display: inline-block;
     flex-direction: column; /* Stack items vertically */
     align-items: flex-end; /* Align to the right */
 }
