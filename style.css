@@ -75,7 +75,6 @@ header {
     display: flex;
     flex-direction: column; /* Stack items vertically */
     align-items: flex-end; /* Align to the right */
-    gap: 0.5rem; /* Space between the rows */
 }
 footer {
     background-color: var(--header-bg-color);
@@ -204,7 +203,6 @@ select {
     align-items: center;
     gap: 1rem;
     font-size: 0.9rem;
-    justify-content: flex-end; /* Ensure items inside are pushed right */
 }
 #user-status button { margin-left: 10px; }
 .chart-container { margin-top: 2rem; position: relative; height: 300px; }
@@ -325,6 +323,12 @@ input:checked + .slider:before {
         opacity: 0;
         transform: translateX(100%);
     }
+}
+.theme-toggle-group {
+    display: flex;
+    flex-direction: column; /* Stack the label and switch */
+    align-items: flex-end;   /* Align them to the right */
+    gap: 0.25rem;            /* A small gap between label and switch */
 }
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
