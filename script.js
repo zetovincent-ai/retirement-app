@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // === STATE MANAGEMENT ===
     let appState = { incomes: [], expenses: [] };
-    let onSave = null;
+    let onSave = null; // For data modal
     let expenseChartInstance = null;
 
     // === DOM SELECTORS ===
@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalBody = document.getElementById('modal-body');
     const modalCloseBtn = document.getElementById('modal-close-btn');
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
-    const modalSaveBtn = document.getElementById('modal-save-btn');
+    const modalSaveBtn = document.getElementById('modal-save-btn'); // For data modal
     const showIncomeModalBtn = document.getElementById('show-income-modal-btn');
     const showExpenseModalBtn = document.getElementById('show-expense-modal-btn');
     const incomeList = document.getElementById('income-list');
@@ -29,29 +29,103 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsModal = document.getElementById('settings-modal');
     const settingsModalCloseBtn = document.getElementById('settings-modal-close-btn');
     const themeSwitcher = document.getElementById('theme-switcher');
+    const saveSettingsBtn = document.getElementById('save-settings-btn'); // For settings modal
 
     // === FUNCTIONS ===
 
-    // --- THEME FUNCTIONS (Using localStorage) ---
-    function applyTheme(themeName) {
+    // --- THEME FUNCTIONS ---
+    // Applies theme visually, does NOT save persistently
+    function applyThemeVisually(themeName) {
+        console.log(`Applying theme visually: ${themeName}`);
         document.body.dataset.theme = themeName;
-        localStorage.setItem('sunflower-theme', themeName); // Save to localStorage
     }
 
-    function loadTheme() {
-        const savedTheme = localStorage.getItem('sunflower-theme') || 'default';
-        applyTheme(savedTheme);
-        // Ensure themeSwitcher exists before setting its value
-        if(themeSwitcher) {
-            themeSwitcher.value = savedTheme;
+    // Loads theme from DB or falls back to localStorage/default
+    async function loadTheme() {
+        console.log("Attempting to load theme...");
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        let theme = 'default';
+
+        if (user) {
+            console.log("User logged in, attempting to load theme from DB...");
+            const { data, error } = await supabaseClient
+                .from('user_settings')
+                .select('settings')
+                .eq('user_id', user.id)
+                .single();
+
+            if (error && error.code !== 'PGRST116') { // Ignore "no rows found"
+                 console.error('Error loading theme from DB:', error);
+            }
+            if (data && data.settings && data.settings.theme) {
+                theme = data.settings.theme;
+                console.log(`Theme '${theme}' loaded from DB.`);
+            } else {
+                 console.log("No theme found in DB for user, falling back to localStorage/default.");
+                 // Fallback check within logged-in state
+                 theme = localStorage.getItem('sunflower-theme-local') || 'default';
+            }
         } else {
-            console.warn("Theme switcher element not found during loadTheme.");
+             // Fallback for logged-out users (using local storage or default)
+             theme = localStorage.getItem('sunflower-theme-local') || 'default';
+             console.log(`User not logged in, theme '${theme}' loaded from localStorage/default.`);
+        }
+
+        applyThemeVisually(theme); // Apply the authoritative theme visually
+        if (themeSwitcher) {
+            themeSwitcher.value = theme; // Set dropdown to match
+        }
+    }
+
+    // Saves the currently selected theme in the dropdown to the DB.
+    async function handleSaveSettings() {
+        const selectedTheme = themeSwitcher.value;
+        console.log(`Saving theme setting: ${selectedTheme}`);
+        const { data: { user } } = await supabaseClient.auth.getUser();
+
+        if (user) {
+            saveSettingsBtn.disabled = true;
+            saveSettingsBtn.textContent = 'Saving...';
+
+            const { error } = await supabaseClient
+                .from('user_settings')
+                .upsert({ user_id: user.id, settings: { theme: selectedTheme } }, { onConflict: 'user_id' });
+
+            saveSettingsBtn.disabled = false; // Re-enable button regardless of outcome
+            saveSettingsBtn.textContent = 'Save Settings';
+
+            if (error) {
+                console.error('Error saving theme settings:', error);
+                alert('Failed to save settings.');
+            } else {
+                console.log("Settings saved successfully to DB.");
+                applyThemeVisually(selectedTheme); // Ensure visual theme matches saved one
+                localStorage.removeItem('sunflower-theme-local'); // Remove local fallback if DB save succeeds
+                 setTimeout(() => { closeSettingsModal(); }, 300); // Close modal after short delay
+            }
+        } else {
+            // User somehow got here while logged out
+            alert('You must be logged in to save settings.');
+            // Save locally if not logged in
+            localStorage.setItem('sunflower-theme-local', selectedTheme);
+            applyThemeVisually(selectedTheme);
+            closeSettingsModal();
         }
     }
 
     // --- SETTINGS MODAL FUNCTIONS ---
-    function openSettingsModal() { settingsModal.classList.remove('modal-hidden'); }
-    function closeSettingsModal() { settingsModal.classList.add('modal-hidden'); }
+    function openSettingsModal() {
+        // Ensure dropdown reflects the currently applied theme when opening
+        const currentTheme = document.body.dataset.theme || 'default';
+        if (themeSwitcher) themeSwitcher.value = currentTheme;
+        settingsModal.classList.remove('modal-hidden');
+    }
+
+    function closeSettingsModal() {
+        settingsModal.classList.add('modal-hidden');
+        // Revert visual theme to last known saved state (from DB or local)
+        loadTheme();
+    }
 
     // --- DATABASE FUNCTIONS ---
     async function fetchData() {
@@ -99,26 +173,22 @@ document.addEventListener('DOMContentLoaded', () => {
             userStatus.innerHTML = `Logged in as ${user.email} <button id="logout-btn" class="btn-secondary">Logout</button>`;
             const logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn) {
-                 logoutBtn.removeEventListener('click', handleLogout); // Clean up just in case
+                 logoutBtn.removeEventListener('click', handleLogout);
                  logoutBtn.addEventListener('click', handleLogout);
-            } else {
-                 console.error("Logout button not found after update.");
-            }
+            } else { console.error("Logout button not found after update."); }
         } else {
             userStatus.innerHTML = `<button id="login-btn" class="btn-primary">Login with GitHub</button>`;
             const loginBtn = document.getElementById('login-btn');
             if (loginBtn) {
-                 loginBtn.removeEventListener('click', handleLogin); // Clean up just in case
+                 loginBtn.removeEventListener('click', handleLogin);
                  loginBtn.addEventListener('click', handleLogin);
-            } else {
-                 console.error("Login button not found after update.");
-            }
+            } else { console.error("Login button not found after update."); }
         }
     }
 
     // --- DATA MODAL FUNCTIONS ---
-    function openModal() { appModal.classList.remove('modal-hidden'); }
-    function closeModal() { appModal.classList.add('modal-hidden'); modalBody.innerHTML = ''; onSave = null; }
+    function openModal() { appModal.classList.remove('modal-hidden'); } // For data entry
+    function closeModal() { appModal.classList.add('modal-hidden'); modalBody.innerHTML = ''; onSave = null; } // For data entry
 
     function showIncomeModal(incomeId) {
         const isEditMode = incomeId !== undefined;
@@ -131,16 +201,16 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('modal-income-interval').value = incomeToEdit.interval;
             document.getElementById('modal-income-amount').value = incomeToEdit.amount;
         }
-        onSave = async () => {
+        onSave = async () => { // This onSave is for the data modal
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) { alert("You must be logged in to save data."); return; }
             const formItem = { user_id: user.id, type: document.getElementById('modal-income-type').value, name: document.getElementById('modal-income-name').value.trim(), interval: document.getElementById('modal-income-interval').value, amount: parseFloat(document.getElementById('modal-income-amount').value) };
             if (!formItem.type || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0) { alert("Please fill out all fields correctly (amount cannot be negative)."); return; }
             let { error } = isEditMode ? await supabaseClient.from('incomes').update(formItem).eq('id', incomeId) : await supabaseClient.from('incomes').insert(formItem);
             if (error) console.error("Error saving income:", error); else await fetchData();
-            closeModal();
+            closeModal(); // Closes the data modal
         };
-        openModal();
+        openModal(); // Opens the data modal
     }
 
     function showExpenseModal(expenseId) {
@@ -154,16 +224,16 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('modal-expense-interval').value = expenseToEdit.interval;
             document.getElementById('modal-expense-amount').value = expenseToEdit.amount;
         }
-        onSave = async () => {
+        onSave = async () => { // This onSave is for the data modal
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) { alert("You must be logged in to save data."); return; }
             const formItem = { user_id: user.id, category: document.getElementById('modal-expense-category').value, name: document.getElementById('modal-expense-name').value.trim(), interval: document.getElementById('modal-expense-interval').value, amount: parseFloat(document.getElementById('modal-expense-amount').value) };
             if (!formItem.category || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0) { alert("Please fill out all fields correctly (amount cannot be negative)."); return; }
             let { error } = isEditMode ? await supabaseClient.from('expenses').update(formItem).eq('id', expenseId) : await supabaseClient.from('expenses').insert(formItem);
             if (error) console.error("Error saving expense:", error); else await fetchData();
-            closeModal();
+            closeModal(); // Closes the data modal
         };
-        openModal();
+        openModal(); // Opens the data modal
     }
 
     // --- RENDER & UTILITY FUNCTIONS ---
@@ -175,69 +245,154 @@ document.addEventListener('DOMContentLoaded', () => {
         renderExpenseChart();
     }
 
-    function renderDashboard() { /* ... unchanged ... */ }
+    function renderDashboard() {
+        const totalMonthlyIncome = calculateMonthlyTotal(appState.incomes);
+        const totalMonthlyExpenses = calculateMonthlyTotal(appState.expenses);
+        const netMonthly = totalMonthlyIncome - totalMonthlyExpenses;
+        const format = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        dashboardSummary.innerHTML = `<div class="summary-item"><h3 class="income-total">Total Monthly Income</h3><p class="income-total">${format(totalMonthlyIncome)}</p></div><div class="summary-item"><h3 class="expense-total">Total Monthly Expenses</h3><p class="expense-total">${format(totalMonthlyExpenses)}</p></div><div class="summary-item net-total"><h3>Net Monthly Balance</h3><p>${format(netMonthly)}</p></div>`;
+    }
+
     function renderIncomes() { renderList(appState.incomes, incomeList); }
     function renderExpenses() { renderList(appState.expenses, expenseList); }
-    function renderList(items, listElement) { /* ... unchanged ... */ }
-    function renderExpenseChart() { /* ... unchanged ... */ }
-    async function handleListClick(event) { /* ... unchanged ... */ }
-    function calculateMonthlyTotal(items) { /* ... unchanged ... */ }
+
+    function renderList(items, listElement) {
+        listElement.innerHTML = '';
+        const listType = listElement.id.includes('income') ? 'income' : 'expense';
+        if (!items || items.length === 0) {
+             listElement.innerHTML = `<li>No ${listType}s added yet.</li>`;
+             return;
+        }
+        items.forEach(item => {
+            if (!item) return;
+            const li = document.createElement('li');
+            const formattedAmount = typeof item.amount === 'number' ? item.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : 'N/A';
+            const intervalText = item.interval ? ` / ${item.interval}` : '';
+            const typeOrCategory = item.type || item.category || 'N/A';
+            const name = item.name || 'Unnamed';
+            li.innerHTML = `<div class="item-details"><strong>${name}</strong> (${typeOrCategory})<br><span>${formattedAmount}${intervalText}</span></div><div class="item-controls"><button class="edit-btn" data-id="${item.id}">Edit</button><button class="delete-btn" data-id="${item.id}">X</button></div>`;
+            listElement.appendChild(li);
+        });
+    }
+
+    function renderExpenseChart() {
+        if (!expenseChartCanvas) return;
+        const categoryTotals = {};
+        if (appState.expenses) {
+            appState.expenses.forEach(expense => {
+                if (!expense || typeof expense.amount !== 'number') return;
+                const monthlyAmount = calculateMonthlyTotal([expense]);
+                if (!categoryTotals[expense.category]) {
+                    categoryTotals[expense.category] = 0;
+                }
+                categoryTotals[expense.category] += monthlyAmount;
+            });
+        }
+        const labels = Object.keys(categoryTotals);
+        const data = Object.values(categoryTotals);
+        if (expenseChartInstance) {
+            expenseChartInstance.destroy();
+            expenseChartInstance = null;
+        }
+        const ctx = expenseChartCanvas.getContext('2d');
+        ctx.clearRect(0, 0, expenseChartCanvas.width, expenseChartCanvas.height);
+        if (labels.length === 0) return;
+        expenseChartInstance = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Expenses by Category',
+                    data: data,
+                    backgroundColor: ['#3498db', '#e74c3c', '#9b59b6', '#f1c40f', '#2ecc71', '#1abc9c', '#e67e22', '#95a5a6'],
+                    hoverOffset: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
+        });
+    }
+
+    async function handleListClick(event) {
+        const target = event.target;
+        if (!target.classList.contains('edit-btn') && !target.classList.contains('delete-btn')) return;
+        const id = parseInt(target.dataset.id);
+        if (isNaN(id)) return;
+        const listId = target.closest('.item-list')?.id;
+        if (!listId) return;
+        if (target.classList.contains('edit-btn')) {
+            if (listId === 'income-list') showIncomeModal(id);
+            else if (listId === 'expense-list') showExpenseModal(id);
+        }
+        if (target.classList.contains('delete-btn')) {
+            const tableName = listId === 'income-list' ? 'incomes' : 'expenses';
+            const { error } = await supabaseClient.from(tableName).delete().eq('id', id);
+            if (error) console.error(`Error deleting from ${tableName}:`, error);
+            else await fetchData();
+        }
+    }
+
+    function calculateMonthlyTotal(items) {
+        if (!items) return 0;
+        return items.reduce((total, item) => {
+             if (!item || typeof item.amount !== 'number' || item.amount < 0) return total;
+            switch (item.interval) {
+                case 'monthly': return total + item.amount;
+                case 'annually': return total + (item.amount / 12);
+                case 'quarterly': return total + (item.amount / 3);
+                case 'bi-weekly': return total + ((item.amount * 26) / 12);
+                case 'weekly': return total + ((item.amount * 52) / 12);
+                default: return total;
+            }
+        }, 0);
+    }
 
     // === EVENT LISTENERS ===
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
         console.log('Auth state changed:', event, "Session:", session ? "Exists" : "Null");
         updateUserStatus(session?.user); // Update UI first
 
-        // Load theme using localStorage immediately
-        loadTheme();
+        // Load theme from DB or fallback AFTER user status is known
+        await loadTheme();
 
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
              if (session) {
                   console.log("Session valid, calling fetchData.");
-                  fetchData(); // Fetch data for the logged-in user
+                  fetchData(); // Fetch main data
              } else {
                   console.log("INITIAL_SESSION event, but no session found. Clearing data.");
                   appState = { incomes: [], expenses: [] };
                   renderAll();
              }
         } else if (event === 'SIGNED_OUT') {
-             console.log("SIGNED_OUT event, clearing data and resetting theme.");
+             console.log("SIGNED_OUT event, clearing data.");
              appState = { incomes: [], expenses: [] };
              renderAll();
-             // Reset theme visually and in dropdown on logout
-             applyTheme('default'); // Use applyTheme to reset and save to localStorage
-             if(themeSwitcher) themeSwitcher.value = 'default';
+             // Theme reset happens in loadTheme when no user is found
         }
     });
 
     toggleDashboardBtn.addEventListener('click', () => { mainContainer.classList.toggle('dashboard-expanded'); });
-    themeSwitcher.addEventListener('change', (event) => applyTheme(event.target.value)); // applyTheme saves to localStorage
+
+    // Update theme *visually* immediately on change, save happens on button click
+    themeSwitcher.addEventListener('change', (event) => applyThemeVisually(event.target.value));
+
     settingsBtn.addEventListener('click', openSettingsModal);
     settingsModalCloseBtn.addEventListener('click', closeSettingsModal);
     settingsModal.addEventListener('click', (event) => { if (event.target === settingsModal) closeSettingsModal(); });
+
+    saveSettingsBtn.addEventListener('click', handleSaveSettings); // Listen to the save button
+
+    // Data Modal Listeners
     showIncomeModalBtn.addEventListener('click', () => showIncomeModal());
     showExpenseModalBtn.addEventListener('click', () => showExpenseModal());
-    modalSaveBtn.addEventListener('click', () => { if (onSave) onSave(); });
-    modalCloseBtn.addEventListener('click', closeModal);
-    modalCancelBtn.addEventListener('click', closeModal);
-    appModal.addEventListener('click', (event) => { if (event.target === appModal) closeModal(); });
+    modalSaveBtn.addEventListener('click', () => { if (onSave) onSave(); }); // For data modal save
+    modalCloseBtn.addEventListener('click', closeModal); // For data modal close
+    modalCancelBtn.addEventListener('click', closeModal); // For data modal cancel
+    appModal.addEventListener('click', (event) => { if (event.target === appModal) closeModal(); }); // For data modal background click
+
+    // List Item Listeners
     incomeList.addEventListener('click', handleListClick);
     expenseList.addEventListener('click', handleListClick);
 
-    // Initial theme load on page start (uses localStorage or default)
-    loadTheme();
-
-
-    // --- UNCHANGED FUNCTION DEFINITIONS ---
-    function renderDashboard(){const totalMonthlyIncome=calculateMonthlyTotal(appState.incomes);const totalMonthlyExpenses=calculateMonthlyTotal(appState.expenses);const netMonthly=totalMonthlyIncome-totalMonthlyExpenses;const format=num=>num.toLocaleString('en-US',{style:'currency',currency:'USD'});dashboardSummary.innerHTML=`<div class="summary-item"><h3 class="income-total">Total Monthly Income</h3><p class="income-total">${format(totalMonthlyIncome)}</p></div><div class="summary-item"><h3 class="expense-total">Total Monthly Expenses</h3><p class="expense-total">${format(totalMonthlyExpenses)}</p></div><div class="summary-item net-total"><h3>Net Monthly Balance</h3><p>${format(netMonthly)}</p></div>`}
-    function renderList(items,listElement){listElement.innerHTML='';const listType=listElement.id.includes('income')?'income':'expense';if(!items||items.length===0){listElement.innerHTML=`<li>No ${listType}s added yet.</li>`;return}
-    items.forEach(item=>{if(!item)return;const li=document.createElement('li');const formattedAmount=typeof item.amount==='number'?item.amount.toLocaleString('en-US',{style:'currency',currency:'USD'}):'N/A';const intervalText=item.interval?` / ${item.interval}`:'';const typeOrCategory=item.type||item.category||'N/A';const name=item.name||'Unnamed';li.innerHTML=`<div class="item-details"><strong>${name}</strong> (${typeOrCategory})<br><span>${formattedAmount}${intervalText}</span></div><div class="item-controls"><button class="edit-btn" data-id="${item.id}">Edit</button><button class="delete-btn" data-id="${item.id}">X</button></div>`;listElement.appendChild(li)})}
-    function renderExpenseChart(){if(!expenseChartCanvas)return;const categoryTotals={};if(appState.expenses){appState.expenses.forEach(expense=>{if(!expense||typeof expense.amount!=='number')return;const monthlyAmount=calculateMonthlyTotal([expense]);if(!categoryTotals[expense.category]){categoryTotals[expense.category]=0}
-    categoryTotals[expense.category]+=monthlyAmount})}
-    const labels=Object.keys(categoryTotals);const data=Object.values(categoryTotals);if(expenseChartInstance){expenseChartInstance.destroy();expenseChartInstance=null}
-    const ctx=expenseChartCanvas.getContext('2d');ctx.clearRect(0,0,expenseChartCanvas.width,expenseChartCanvas.height);if(labels.length===0)return;expenseChartInstance=new Chart(ctx,{type:'pie',data:{labels:labels,datasets:[{label:'Expenses by Category',data:data,backgroundColor:['#3498db','#e74c3c','#9b59b6','#f1c40f','#2ecc71','#1abc9c','#e67e22','#95a5a6'],hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}}}})}
-    async function handleListClick(event){const target=event.target;if(!target.classList.contains('edit-btn')&&!target.classList.contains('delete-btn'))return;const id=parseInt(target.dataset.id);if(isNaN(id))return;const listId=target.closest('.item-list')?.id;if(!listId)return;if(target.classList.contains('edit-btn')){if(listId==='income-list')showIncomeModal(id);else if(listId==='expense-list')showExpenseModal(id)}
-    if(target.classList.contains('delete-btn')){const tableName=listId==='income-list'?'incomes':'expenses';const{error}=await supabaseClient.from(tableName).delete().eq('id',id);if(error)console.error(`Error deleting from ${tableName}:`,error);else await fetchData()}}
-    function calculateMonthlyTotal(items){if(!items)return 0;return items.reduce((total,item)=>{if(!item||typeof item.amount!=='number'||item.amount<0)return total;switch(item.interval){case'monthly':return total+item.amount;case'annually':return total+(item.amount/12);case'quarterly':return total+(item.amount/3);case'bi-weekly':return total+((item.amount*26)/12);case'weekly':return total+((item.amount*52)/12);default:return total}},0)}
-
+    // No initial loadTheme() call needed here, handled by onAuthStateChange
 });
