@@ -56,9 +56,14 @@
     </main>
 
     <footer>
-        <button id="import-btn">Import Data</button>
-        <button id="export-btn">Export Data</button>
-        <input type="file" id="import-file-input" accept=".json" style="display: none;">
+       <div class="theme-switcher-container">
+            <label for="theme-switcher">Theme:</label>
+            <select id="theme-switcher">
+                <option value="default">Default Blue</option>
+                <option value="sunflower">Sunflower</option>
+                <option value="dark">Dark Mode</option>
+            </select>
+        </div>
     </footer>
 
     <div id="app-modal" class="modal-hidden">

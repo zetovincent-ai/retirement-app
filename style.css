@@ -144,3 +144,45 @@ main.dashboard-expanded #dashboard-section { flex-grow: 20; }
 main.dashboard-expanded #income-section, main.dashboard-expanded #expenses-section { flex-grow: 1; overflow: hidden; cursor: pointer; min-width: 60px; }
 main.dashboard-expanded #income-section > :not(.section-header), main.dashboard-expanded #expenses-section > :not(.section-header) { display: none; opacity: 0; }
 main.dashboard-expanded #income-section .section-header h2, main.dashboard-expanded #expenses-section .section-header h2 { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); margin: auto; }
+/* --- Add this to the end of your file --- */
+
+.theme-switcher-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* === THEME DEFINITIONS === */
+
+/* Sunflower Theme */
+body[data-theme="sunflower"] {
+    --background-color: #fdf6e3;
+    --section-bg-color: #fffcf2;
+    --header-bg-color: #b58900;
+    --header-text-color: #ffffff;
+    --text-color: #586e75;
+    --border-color: #eee8d5;
+    --primary-btn-bg: #cb4b16;
+    --primary-btn-hover: #dc322f;
+    --net-total-color: #268bd2;
+    --list-item-bg: #fdf6e3;
+}
+
+/* Dark Theme */
+body[data-theme="dark"] {
+    --background-color: #1a202c;
+    --section-bg-color: #2d3748;
+    --header-bg-color: #171923;
+    --header-text-color: #e2e8f0;
+    --text-color: #cbd5e0;
+    --border-color: #4a5568;
+    --primary-btn-bg: #2b6cb0;
+    --primary-btn-hover: #3182ce;
+    --secondary-btn-bg: #4a5568;
+    --secondary-btn-hover: #718096;
+    --income-total-color: #48bb78;
+    --expense-total-color: #f56565;
+    --net-total-color: #4299e1;
+    --list-item-bg: #4a5568;
+}
