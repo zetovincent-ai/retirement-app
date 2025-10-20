@@ -3,12 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const SUPABASE_URL = 'https://mwuxrrwbgytbqrlhzwsc.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13dXhycndiZ3l0YnFybGh6d3NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MjcxNTYsImV4cCI6MjA3NjEwMzE1Nn0.up3JOKKXEyw6axEGhI2eESJbrZzoH-93zRmCSXukYZY';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     // === STATE MANAGEMENT ===
     let appState = { incomes: [], expenses: [] };
     let onSave = null;
     let expenseChartInstance = null;
-
     // === DOM SELECTORS ===
     const currentYearSpan = document.getElementById('current-year'); // New selector
     const mainContainer = document.querySelector('main');
@@ -27,9 +25,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const dashboardSummary = document.getElementById('dashboard-summary');
     const expenseChartCanvas = document.getElementById('expense-chart');
     const darkModeToggle = document.getElementById('dark-mode-toggle'); // New selector
-
+    const authModal = document.getElementById('auth-modal');
+    const authModalCloseBtn = document.getElementById('auth-modal-close-btn');
+    const emailAuthForm = document.getElementById('email-auth-form');
+    const githubLoginBtn = document.getElementById('github-login-btn');
+    const authEmailInput = document.getElementById('auth-email');
+    const authPasswordInput = document.getElementById('auth-password');
     // === FUNCTIONS ===
-
     // --- NEW Dark/Light Mode Functions ---
     function setMode(mode) {
         localStorage.setItem('sunflower-mode', mode);
@@ -41,19 +43,18 @@ document.addEventListener('DOMContentLoaded', () => {
             darkModeToggle.checked = false;
         }
     }
-
     function loadMode() {
         const savedMode = localStorage.getItem('sunflower-mode') || 'light'; // Default to light
         setMode(savedMode);
     }
-
     // --- Initialize Footer ---
     function initializeFooter() {
         if (currentYearSpan) {
             currentYearSpan.textContent = new Date().getFullYear();
         }
     }
-
+    function openAuthModal() { authModal.classList.remove('modal-hidden'); }
+    function closeAuthModal() { authModal.classList.add('modal-hidden'); }
     // --- DATABASE FUNCTIONS ---
     async function fetchData() {
         console.log("Attempting to fetch data...");
@@ -76,14 +77,45 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Data fetch complete, rendering UI.");
         renderAll();
     }
-
     // --- AUTH FUNCTIONS ---
     async function handleLogin() {
         console.log("Login initiated...");
         const { error } = await supabaseClient.auth.signInWithOAuth({ provider: 'github' });
         if (error) console.error('Error logging in:', error);
     }
+    async function handleGitHubLogin() {
+        const { error } = await supabaseClient.auth.signInWithOAuth({ provider: 'github' });
+        if (error) console.error('Error logging in with GitHub:', error);
+    }
+    async function handleEmailAuth(event) {
+        event.preventDefault();
+        const email = authEmailInput.value;
+        const password = authPasswordInput.value;
 
+        // First, try to sign in
+        const { error: signInError } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+        if (signInError) {
+            // If sign-in fails, try to sign up the user
+            console.log("Sign-in failed, attempting to sign up...");
+            const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({ email, password });
+
+            if (signUpError) {
+                alert(`Error: ${signUpError.message}`);
+            } else if (signUpData.user && signUpData.user.identities && signUpData.user.identities.length === 0) {
+                 // Supabase might require email confirmation
+                 alert("Sign-up successful! Please check your email to confirm your account.");
+                 closeAuthModal();
+            } else {
+                 alert("Login successful!"); // This might happen if email confirmation is off
+                 closeAuthModal();
+            }
+        } else {
+            // Sign-in was successful
+            alert("Login successful!");
+            closeAuthModal();
+        }
+    }
     async function handleLogout() {
         console.log("Logout function called");
         const { error } = await supabaseClient.auth.signOut();
@@ -93,30 +125,26 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Logout successful via function call.");
         }
     }
-
     function updateUserStatus(user) {
-        console.log("Updating user status UI for user:", user ? user.email : 'null');
         if (user) {
-            userStatus.innerHTML = `Logged in as ${user.email} <button id="logout-btn" class="btn-secondary">Logout</button>`;
+            userStatus.innerHTML = `<button id="logout-btn" class="btn-secondary">Logout</button>`;
             const logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn) {
                  logoutBtn.removeEventListener('click', handleLogout);
                  logoutBtn.addEventListener('click', handleLogout);
-            } else { console.error("Logout button not found after update."); }
+            }
         } else {
-            userStatus.innerHTML = `<button id="login-btn" class="btn-primary">Login with GitHub</button>`;
+            userStatus.innerHTML = `<button id="login-btn" class="btn-primary">Login / Sign Up</button>`;
             const loginBtn = document.getElementById('login-btn');
             if (loginBtn) {
-                 loginBtn.removeEventListener('click', handleLogin);
-                 loginBtn.addEventListener('click', handleLogin);
-            } else { console.error("Login button not found after update."); }
+                 loginBtn.removeEventListener('click', openAuthModal);
+                 loginBtn.addEventListener('click', openAuthModal);
+            }
         }
     }
-
     // --- DATA MODAL FUNCTIONS ---
     function openModal() { appModal.classList.remove('modal-hidden'); }
     function closeModal() { appModal.classList.add('modal-hidden'); modalBody.innerHTML = ''; onSave = null; }
-
     function showIncomeModal(incomeId) {
         const isEditMode = incomeId !== undefined;
         const incomeToEdit = isEditMode ? appState.incomes.find(i => i.id === incomeId) : null;
@@ -139,7 +167,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         openModal();
     }
-
     function showExpenseModal(expenseId) {
         const isEditMode = expenseId !== undefined;
         const expenseToEdit = isEditMode ? appState.expenses.find(e => e.id === expenseId) : null;
@@ -162,7 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         openModal();
     }
-
     // --- RENDER & UTILITY FUNCTIONS ---
     function renderAll() {
         console.log("Rendering UI...");
@@ -171,7 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderDashboard();
         renderExpenseChart();
     }
-    
     function renderDashboard(){const totalMonthlyIncome=calculateMonthlyTotal(appState.incomes);const totalMonthlyExpenses=calculateMonthlyTotal(appState.expenses);const netMonthly=totalMonthlyIncome-totalMonthlyExpenses;const format=num=>num.toLocaleString('en-US',{style:'currency',currency:'USD'});dashboardSummary.innerHTML=`<div class="summary-item"><h3 class="income-total">Total Monthly Income</h3><p class="income-total">${format(totalMonthlyIncome)}</p></div><div class="summary-item"><h3 class="expense-total">Total Monthly Expenses</h3><p class="expense-total">${format(totalMonthlyExpenses)}</p></div><div class="summary-item net-total"><h3>Net Monthly Balance</h3><p>${format(netMonthly)}</p></div>`}
     function renderIncomes(){renderList(appState.incomes,incomeList)}
     function renderExpenses(){renderList(appState.expenses,expenseList)}
@@ -184,8 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleListClick(event){const target=event.target;if(!target.classList.contains('edit-btn')&&!target.classList.contains('delete-btn'))return;const id=parseInt(target.dataset.id);if(isNaN(id))return;const listId=target.closest('.item-list')?.id;if(!listId)return;if(target.classList.contains('edit-btn')){if(listId==='income-list')showIncomeModal(id);else if(listId==='expense-list')showExpenseModal(id)}
     if(target.classList.contains('delete-btn')){const tableName=listId==='income-list'?'incomes':'expenses';const{error}=await supabaseClient.from(tableName).delete().eq('id',id);if(error)console.error(`Error deleting from ${tableName}:`,error);else await fetchData()}}
     function calculateMonthlyTotal(items){if(!items)return 0;return items.reduce((total,item)=>{if(!item||typeof item.amount!=='number'||item.amount<0)return total;switch(item.interval){case'monthly':return total+item.amount;case'annually':return total+(item.amount/12);case'quarterly':return total+(item.amount/3);case'bi-weekly':return total+((item.amount*26)/12);case'weekly':return total+((item.amount*52)/12);default:return total}},0)}
-
-
     // === EVENT LISTENERS ===
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
         console.log('Auth state changed:', event);
@@ -197,10 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderAll();
         }
     });
-
     toggleDashboardBtn.addEventListener('click', () => { mainContainer.classList.toggle('dashboard-expanded'); });
-
-    // NEW Listener for the dark mode toggle
     darkModeToggle.addEventListener('change', () => {
         if (darkModeToggle.checked) {
             setMode('dark');
@@ -208,7 +228,10 @@ document.addEventListener('DOMContentLoaded', () => {
             setMode('light');
         }
     });
-
+    authModalCloseBtn.addEventListener('click', closeAuthModal);
+    authModal.addEventListener('click', (event) => { if (event.target === authModal) closeAuthModal(); });
+    emailAuthForm.addEventListener('submit', handleEmailAuth);
+    githubLoginBtn.addEventListener('click', handleGitHubLogin);
     showIncomeModalBtn.addEventListener('click', () => showIncomeModal());
     showExpenseModalBtn.addEventListener('click', () => showExpenseModal());
     modalSaveBtn.addEventListener('click', () => { if (onSave) onSave(); });
@@ -217,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     appModal.addEventListener('click', (event) => { if (event.target === appModal) closeModal(); });
     incomeList.addEventListener('click', handleListClick);
     expenseList.addEventListener('click', handleListClick);
-    
     // === INITIALIZATION ===
     loadMode(); // Load the saved mode on startup
+    initializeFooter();
 });

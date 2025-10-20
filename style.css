@@ -281,7 +281,33 @@ input:checked + .slider:before {
 .slider.round:before {
     border-radius: 50%;
 }
+.auth-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: var(--text-color);
+    margin: 1.5rem 0;
+}
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+}
+.auth-divider:not(:empty)::before {
+    margin-right: .5em;
+}
+.auth-divider:not(:empty)::after {
+    margin-left: .5em;
+}
 
+#github-login-btn {
+    width: 100%;
+    background-color: #333; /* GitHub brand color */
+}
+#github-login-btn:hover {
+    background-color: #555;
+}
 
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
