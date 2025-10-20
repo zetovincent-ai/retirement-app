@@ -65,7 +65,7 @@ header {
     justify-content: space-between;
     align-items: center;
     max-width: 1200px;
-    margin: 0 auto;
+    margin: 0;
 }
 
 .header-title-group {
@@ -75,7 +75,7 @@ header {
 }
 
 .header-logo {
-    height: 50px; /* Adjust size as needed */
+    height: 100px; /* Adjust size as needed */
 }
 
 .header-controls {
@@ -107,7 +107,7 @@ footer {
 }
 
 .footer-logo {
-    height: 20px; /* Adjust size as needed */
+    height: 50px; /* Adjust size as needed */
 }
 
 .footer-content .contact-link {
@@ -160,7 +160,10 @@ main {
     white-space: nowrap;
 }
 
-h1 { margin-bottom: 1rem; }
+h1 { 
+    margin-bottom: 0; 
+    font-size: 40px;
+}
 
 button {
     padding: 0.5rem 1rem;
