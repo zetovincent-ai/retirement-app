@@ -59,7 +59,7 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    max-width: 1200px;
+    max-width: auto;
     margin: 0;
 }
 .header-title-group {
