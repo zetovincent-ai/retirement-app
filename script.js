@@ -32,16 +32,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // === FUNCTIONS ===
 
-    // --- THEME FUNCTIONS ---
-    function applyTheme(themeName) {
+    // --- THEME FUNCTIONS (Now with DB persistence) ---
+    async function applyTheme(themeName) {
         document.body.dataset.theme = themeName;
-        localStorage.setItem('sunflower-theme', themeName);
+        
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+            // Upsert will create a new settings row or update an existing one
+            const { error } = await supabaseClient
+                .from('user_settings')
+                .upsert({ user_id: user.id, settings: { theme: themeName } }, { onConflict: 'user_id' });
+            
+            if (error) console.error('Error saving theme:', error);
+        }
     }
 
-    function loadTheme() {
-        const savedTheme = localStorage.getItem('sunflower-theme') || 'default';
-        applyTheme(savedTheme);
-        themeSwitcher.value = savedTheme;
+    async function loadTheme() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        let theme = 'default'; // Default theme if not logged in or no setting found
+
+        if (user) {
+            const { data, error } = await supabaseClient
+                .from('user_settings')
+                .select('settings')
+                .eq('user_id', user.id)
+                .single(); // We expect only one row per user
+            
+            if (error && error.code !== 'PGRST116') { // Ignore "no rows found" error
+                 console.error('Error loading theme:', error);
+            }
+            if (data && data.settings && data.settings.theme) {
+                theme = data.settings.theme;
+            }
+        }
+        
+        document.body.dataset.theme = theme;
+        themeSwitcher.value = theme;
     }
 
     // --- SETTINGS MODAL FUNCTIONS ---
@@ -238,13 +264,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // === EVENT LISTENERS ===
-    supabaseClient.auth.onAuthStateChange((event, session) => {
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
         updateUserStatus(session?.user);
         if (session) {
+            await loadTheme(); // Load theme from DB after login
             fetchData();
         } else {
             appState = { incomes: [], expenses: [] };
             renderAll();
+            document.body.dataset.theme = 'default'; // Revert to default theme on logout
         }
     });
 
@@ -268,7 +296,4 @@ document.addEventListener('DOMContentLoaded', () => {
     appModal.addEventListener('click', (event) => { if (event.target === appModal) closeModal(); });
     incomeList.addEventListener('click', handleListClick);
     expenseList.addEventListener('click', handleListClick);
-    
-    // === INITIALIZATION ===
-    loadTheme();
 });
