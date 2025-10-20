@@ -33,49 +33,78 @@ document.addEventListener('DOMContentLoaded', () => {
     // === FUNCTIONS ===
 
     // --- THEME FUNCTIONS (Using localStorage) ---
-    async function saveThemeToDB(themeName) {
+    async function saveThemePreference(themeName) {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (user) {
-            console.log(`Attempting to save theme '${themeName}' to DB for user ${user.id}`); // Log attempt
+            console.log(`Attempting to save theme '${themeName}' to DB for user ${user.id}`);
             try {
+                // Upsert: updates if user_id exists, inserts if not
                 const { error } = await supabaseClient
                     .from('user_settings')
-                    .upsert({ user_id: user.id, settings: { theme: themeName } }, { onConflict: 'user_id' });
+                    .upsert({ user_id: user.id, settings: { theme: themeName } }, { onConflict: 'user_id' }); // Specify constraint column
 
                 if (error) {
-                    // Throw the error to be caught by the caller if needed, or just log it
                     console.error('Error saving theme to DB:', error);
-                    // Optionally alert the user: alert(`Failed to save theme setting: ${error.message}`);
+                    // Optionally alert the user
+                    // alert(`Failed to save theme setting: ${error.message}`);
                 } else {
-                    console.log(`Theme '${themeName}' successfully saved to DB.`); // Log success
+                    console.log(`Theme '${themeName}' successfully saved to DB.`);
+                    localStorage.removeItem('sunflower-theme-local'); // Clean up local fallback if DB save succeeds
                 }
             } catch (catchError) {
                 console.error("Caught exception while saving theme:", catchError);
-                // Optionally alert the user: alert(`An unexpected error occurred while saving theme settings.`);
+                // Optionally alert the user
+                // alert(`An unexpected error occurred while saving theme settings.`);
             }
         } else {
-            console.log("User not logged in, cannot save theme to DB."); // Log skipped save
+            // User is not logged in, save to localStorage only
+            console.log("User not logged in, saving theme to localStorage.");
+            localStorage.setItem('sunflower-theme-local', themeName); // Use a distinct key
         }
     }
 
-    // Applies theme visually, saves to localStorage, AND attempts DB save
-    function applyTheme(themeName) {
-        console.log(`Applying theme: ${themeName}`); // Log apply action
+    // Applies theme visually ONLY
+    function applyThemeVisually(themeName) {
+        console.log(`Applying theme visually: ${themeName}`);
         document.body.dataset.theme = themeName;
-        localStorage.setItem('sunflower-theme', themeName); // Keep saving to localStorage
-
-        // Call the new function to attempt saving to DB (don't wait for it)
-        saveThemeToDB(themeName);
     }
 
-    function loadTheme() {
-        const savedTheme = localStorage.getItem('sunflower-theme') || 'default';
-        applyTheme(savedTheme);
-        // Ensure themeSwitcher exists before setting its value
-        if(themeSwitcher) {
-            themeSwitcher.value = savedTheme;
+    async function loadTheme() {
+        console.log("Attempting to load theme...");
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        let theme = 'default'; // Start with default
+
+        if (user) {
+            console.log("User logged in, attempting to load theme from DB...");
+            const { data, error } = await supabaseClient
+                .from('user_settings')
+                .select('settings')
+                .eq('user_id', user.id)
+                .single();
+
+            // Ignore "PGRST116" error which means no settings row found yet
+            if (error && error.code !== 'PGRST116') {
+                 console.error('Error loading theme from DB:', error);
+            }
+            // If settings exist and have a theme property, use it
+            if (data && data.settings && data.settings.theme) {
+                theme = data.settings.theme;
+                console.log(`Theme '${theme}' loaded from DB.`);
+            } else {
+                 console.log("No theme found in DB for user, using default for now.");
+                 // We don't necessarily need localStorage here if DB is the source of truth when logged in.
+                 // If you want a local *cache*, you could check localStorage here too.
+                 // For simplicity, let's stick to DB or default when logged in.
+            }
         } else {
-            console.warn("Theme switcher element not found during loadTheme.");
+             // Fallback for logged-out users (using local storage or default)
+             theme = localStorage.getItem('sunflower-theme-local') || 'default';
+             console.log(`User not logged in, theme '${theme}' loaded from localStorage/default.`);
+        }
+
+        applyThemeVisually(theme); // Apply the authoritative theme visually ONLY
+        if (themeSwitcher) {
+            themeSwitcher.value = theme; // Set dropdown to match WITHOUT triggering save
         }
     }
 
@@ -216,32 +245,38 @@ document.addEventListener('DOMContentLoaded', () => {
     // === EVENT LISTENERS ===
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
         console.log('Auth state changed:', event, "Session:", session ? "Exists" : "Null");
-        updateUserStatus(session?.user); // Update UI first
+        updateUserStatus(session?.user); // Update Login/Logout button UI
 
-        // Load theme using localStorage immediately
-        loadTheme();
+        // Load theme *after* user status is known, apply visually, set dropdown
+        await loadTheme();
 
-        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
              if (session) {
                   console.log("Session valid, calling fetchData.");
-                  fetchData(); // Fetch data for the logged-in user
+                  // Fetch data only after theme is loaded/applied
+                  fetchData();
              } else {
-                  console.log("INITIAL_SESSION event, but no session found. Clearing data.");
+                  console.log(`${event} event, but no session found. Clearing data.`);
                   appState = { incomes: [], expenses: [] };
                   renderAll();
              }
         } else if (event === 'SIGNED_OUT') {
-             console.log("SIGNED_OUT event, clearing data and resetting theme.");
+             console.log("SIGNED_OUT event, clearing data and resetting theme visually.");
              appState = { incomes: [], expenses: [] };
              renderAll();
-             // Reset theme visually and in dropdown on logout
-             applyTheme('default'); // Use applyTheme to reset and save to localStorage
+             // Reset theme visually ONLY, don't trigger a save. loadTheme handles fallback.
+             applyThemeVisually('default');
              if(themeSwitcher) themeSwitcher.value = 'default';
+             localStorage.removeItem('sunflower-theme-local'); // Clear local pref on logout
         }
     });
 
     toggleDashboardBtn.addEventListener('click', () => { mainContainer.classList.toggle('dashboard-expanded'); });
-    themeSwitcher.addEventListener('change', (event) => applyTheme(event.target.value)); // applyTheme saves to localStorage
+    themeSwitcher.addEventListener('change', (event) => {
+        const newTheme = event.target.value;
+        applyThemeVisually(newTheme); // Update visuals immediately
+        saveThemePreference(newTheme); // Trigger the persistent save (DB or local)
+    });
     settingsBtn.addEventListener('click', openSettingsModal);
     settingsModalCloseBtn.addEventListener('click', closeSettingsModal);
     settingsModal.addEventListener('click', (event) => { if (event.target === settingsModal) closeSettingsModal(); });
