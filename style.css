@@ -81,7 +81,7 @@ footer {
     background-color: var(--header-bg-color);
     color: var(--header-text-color);
     padding: 1rem;
-    font-size: 0.9rem;
+    font-size: 20px;
 }
 .footer-content {
     display: flex;
