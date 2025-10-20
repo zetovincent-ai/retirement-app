@@ -32,65 +32,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // === FUNCTIONS ===
 
-    // --- THEME FUNCTIONS (Now with DB persistence) ---
-    async function applyTheme(themeName) {
-        document.body.dataset.theme = themeName; // Apply theme visually immediately
-        console.log(`Applying theme: ${themeName}`); // Diagnostic log
-
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (user) {
-            console.log("User logged in, attempting to save theme to DB..."); // Diagnostic log
-            // Upsert saves the theme setting to the database
-            const { error } = await supabaseClient
-                .from('user_settings')
-                .upsert({ user_id: user.id, settings: { theme: themeName } }, { onConflict: 'user_id' }); // Use user_id as the conflict target
-
-            if (error) {
-                console.error('Error saving theme to DB:', error);
-            } else {
-                console.log("Theme saved successfully to DB."); // Diagnostic log
-            }
-        } else {
-            // Fallback to localStorage if user is not logged in
-            console.log("User not logged in, saving theme to localStorage."); // Diagnostic log
-            localStorage.setItem('sunflower-theme-local', themeName);
-        }
+    // --- THEME FUNCTIONS (Using localStorage) ---
+    function applyTheme(themeName) {
+        document.body.dataset.theme = themeName;
+        localStorage.setItem('sunflower-theme', themeName); // Save to localStorage
     }
 
-    async function loadTheme() {
-        console.log("Attempting to load theme..."); // Diagnostic log
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        let theme = 'default'; // Default theme
-
-        if (user) {
-            console.log("User logged in, attempting to load theme from DB..."); // Diagnostic log
-            // Try loading theme from the database for the logged-in user
-            const { data, error } = await supabaseClient
-                .from('user_settings')
-                .select('settings')
-                .eq('user_id', user.id)
-                .single();
-
-            // Ignore "PGRST116" error which means no settings row found yet for this user
-            if (error && error.code !== 'PGRST116') {
-                 console.error('Error loading theme from DB:', error);
-            }
-            // If settings exist and have a theme property, use it
-            if (data && data.settings && data.settings.theme) {
-                theme = data.settings.theme;
-                console.log(`Theme '${theme}' loaded from DB.`); // Diagnostic log
-            } else {
-                 console.log("No theme found in DB, using default."); // Diagnostic log
-            }
+    function loadTheme() {
+        const savedTheme = localStorage.getItem('sunflower-theme') || 'default';
+        applyTheme(savedTheme);
+        // Ensure themeSwitcher exists before setting its value
+        if(themeSwitcher) {
+            themeSwitcher.value = savedTheme;
         } else {
-            // Fallback to localStorage if not logged in
-            theme = localStorage.getItem('sunflower-theme-local') || 'default';
-            console.log(`User not logged in, theme '${theme}' loaded from localStorage/default.`); // Diagnostic log
-        }
-
-        document.body.dataset.theme = theme; // Apply the loaded theme
-        if (themeSwitcher) {
-            themeSwitcher.value = theme; // Set the dropdown to the correct value
+            console.warn("Theme switcher element not found during loadTheme.");
         }
     }
 
@@ -100,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DATABASE FUNCTIONS ---
     async function fetchData() {
-        console.log("Attempting to fetch data...");
+        console.log("Attempting to fetch data..."); // Keep diagnostic logs
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) {
              console.log("No user logged in for fetchData, clearing local state.");
@@ -122,21 +77,110 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- AUTH FUNCTIONS ---
-    async function handleLogin() { /* ... unchanged ... */ }
-    async function handleLogout() { /* ... unchanged ... */ }
-    function updateUserStatus(user) { /* ... unchanged ... */ }
+    async function handleLogin() {
+        console.log("Login initiated...");
+        const { error } = await supabaseClient.auth.signInWithOAuth({ provider: 'github' });
+        if (error) console.error('Error logging in:', error);
+    }
+
+    async function handleLogout() {
+        console.log("Logout function called"); // Keep diagnostic logs
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) {
+            console.error('Error logging out:', error);
+        } else {
+            console.log("Logout successful via function call."); // Keep diagnostic logs
+            // State clearing and UI reset is handled by onAuthStateChange
+        }
+    }
+
+    function updateUserStatus(user) {
+        console.log("Updating user status UI for user:", user ? user.email : 'null');
+        if (user) {
+            userStatus.innerHTML = `Logged in as ${user.email} <button id="logout-btn" class="btn-secondary">Logout</button>`;
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                 // Clean up previous listener before adding new one
+                 logoutBtn.removeEventListener('click', handleLogout);
+                 logoutBtn.addEventListener('click', handleLogout);
+            } else {
+                 console.error("Logout button not found after update.");
+            }
+        } else {
+            userStatus.innerHTML = `<button id="login-btn" class="btn-primary">Login with GitHub</button>`;
+            const loginBtn = document.getElementById('login-btn');
+            if (loginBtn) {
+                 // Clean up previous listener before adding new one
+                 loginBtn.removeEventListener('click', handleLogin);
+                 loginBtn.addEventListener('click', handleLogin);
+            } else {
+                 console.error("Login button not found after update.");
+            }
+        }
+    }
 
     // --- DATA MODAL FUNCTIONS ---
-    function openModal() { /* ... unchanged ... */ }
-    function closeModal() { /* ... unchanged ... */ }
-    function showIncomeModal(incomeId) { /* ... unchanged ... */ }
-    function showExpenseModal(expenseId) { /* ... unchanged ... */ }
+    function openModal() { appModal.classList.remove('modal-hidden'); }
+    function closeModal() { appModal.classList.add('modal-hidden'); modalBody.innerHTML = ''; onSave = null; }
+
+    function showIncomeModal(incomeId) {
+        const isEditMode = incomeId !== undefined;
+        const incomeToEdit = isEditMode ? appState.incomes.find(i => i.id === incomeId) : null;
+        modalTitle.textContent = isEditMode ? 'Edit Income' : 'Add New Income';
+        modalBody.innerHTML = `<div class="form-group"><label for="modal-income-type">Type:</label><select id="modal-income-type" required><option value="">-- Select a Type --</option><option value="Pension">Pension</option><option value="TSP">TSP</option><option value="TSP Supplement">TSP Supplement</option><option value="Social Security">Social Security</option><option value="Investment">Investment Dividend</option><option value="Other">Other</option></select></div><div class="form-group"><label for="modal-income-name">Description / Name:</label><input type="text" id="modal-income-name" placeholder="e.g., Vincent's TSP" required></div><div class="form-group"><label for="modal-income-interval">Payment Interval:</label><select id="modal-income-interval" required><option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option></select></div><div class="form-group"><label for="modal-income-amount">Payment Amount:</label><input type="number" id="modal-income-amount" placeholder="1500" min="0" step="0.01" required></div>`;
+        if (isEditMode && incomeToEdit) {
+            document.getElementById('modal-income-type').value = incomeToEdit.type;
+            document.getElementById('modal-income-name').value = incomeToEdit.name;
+            document.getElementById('modal-income-interval').value = incomeToEdit.interval;
+            document.getElementById('modal-income-amount').value = incomeToEdit.amount;
+        }
+        onSave = async () => {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) { alert("You must be logged in to save data."); return; }
+            const formItem = { user_id: user.id, type: document.getElementById('modal-income-type').value, name: document.getElementById('modal-income-name').value.trim(), interval: document.getElementById('modal-income-interval').value, amount: parseFloat(document.getElementById('modal-income-amount').value) };
+            if (!formItem.type || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0) { alert("Please fill out all fields correctly (amount cannot be negative)."); return; }
+            let { error } = isEditMode ? await supabaseClient.from('incomes').update(formItem).eq('id', incomeId) : await supabaseClient.from('incomes').insert(formItem);
+            if (error) console.error("Error saving income:", error); else await fetchData();
+            closeModal();
+        };
+        openModal();
+    }
+
+    function showExpenseModal(expenseId) {
+        const isEditMode = expenseId !== undefined;
+        const expenseToEdit = isEditMode ? appState.expenses.find(e => e.id === expenseId) : null;
+        modalTitle.textContent = isEditMode ? 'Edit Expense' : 'Add New Expense';
+        modalBody.innerHTML = `<div class="form-group"><label for="modal-expense-category">Category:</label><select id="modal-expense-category" required><option value="">-- Select a Category --</option><option value="Housing">Housing</option><option value="Groceries">Groceries</option><option value="Utilities">Utilities</option><option value="Transport">Transport</option><option value="Health">Health</option><option value="Entertainment">Entertainment</option><option value="Other">Other</option></select></div><div class="form-group"><label for="modal-expense-name">Description / Name:</label><input type="text" id="modal-expense-name" placeholder="e.g., Electric Bill" required></div><div class="form-group"><label for="modal-expense-interval">Payment Interval:</label><select id="modal-expense-interval" required><option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option><option value="weekly">Weekly</option></select></div><div class="form-group"><label for="modal-expense-amount">Amount:</label><input type="number" id="modal-expense-amount" placeholder="100" min="0" step="0.01" required></div>`;
+        if (isEditMode && expenseToEdit) {
+            document.getElementById('modal-expense-category').value = expenseToEdit.category;
+            document.getElementById('modal-expense-name').value = expenseToEdit.name;
+            document.getElementById('modal-expense-interval').value = expenseToEdit.interval;
+            document.getElementById('modal-expense-amount').value = expenseToEdit.amount;
+        }
+        onSave = async () => {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) { alert("You must be logged in to save data."); return; }
+            const formItem = { user_id: user.id, category: document.getElementById('modal-expense-category').value, name: document.getElementById('modal-expense-name').value.trim(), interval: document.getElementById('modal-expense-interval').value, amount: parseFloat(document.getElementById('modal-expense-amount').value) };
+            if (!formItem.category || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0) { alert("Please fill out all fields correctly (amount cannot be negative)."); return; }
+            let { error } = isEditMode ? await supabaseClient.from('expenses').update(formItem).eq('id', expenseId) : await supabaseClient.from('expenses').insert(formItem);
+            if (error) console.error("Error saving expense:", error); else await fetchData();
+            closeModal();
+        };
+        openModal();
+    }
 
     // --- RENDER & UTILITY FUNCTIONS ---
-    function renderAll() { /* ... unchanged ... */ }
+    function renderAll() {
+        console.log("Rendering UI...");
+        renderIncomes();
+        renderExpenses();
+        renderDashboard();
+        renderExpenseChart();
+    }
+
     function renderDashboard() { /* ... unchanged ... */ }
-    function renderIncomes() { /* ... unchanged ... */ }
-    function renderExpenses() { /* ... unchanged ... */ }
+    function renderIncomes() { renderList(appState.incomes, incomeList); }
+    function renderExpenses() { renderList(appState.expenses, expenseList); }
     function renderList(items, listElement) { /* ... unchanged ... */ }
     function renderExpenseChart() { /* ... unchanged ... */ }
     async function handleListClick(event) { /* ... unchanged ... */ }
@@ -144,34 +188,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // === EVENT LISTENERS ===
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
-        console.log('Auth state changed:', event, "Session:", session ? "Exists" : "Null"); // Diagnostic log
-        updateUserStatus(session?.user); // Update Login/Logout button UI first
+        console.log('Auth state changed:', event, "Session:", session ? "Exists" : "Null");
+        updateUserStatus(session?.user); // Update UI first
 
-        // Important: Load theme *after* user status is known
-        await loadTheme();
+        // Load the theme using localStorage immediately
+        loadTheme();
 
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
              if (session) {
-                  console.log("Session valid, calling fetchData."); // Diagnostic log
-                  fetchData(); // Fetch data now that theme is loaded and user is confirmed
+                  console.log("Session valid, calling fetchData.");
+                  fetchData(); // Fetch data for the logged-in user
              } else {
-                  console.log("INITIAL_SESSION event, but no session found. Clearing data."); // Diagnostic log
+                  console.log("INITIAL_SESSION event, but no session found. Clearing data.");
                   appState = { incomes: [], expenses: [] };
                   renderAll();
              }
         } else if (event === 'SIGNED_OUT') {
-             console.log("SIGNED_OUT event, clearing data and resetting theme."); // Diagnostic log
+             console.log("SIGNED_OUT event, clearing data and resetting theme.");
              appState = { incomes: [], expenses: [] };
              renderAll();
              // Reset theme visually and in dropdown on logout
-             document.body.dataset.theme = 'default';
-             if (themeSwitcher) themeSwitcher.value = 'default';
-             localStorage.removeItem('sunflower-theme-local'); // Clear local theme setting on logout
+             applyTheme('default'); // Use applyTheme to reset and save to localStorage
+             if(themeSwitcher) themeSwitcher.value = 'default';
         }
     });
 
     toggleDashboardBtn.addEventListener('click', () => { mainContainer.classList.toggle('dashboard-expanded'); });
-    themeSwitcher.addEventListener('change', (event) => applyTheme(event.target.value)); // applyTheme now handles DB save
+    themeSwitcher.addEventListener('change', (event) => applyTheme(event.target.value)); // applyTheme saves to localStorage
     settingsBtn.addEventListener('click', openSettingsModal);
     settingsModalCloseBtn.addEventListener('click', closeSettingsModal);
     settingsModal.addEventListener('click', (event) => { if (event.target === settingsModal) closeSettingsModal(); });
@@ -184,27 +227,13 @@ document.addEventListener('DOMContentLoaded', () => {
     incomeList.addEventListener('click', handleListClick);
     expenseList.addEventListener('click', handleListClick);
 
-    // No initial loadTheme() call needed here, onAuthStateChange handles it.
+    // Initial theme load on page start (uses localStorage or default)
+    // We load it here AND in onAuthStateChange to ensure theme applies visually asap
+    loadTheme();
 
 
-    // --- UNCHANGED FUNCTION DEFINITIONS (Ensure these are present) ---
-    async function handleLogin(){const{error}=await supabaseClient.auth.signInWithOAuth({provider:'github'});if(error)console.error('Error logging in:',error)}
-    async function handleLogout(){console.log("Logout function called");const{error}=await supabaseClient.auth.signOut();if(error)console.error('Error logging out:',error);else console.log("Logout successful via function");} // Added log
-    function updateUserStatus(user){console.log("Updating user status UI for user:",user?user.email:'null');if(user){userStatus.innerHTML=`Logged in as ${user.email} <button id="logout-btn" class="btn-secondary">Logout</button>`;const logoutBtn=document.getElementById('logout-btn');if(logoutBtn){logoutBtn.removeEventListener('click',handleLogout);logoutBtn.addEventListener('click',handleLogout)}else{console.error("Logout button not found after update.")}}else{userStatus.innerHTML=`<button id="login-btn" class="btn-primary">Login with GitHub</button>`;const loginBtn=document.getElementById('login-btn');if(loginBtn){loginBtn.removeEventListener('click',handleLogin);loginBtn.addEventListener('click',handleLogin)}else{console.error("Login button not found after update.")}}}
-    function openModal(){appModal.classList.remove('modal-hidden')}
-    function closeModal(){appModal.classList.add('modal-hidden');modalBody.innerHTML='';onSave=null}
-    function showIncomeModal(incomeId){const isEditMode=incomeId!==undefined;const incomeToEdit=isEditMode?appState.incomes.find(i=>i.id===incomeId):null;modalTitle.textContent=isEditMode?'Edit Income':'Add New Income';modalBody.innerHTML=`<div class="form-group"><label for="modal-income-type">Type:</label><select id="modal-income-type" required><option value="">-- Select a Type --</option><option value="Pension">Pension</option><option value="TSP">TSP</option><option value="TSP Supplement">TSP Supplement</option><option value="Social Security">Social Security</option><option value="Investment">Investment Dividend</option><option value="Other">Other</option></select></div><div class="form-group"><label for="modal-income-name">Description / Name:</label><input type="text" id="modal-income-name" placeholder="e.g., Vincent's TSP" required></div><div class="form-group"><label for="modal-income-interval">Payment Interval:</label><select id="modal-income-interval" required><option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option></select></div><div class="form-group"><label for="modal-income-amount">Payment Amount:</label><input type="number" id="modal-income-amount" placeholder="1500" min="0" step="0.01" required></div>`;if(isEditMode&&incomeToEdit){document.getElementById('modal-income-type').value=incomeToEdit.type;document.getElementById('modal-income-name').value=incomeToEdit.name;document.getElementById('modal-income-interval').value=incomeToEdit.interval;document.getElementById('modal-income-amount').value=incomeToEdit.amount}
-    onSave=async()=>{const{data:{user}}=await supabaseClient.auth.getUser();if(!user){alert("You must be logged in to save data.");return}
-    const formItem={user_id:user.id,type:document.getElementById('modal-income-type').value,name:document.getElementById('modal-income-name').value.trim(),interval:document.getElementById('modal-income-interval').value,amount:parseFloat(document.getElementById('modal-income-amount').value)};if(!formItem.type||!formItem.name||isNaN(formItem.amount)||formItem.amount<0){alert("Please fill out all fields correctly (amount cannot be negative).");return}
-    let{error}=isEditMode?await supabaseClient.from('incomes').update(formItem).eq('id',incomeId):await supabaseClient.from('incomes').insert(formItem);if(error)console.error("Error saving income:",error);else await fetchData();closeModal()};openModal()}
-    function showExpenseModal(expenseId){const isEditMode=expenseId!==undefined;const expenseToEdit=isEditMode?appState.expenses.find(e=>e.id===expenseId):null;modalTitle.textContent=isEditMode?'Edit Expense':'Add New Expense';modalBody.innerHTML=`<div class="form-group"><label for="modal-expense-category">Category:</label><select id="modal-expense-category" required><option value="">-- Select a Category --</option><option value="Housing">Housing</option><option value="Groceries">Groceries</option><option value="Utilities">Utilities</option><option value="Transport">Transport</option><option value="Health">Health</option><option value="Entertainment">Entertainment</option><option value="Other">Other</option></select></div><div class="form-group"><label for="modal-expense-name">Description / Name:</label><input type="text" id="modal-expense-name" placeholder="e.g., Electric Bill" required></div><div class="form-group"><label for="modal-expense-interval">Payment Interval:</label><select id="modal-expense-interval" required><option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option><option value="weekly">Weekly</option></select></div><div class="form-group"><label for="modal-expense-amount">Amount:</label><input type="number" id="modal-expense-amount" placeholder="100" min="0" step="0.01" required></div>`;if(isEditMode&&expenseToEdit){document.getElementById('modal-expense-category').value=expenseToEdit.category;document.getElementById('modal-expense-name').value=expenseToEdit.name;document.getElementById('modal-expense-interval').value=expenseToEdit.interval;document.getElementById('modal-expense-amount').value=expenseToEdit.amount}
-    onSave=async()=>{const{data:{user}}=await supabaseClient.auth.getUser();if(!user){alert("You must be logged in to save data.");return}
-    const formItem={user_id:user.id,category:document.getElementById('modal-expense-category').value,name:document.getElementById('modal-expense-name').value.trim(),interval:document.getElementById('modal-expense-interval').value,amount:parseFloat(document.getElementById('modal-expense-amount').value)};if(!formItem.category||!formItem.name||isNaN(formItem.amount)||formItem.amount<0){alert("Please fill out all fields correctly (amount cannot be negative).");return}
-    let{error}=isEditMode?await supabaseClient.from('expenses').update(formItem).eq('id',expenseId):await supabaseClient.from('expenses').insert(formItem);if(error)console.error("Error saving expense:",error);else await fetchData();closeModal()};openModal()}
-    function renderAll(){renderIncomes();renderExpenses();renderDashboard();renderExpenseChart()}
+    // --- UNCHANGED FUNCTION DEFINITIONS ---
     function renderDashboard(){const totalMonthlyIncome=calculateMonthlyTotal(appState.incomes);const totalMonthlyExpenses=calculateMonthlyTotal(appState.expenses);const netMonthly=totalMonthlyIncome-totalMonthlyExpenses;const format=num=>num.toLocaleString('en-US',{style:'currency',currency:'USD'});dashboardSummary.innerHTML=`<div class="summary-item"><h3 class="income-total">Total Monthly Income</h3><p class="income-total">${format(totalMonthlyIncome)}</p></div><div class="summary-item"><h3 class="expense-total">Total Monthly Expenses</h3><p class="expense-total">${format(totalMonthlyExpenses)}</p></div><div class="summary-item net-total"><h3>Net Monthly Balance</h3><p>${format(netMonthly)}</p></div>`}
-    function renderIncomes(){renderList(appState.incomes,incomeList)}
-    function renderExpenses(){renderList(appState.expenses,expenseList)}
     function renderList(items,listElement){listElement.innerHTML='';const listType=listElement.id.includes('income')?'income':'expense';if(!items||items.length===0){listElement.innerHTML=`<li>No ${listType}s added yet.</li>`;return}
     items.forEach(item=>{if(!item)return;const li=document.createElement('li');const formattedAmount=typeof item.amount==='number'?item.amount.toLocaleString('en-US',{style:'currency',currency:'USD'}):'N/A';const intervalText=item.interval?` / ${item.interval}`:'';const typeOrCategory=item.type||item.category||'N/A';const name=item.name||'Unnamed';li.innerHTML=`<div class="item-details"><strong>${name}</strong> (${typeOrCategory})<br><span>${formattedAmount}${intervalText}</span></div><div class="item-controls"><button class="edit-btn" data-id="${item.id}">Edit</button><button class="delete-btn" data-id="${item.id}">X</button></div>`;listElement.appendChild(li)})}
     function renderExpenseChart(){if(!expenseChartCanvas)return;const categoryTotals={};if(appState.expenses){appState.expenses.forEach(expense=>{if(!expense||typeof expense.amount!=='number')return;const monthlyAmount=calculateMonthlyTotal([expense]);if(!categoryTotals[expense.category]){categoryTotals[expense.category]=0}
