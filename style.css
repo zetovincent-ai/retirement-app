@@ -141,7 +141,6 @@ main {
     margin: 0 0 1rem 0;
     white-space: nowrap;
     opacity: 1;
-    transition: opacity 0.2s ease, transform 0.2s ease, writing-mode 0s 0.2s; /* Animate opacity/transform, but snap writing-mode after a delay */
 }
 h1 { 
     margin-bottom: 0; 
