@@ -338,6 +338,13 @@ input:checked + .slider:before {
     align-items: flex-end;
     gap: 150px;
 }
+.form-group {
+    display: grid;
+    grid-template-columns: 1fr 2fr; /* 1 part for label, 2 parts for input */
+    gap: 1rem; /* Space between label and input */
+    align-items: center; /* Vertically align label and input */
+    margin-bottom: 1rem;
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
