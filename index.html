@@ -5,19 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sunflower Retirement</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="./favicon.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js" defer></script>
 </head>
 <body>
     <header>
-        <h1>Sunflower Retirement</h1>
-        <div id="user-status"></div>
-        <div class="theme-switch-wrapper">
-            <label class="theme-switch" for="dark-mode-toggle">
-                <input type="checkbox" id="dark-mode-toggle" />
-                <span class="slider round"></span>
-            </label>
+        <div class="header-content">
+            <div class="header-title-group">
+                <img src="./FinancialSun.png" alt="Financial Sun logo" class="header-logo">
+                <h1>Sunflower Retirement</h1>
+            </div>
+            <div class="header-controls">
+                <div class="theme-switch-wrapper">
+                    <label class="theme-switch" for="dark-mode-toggle">
+                        <input type="checkbox" id="dark-mode-toggle" />
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div id="user-status"></div>
+            </div>
         </div>
     </header>
     <main>
@@ -62,12 +70,15 @@
     </main>
 
     <footer>
-        <div class="footer-content">
-            <span class="copyright">© <span id="current-year"></span> Sunflower Applications Inc.</span>
-            <a href="mailto:vincentzeto@live.com" class="contact-link">Contact Us</a>
+       <div class="footer-content">
+            <div class="copyright-group">
+                <img src="./SunflowerApplications.png" alt="Sunflower Applications logo" class="footer-logo">
+                <span class="copyright">© <span id="current-year"></span> Sunflower Applications Inc.</span>
+            </div>
+            <a href="mailto:zetovincent@gmail.com" class="contact-link">Contact Us</a>
             <span class="version">v1.0.0</span>
         </div>
-        </footer>
+    </footer>
 
     <div id="app-modal" class="modal modal-hidden">
         <div class="modal-content">
