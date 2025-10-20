@@ -13,6 +13,7 @@
     <header>
         <h1>Retirement Finance Tracker</h1>
         <div id="user-status"></div>
+        <button id="settings-btn" title="Settings">⚙️</button>
     </header>
     <main>
         <section id="dashboard-section" class="app-section">
@@ -71,6 +72,24 @@
             <div class="modal-header"><h2 id="modal-title">Modal Title</h2><button id="modal-close-btn" class="delete-btn">X</button></div>
             <div id="modal-body"></div>
             <div class="modal-footer"><button id="modal-cancel-btn" class="btn-secondary">Cancel</button><button id="modal-save-btn" class="btn-primary">Save</button></div>
+        </div>
+    </div>
+    <div id="settings-modal" class="modal modal-hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="settings-modal-title">Settings</h2>
+                <button id="settings-modal-close-btn" class="delete-btn">X</button>
+            </div>
+            <div id="settings-modal-body">
+                <div class="theme-switcher-container">
+                    <label for="theme-switcher">Theme:</label>
+                    <select id="theme-switcher">
+                        <option value="default">Default Blue</option>
+                        <option value="sunflower">Sunflower</option>
+                        <option value="dark">Dark Mode</option>
+                    </select>
+                </div>
+            </div>
         </div>
     </div>
 </body>

@@ -26,9 +26,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const dashboardSummary = document.getElementById('dashboard-summary');
     const expenseChartCanvas = document.getElementById('expense-chart');
     const themeSwitcher = document.getElementById('theme-switcher');
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const settingsModalCloseBtn = document.getElementById('settings-modal-close-btn');
 
     // === FUNCTIONS ===
 
+    // --- NEW SETTINGS MODAL FUNCTIONS ---
+    function openSettingsModal() {
+        settingsModal.classList.remove('modal-hidden');
+    }
+
+    function closeSettingsModal() {
+        settingsModal.classList.add('modal-hidden');
+    }
     // --- THEME FUNCTIONS ---
     function applyTheme(themeName) {
         document.body.dataset.theme = themeName;
@@ -250,6 +261,15 @@ document.addEventListener('DOMContentLoaded', () => {
     appModal.addEventListener('click', (event) => { if (event.target === appModal) closeModal(); });
     incomeList.addEventListener('click', handleListClick);
     expenseList.addEventListener('click', handleListClick);
+    settingsBtn.addEventListener('click', openSettingsModal);
+    settingsModalCloseBtn.addEventListener('click', closeSettingsModal);
+    settingsModal.addEventListener('click', (event) => {
+        if (event.target === settingsModal) {
+            closeSettingsModal();
+        }
+    });
+    
+    themeSwitcher.addEventListener('change', (event) => applyTheme(event.target.value));
     
     // === INITIALIZATION ===
     loadTheme();
@@ -489,4 +509,4 @@ document.addEventListener('DOMContentLoaded', () => {
     modalCancelBtn.addEventListener('click', closeModal);
     appModal.addEventListener('click', (event) => { if (event.target === appModal) closeModal(); });
     incomeList.addEventListener('click', handleListClick);
-    expen
+    expenseList.addEventListener('click', handleListClick);
