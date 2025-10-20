@@ -308,7 +308,50 @@ input:checked + .slider:before {
 #github-login-btn:hover {
     background-color: #555;
 }
+#notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2000; /* Ensure it's above modals */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
 
+.toast {
+    padding: 1rem 1.5rem;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    color: #fff;
+    opacity: 0;
+    animation: slideIn 0.5s forwards, fadeOut 0.5s 2.5s forwards;
+    transform: translateX(100%);
+}
+
+.toast--success {
+    background-color: var(--income-total-color);
+}
+
+.toast--error {
+    background-color: var(--expense-total-color);
+}
+
+@keyframes slideIn {
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {

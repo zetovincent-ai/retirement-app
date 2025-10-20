@@ -29,8 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const authModalCloseBtn = document.getElementById('auth-modal-close-btn');
     const emailAuthForm = document.getElementById('email-auth-form');
     const githubLoginBtn = document.getElementById('github-login-btn');
-    const authEmailInput = document.getElementById('auth-email');
-    const authPasswordInput = document.getElementById('auth-password');
+    const notificationContainer = document.getElementById('notification-container');
     // === FUNCTIONS ===
     // --- NEW Dark/Light Mode Functions ---
     function setMode(mode) {
@@ -77,6 +76,19 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Data fetch complete, rendering UI.");
         renderAll();
     }
+    // --- NOTIFICATION FUNCTIONS ---
+    function showNotification(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.classList.add('toast', `toast--${type}`);
+        toast.textContent = message;
+
+        notificationContainer.appendChild(toast);
+
+        // Remove the toast after the animation completes
+        setTimeout(() => {
+            toast.remove();
+        }, 3000); // Duration of animation (2.5s) + buffer
+    }
     // --- AUTH FUNCTIONS ---
     async function handleLogin() {
         console.log("Login initiated...");
@@ -89,30 +101,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     async function handleEmailAuth(event) {
         event.preventDefault();
-        const email = authEmailInput.value;
-        const password = authPasswordInput.value;
+        const email = document.getElementById('auth-email').value;
+        const password = document.getElementById('auth-password').value;
 
-        // First, try to sign in
+        // Try to sign in first
         const { error: signInError } = await supabaseClient.auth.signInWithPassword({ email, password });
 
         if (signInError) {
-            // If sign-in fails, try to sign up the user
-            console.log("Sign-in failed, attempting to sign up...");
+            // If sign-in fails, try to sign up
             const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({ email, password });
-
+            
             if (signUpError) {
-                alert(`Error: ${signUpError.message}`);
+                showNotification(`Error: ${signUpError.message}`, 'error');
             } else if (signUpData.user && signUpData.user.identities && signUpData.user.identities.length === 0) {
-                 // Supabase might require email confirmation
-                 alert("Sign-up successful! Please check your email to confirm your account.");
-                 closeAuthModal();
+                showNotification("Sign-up successful! Please check your email to confirm your account.");
+                closeAuthModal();
             } else {
-                 alert("Login successful!"); // This might happen if email confirmation is off
-                 closeAuthModal();
+                showNotification("Login successful!");
+                closeAuthModal();
             }
         } else {
             // Sign-in was successful
-            alert("Login successful!");
+            showNotification("Login successful!");
             closeAuthModal();
         }
     }
