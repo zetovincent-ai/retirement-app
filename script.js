@@ -33,9 +33,39 @@ document.addEventListener('DOMContentLoaded', () => {
     // === FUNCTIONS ===
 
     // --- THEME FUNCTIONS (Using localStorage) ---
+    async function saveThemeToDB(themeName) {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+            console.log(`Attempting to save theme '${themeName}' to DB for user ${user.id}`); // Log attempt
+            try {
+                const { error } = await supabaseClient
+                    .from('user_settings')
+                    .upsert({ user_id: user.id, settings: { theme: themeName } }, { onConflict: 'user_id' });
+
+                if (error) {
+                    // Throw the error to be caught by the caller if needed, or just log it
+                    console.error('Error saving theme to DB:', error);
+                    // Optionally alert the user: alert(`Failed to save theme setting: ${error.message}`);
+                } else {
+                    console.log(`Theme '${themeName}' successfully saved to DB.`); // Log success
+                }
+            } catch (catchError) {
+                console.error("Caught exception while saving theme:", catchError);
+                // Optionally alert the user: alert(`An unexpected error occurred while saving theme settings.`);
+            }
+        } else {
+            console.log("User not logged in, cannot save theme to DB."); // Log skipped save
+        }
+    }
+
+    // Applies theme visually, saves to localStorage, AND attempts DB save
     function applyTheme(themeName) {
+        console.log(`Applying theme: ${themeName}`); // Log apply action
         document.body.dataset.theme = themeName;
-        localStorage.setItem('sunflower-theme', themeName); // Save to localStorage
+        localStorage.setItem('sunflower-theme', themeName); // Keep saving to localStorage
+
+        // Call the new function to attempt saving to DB (don't wait for it)
+        saveThemeToDB(themeName);
     }
 
     function loadTheme() {
