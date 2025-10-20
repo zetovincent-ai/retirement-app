@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // === STATE MANAGEMENT ===
     let appState = { incomes: [], expenses: [] };
-    let onSave = null; // For data modal
+    let onSave = null;
     let expenseChartInstance = null;
 
     // === DOM SELECTORS ===
@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalBody = document.getElementById('modal-body');
     const modalCloseBtn = document.getElementById('modal-close-btn');
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
-    const modalSaveBtn = document.getElementById('modal-save-btn'); // For data modal
+    const modalSaveBtn = document.getElementById('modal-save-btn');
     const showIncomeModalBtn = document.getElementById('show-income-modal-btn');
     const showExpenseModalBtn = document.getElementById('show-expense-modal-btn');
     const incomeList = document.getElementById('income-list');
@@ -29,103 +29,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsModal = document.getElementById('settings-modal');
     const settingsModalCloseBtn = document.getElementById('settings-modal-close-btn');
     const themeSwitcher = document.getElementById('theme-switcher');
-    const saveSettingsBtn = document.getElementById('save-settings-btn'); // For settings modal
+    // NOTE: saveSettingsBtn selector is removed as the button doesn't exist in this version's HTML
 
     // === FUNCTIONS ===
 
-    // --- THEME FUNCTIONS ---
-    // Applies theme visually, does NOT save persistently
-    function applyThemeVisually(themeName) {
-        console.log(`Applying theme visually: ${themeName}`);
+    // --- THEME FUNCTIONS (Using localStorage) ---
+    function applyTheme(themeName) {
         document.body.dataset.theme = themeName;
+        localStorage.setItem('sunflower-theme', themeName); // Save to localStorage
     }
 
-    // Loads theme from DB or falls back to localStorage/default
-    async function loadTheme() {
-        console.log("Attempting to load theme...");
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        let theme = 'default';
-
-        if (user) {
-            console.log("User logged in, attempting to load theme from DB...");
-            const { data, error } = await supabaseClient
-                .from('user_settings')
-                .select('settings')
-                .eq('user_id', user.id)
-                .single();
-
-            if (error && error.code !== 'PGRST116') { // Ignore "no rows found"
-                 console.error('Error loading theme from DB:', error);
-            }
-            if (data && data.settings && data.settings.theme) {
-                theme = data.settings.theme;
-                console.log(`Theme '${theme}' loaded from DB.`);
-            } else {
-                 console.log("No theme found in DB for user, falling back to localStorage/default.");
-                 // Fallback check within logged-in state
-                 theme = localStorage.getItem('sunflower-theme-local') || 'default';
-            }
+    function loadTheme() {
+        const savedTheme = localStorage.getItem('sunflower-theme') || 'default';
+        applyTheme(savedTheme);
+        if(themeSwitcher) {
+            themeSwitcher.value = savedTheme;
         } else {
-             // Fallback for logged-out users (using local storage or default)
-             theme = localStorage.getItem('sunflower-theme-local') || 'default';
-             console.log(`User not logged in, theme '${theme}' loaded from localStorage/default.`);
-        }
-
-        applyThemeVisually(theme); // Apply the authoritative theme visually
-        if (themeSwitcher) {
-            themeSwitcher.value = theme; // Set dropdown to match
-        }
-    }
-
-    // Saves the currently selected theme in the dropdown to the DB.
-    async function handleSaveSettings() {
-        const selectedTheme = themeSwitcher.value;
-        console.log(`Saving theme setting: ${selectedTheme}`);
-        const { data: { user } } = await supabaseClient.auth.getUser();
-
-        if (user) {
-            saveSettingsBtn.disabled = true;
-            saveSettingsBtn.textContent = 'Saving...';
-
-            const { error } = await supabaseClient
-                .from('user_settings')
-                .upsert({ user_id: user.id, settings: { theme: selectedTheme } }, { onConflict: 'user_id' });
-
-            saveSettingsBtn.disabled = false; // Re-enable button regardless of outcome
-            saveSettingsBtn.textContent = 'Save Settings';
-
-            if (error) {
-                console.error('Error saving theme settings:', error);
-                alert('Failed to save settings.');
-            } else {
-                console.log("Settings saved successfully to DB.");
-                applyThemeVisually(selectedTheme); // Ensure visual theme matches saved one
-                localStorage.removeItem('sunflower-theme-local'); // Remove local fallback if DB save succeeds
-                 setTimeout(() => { closeSettingsModal(); }, 300); // Close modal after short delay
-            }
-        } else {
-            // User somehow got here while logged out
-            alert('You must be logged in to save settings.');
-            // Save locally if not logged in
-            localStorage.setItem('sunflower-theme-local', selectedTheme);
-            applyThemeVisually(selectedTheme);
-            closeSettingsModal();
+            // This might happen briefly on initial load before all elements are ready
+            // console.warn("Theme switcher element not found during loadTheme.");
         }
     }
 
     // --- SETTINGS MODAL FUNCTIONS ---
-    function openSettingsModal() {
-        // Ensure dropdown reflects the currently applied theme when opening
-        const currentTheme = document.body.dataset.theme || 'default';
-        if (themeSwitcher) themeSwitcher.value = currentTheme;
-        settingsModal.classList.remove('modal-hidden');
-    }
-
-    function closeSettingsModal() {
-        settingsModal.classList.add('modal-hidden');
-        // Revert visual theme to last known saved state (from DB or local)
-        loadTheme();
-    }
+    function openSettingsModal() { settingsModal.classList.remove('modal-hidden'); }
+    function closeSettingsModal() { settingsModal.classList.add('modal-hidden'); }
 
     // --- DATABASE FUNCTIONS ---
     async function fetchData() {
@@ -138,13 +65,17 @@ document.addEventListener('DOMContentLoaded', () => {
              return;
         }
         console.log("Fetching incomes and expenses for user:", user.id);
-        const { data: incomes, error: incomesError } = await supabaseClient.from('incomes').select('*').eq('user_id', user.id);
-        if (incomesError) console.error('Error fetching incomes:', incomesError);
-        else appState.incomes = incomes || [];
+        // Use Promise.all to fetch both concurrently
+        const [incomesRes, expensesRes] = await Promise.all([
+            supabaseClient.from('incomes').select('*').eq('user_id', user.id),
+            supabaseClient.from('expenses').select('*').eq('user_id', user.id)
+        ]);
 
-        const { data: expenses, error: expensesError } = await supabaseClient.from('expenses').select('*').eq('user_id', user.id);
-        if (expensesError) console.error('Error fetching expenses:', expensesError);
-        else appState.expenses = expenses || [];
+        if (incomesRes.error) console.error('Error fetching incomes:', incomesRes.error);
+        else appState.incomes = incomesRes.data || [];
+
+        if (expensesRes.error) console.error('Error fetching expenses:', expensesRes.error);
+        else appState.expenses = expensesRes.data || [];
 
         console.log("Data fetch complete, rendering UI.");
         renderAll();
@@ -164,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error logging out:', error);
         } else {
             console.log("Logout successful via function call.");
+            // Clear local state and UI is handled by onAuthStateChange
         }
     }
 
@@ -173,14 +105,14 @@ document.addEventListener('DOMContentLoaded', () => {
             userStatus.innerHTML = `Logged in as ${user.email} <button id="logout-btn" class="btn-secondary">Logout</button>`;
             const logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn) {
-                 logoutBtn.removeEventListener('click', handleLogout);
+                 logoutBtn.removeEventListener('click', handleLogout); // Clean up just in case
                  logoutBtn.addEventListener('click', handleLogout);
             } else { console.error("Logout button not found after update."); }
         } else {
             userStatus.innerHTML = `<button id="login-btn" class="btn-primary">Login with GitHub</button>`;
             const loginBtn = document.getElementById('login-btn');
             if (loginBtn) {
-                 loginBtn.removeEventListener('click', handleLogin);
+                 loginBtn.removeEventListener('click', handleLogin); // Clean up just in case
                  loginBtn.addEventListener('click', handleLogin);
             } else { console.error("Login button not found after update."); }
         }
@@ -192,7 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showIncomeModal(incomeId) {
         const isEditMode = incomeId !== undefined;
-        const incomeToEdit = isEditMode ? appState.incomes.find(i => i.id === incomeId) : null;
+        // Ensure appState.incomes is an array before using find
+        const incomeToEdit = isEditMode && Array.isArray(appState.incomes) ? appState.incomes.find(i => i.id === incomeId) : null;
         modalTitle.textContent = isEditMode ? 'Edit Income' : 'Add New Income';
         modalBody.innerHTML = `<div class="form-group"><label for="modal-income-type">Type:</label><select id="modal-income-type" required><option value="">-- Select a Type --</option><option value="Pension">Pension</option><option value="TSP">TSP</option><option value="TSP Supplement">TSP Supplement</option><option value="Social Security">Social Security</option><option value="Investment">Investment Dividend</option><option value="Other">Other</option></select></div><div class="form-group"><label for="modal-income-name">Description / Name:</label><input type="text" id="modal-income-name" placeholder="e.g., Vincent's TSP" required></div><div class="form-group"><label for="modal-income-interval">Payment Interval:</label><select id="modal-income-interval" required><option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option></select></div><div class="form-group"><label for="modal-income-amount">Payment Amount:</label><input type="number" id="modal-income-amount" placeholder="1500" min="0" step="0.01" required></div>`;
         if (isEditMode && incomeToEdit) {
@@ -200,22 +133,28 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('modal-income-name').value = incomeToEdit.name;
             document.getElementById('modal-income-interval').value = incomeToEdit.interval;
             document.getElementById('modal-income-amount').value = incomeToEdit.amount;
+        } else if (isEditMode && !incomeToEdit) {
+             console.error(`Income item with ID ${incomeId} not found for editing.`);
+             alert("Error: Could not find item to edit.");
+             return; // Don't open modal if item not found
         }
-        onSave = async () => { // This onSave is for the data modal
+        onSave = async () => {
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) { alert("You must be logged in to save data."); return; }
             const formItem = { user_id: user.id, type: document.getElementById('modal-income-type').value, name: document.getElementById('modal-income-name').value.trim(), interval: document.getElementById('modal-income-interval').value, amount: parseFloat(document.getElementById('modal-income-amount').value) };
             if (!formItem.type || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0) { alert("Please fill out all fields correctly (amount cannot be negative)."); return; }
-            let { error } = isEditMode ? await supabaseClient.from('incomes').update(formItem).eq('id', incomeId) : await supabaseClient.from('incomes').insert(formItem);
-            if (error) console.error("Error saving income:", error); else await fetchData();
-            closeModal(); // Closes the data modal
+            let { error } = isEditMode ? await supabaseClient.from('incomes').update(formItem).eq('id', incomeId) : await supabaseClient.from('incomes').insert([formItem]).select(); // Use insert with array and select
+            if (error) { console.error("Error saving income:", error); alert(`Error saving income: ${error.message}`); }
+            else { await fetchData(); } // Refetch data on success
+            closeModal();
         };
-        openModal(); // Opens the data modal
+        openModal();
     }
 
     function showExpenseModal(expenseId) {
         const isEditMode = expenseId !== undefined;
-        const expenseToEdit = isEditMode ? appState.expenses.find(e => e.id === expenseId) : null;
+        // Ensure appState.expenses is an array before using find
+        const expenseToEdit = isEditMode && Array.isArray(appState.expenses) ? appState.expenses.find(e => e.id === expenseId) : null;
         modalTitle.textContent = isEditMode ? 'Edit Expense' : 'Add New Expense';
         modalBody.innerHTML = `<div class="form-group"><label for="modal-expense-category">Category:</label><select id="modal-expense-category" required><option value="">-- Select a Category --</option><option value="Housing">Housing</option><option value="Groceries">Groceries</option><option value="Utilities">Utilities</option><option value="Transport">Transport</option><option value="Health">Health</option><option value="Entertainment">Entertainment</option><option value="Other">Other</option></select></div><div class="form-group"><label for="modal-expense-name">Description / Name:</label><input type="text" id="modal-expense-name" placeholder="e.g., Electric Bill" required></div><div class="form-group"><label for="modal-expense-interval">Payment Interval:</label><select id="modal-expense-interval" required><option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option><option value="weekly">Weekly</option></select></div><div class="form-group"><label for="modal-expense-amount">Amount:</label><input type="number" id="modal-expense-amount" placeholder="100" min="0" step="0.01" required></div>`;
         if (isEditMode && expenseToEdit) {
@@ -223,17 +162,22 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('modal-expense-name').value = expenseToEdit.name;
             document.getElementById('modal-expense-interval').value = expenseToEdit.interval;
             document.getElementById('modal-expense-amount').value = expenseToEdit.amount;
+        } else if (isEditMode && !expenseToEdit) {
+             console.error(`Expense item with ID ${expenseId} not found for editing.`);
+             alert("Error: Could not find item to edit.");
+             return; // Don't open modal if item not found
         }
-        onSave = async () => { // This onSave is for the data modal
+        onSave = async () => {
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) { alert("You must be logged in to save data."); return; }
             const formItem = { user_id: user.id, category: document.getElementById('modal-expense-category').value, name: document.getElementById('modal-expense-name').value.trim(), interval: document.getElementById('modal-expense-interval').value, amount: parseFloat(document.getElementById('modal-expense-amount').value) };
             if (!formItem.category || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0) { alert("Please fill out all fields correctly (amount cannot be negative)."); return; }
-            let { error } = isEditMode ? await supabaseClient.from('expenses').update(formItem).eq('id', expenseId) : await supabaseClient.from('expenses').insert(formItem);
-            if (error) console.error("Error saving expense:", error); else await fetchData();
-            closeModal(); // Closes the data modal
+            let { error } = isEditMode ? await supabaseClient.from('expenses').update(formItem).eq('id', expenseId) : await supabaseClient.from('expenses').insert([formItem]).select(); // Use insert with array and select
+            if (error) { console.error("Error saving expense:", error); alert(`Error saving expense: ${error.message}`); }
+            else { await fetchData(); } // Refetch data on success
+            closeModal();
         };
-        openModal(); // Opens the data modal
+        openModal();
     }
 
     // --- RENDER & UTILITY FUNCTIONS ---
@@ -264,7 +208,10 @@ document.addEventListener('DOMContentLoaded', () => {
              return;
         }
         items.forEach(item => {
-            if (!item) return;
+            if (!item || item.id === undefined || item.id === null) {
+                console.warn("Skipping rendering invalid item:", item);
+                return; // Skip rendering if item is invalid or lacks id
+            }
             const li = document.createElement('li');
             const formattedAmount = typeof item.amount === 'number' ? item.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : 'N/A';
             const intervalText = item.interval ? ` / ${item.interval}` : '';
@@ -278,10 +225,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderExpenseChart() {
         if (!expenseChartCanvas) return;
         const categoryTotals = {};
-        if (appState.expenses) {
+        if (appState.expenses && Array.isArray(appState.expenses)) { // Ensure it's an array
             appState.expenses.forEach(expense => {
-                if (!expense || typeof expense.amount !== 'number') return;
-                const monthlyAmount = calculateMonthlyTotal([expense]);
+                // Add more robust check for valid expense item
+                if (!expense || typeof expense.amount !== 'number' || typeof expense.category !== 'string') {
+                    console.warn("Skipping invalid expense item for chart:", expense);
+                    return;
+                }
+                const monthlyAmount = calculateMonthlyTotal([expense]); // Calculate based on valid item
                 if (!categoryTotals[expense.category]) {
                     categoryTotals[expense.category] = 0;
                 }
@@ -295,8 +246,12 @@ document.addEventListener('DOMContentLoaded', () => {
             expenseChartInstance = null;
         }
         const ctx = expenseChartCanvas.getContext('2d');
-        ctx.clearRect(0, 0, expenseChartCanvas.width, expenseChartCanvas.height);
-        if (labels.length === 0) return;
+        ctx.clearRect(0, 0, expenseChartCanvas.width, expenseChartCanvas.height); // Clear canvas explicitly
+        if (labels.length === 0) {
+            console.log("No expense data to render chart."); // Diagnostic log
+            return; // Exit if no valid data
+        }
+        console.log("Rendering expense chart with labels:", labels, "and data:", data); // Diagnostic log
         expenseChartInstance = new Chart(ctx, {
             type: 'pie',
             data: {
@@ -308,40 +263,75 @@ document.addEventListener('DOMContentLoaded', () => {
                     hoverOffset: 4
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
+            options: {
+                 responsive: true,
+                 maintainAspectRatio: false,
+                 plugins: {
+                      legend: { position: 'top' },
+                      tooltip: { // Optional: Improve tooltips
+                           callbacks: {
+                                label: function(context) {
+                                     let label = context.label || '';
+                                     if (label) { label += ': '; }
+                                     if (context.parsed !== null) {
+                                          label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
+                                     }
+                                     return label;
+                                }
+                           }
+                      }
+                 }
+            }
         });
     }
 
     async function handleListClick(event) {
         const target = event.target;
         if (!target.classList.contains('edit-btn') && !target.classList.contains('delete-btn')) return;
-        const id = parseInt(target.dataset.id);
-        if (isNaN(id)) return;
-        const listId = target.closest('.item-list')?.id;
-        if (!listId) return;
+        const idString = target.dataset.id; // Get ID as string first
+        if (!idString) { console.error("Button clicked without a data-id attribute."); return; }
+        const id = parseInt(idString); // Then parse
+        if (isNaN(id)) { console.error(`Invalid ID found on button: ${idString}`); return; }
+
+        const listElement = target.closest('.item-list');
+        if (!listElement) { console.error("Could not find parent list for clicked button."); return; }
+        const listId = listElement.id;
+
         if (target.classList.contains('edit-btn')) {
+            console.log(`Edit button clicked for ID ${id} in list ${listId}`); // Diagnostic log
             if (listId === 'income-list') showIncomeModal(id);
             else if (listId === 'expense-list') showExpenseModal(id);
         }
         if (target.classList.contains('delete-btn')) {
-            const tableName = listId === 'income-list' ? 'incomes' : 'expenses';
-            const { error } = await supabaseClient.from(tableName).delete().eq('id', id);
-            if (error) console.error(`Error deleting from ${tableName}:`, error);
-            else await fetchData();
+            console.log(`Delete button clicked for ID ${id} in list ${listId}`); // Diagnostic log
+            if (confirm("Are you sure you want to delete this item?")) { // Add confirmation
+                 const tableName = listId === 'income-list' ? 'incomes' : 'expenses';
+                 const { error } = await supabaseClient.from(tableName).delete().eq('id', id);
+                 if (error) { console.error(`Error deleting from ${tableName}:`, error); alert(`Error deleting item: ${error.message}`); }
+                 else {
+                      console.log(`Successfully deleted item ID ${id} from ${tableName}`); // Diagnostic log
+                      await fetchData(); // Refetch data on success
+                 }
+            }
         }
     }
 
     function calculateMonthlyTotal(items) {
-        if (!items) return 0;
+        if (!items || !Array.isArray(items)) return 0; // Ensure items is an array
         return items.reduce((total, item) => {
-             if (!item || typeof item.amount !== 'number' || item.amount < 0) return total;
+             if (!item || typeof item.amount !== 'number' || item.amount < 0) {
+                  // console.warn("Skipping invalid item in calculateMonthlyTotal:", item); // Optional: log invalid items
+                  return total;
+             }
             switch (item.interval) {
                 case 'monthly': return total + item.amount;
                 case 'annually': return total + (item.amount / 12);
                 case 'quarterly': return total + (item.amount / 3);
                 case 'bi-weekly': return total + ((item.amount * 26) / 12);
                 case 'weekly': return total + ((item.amount * 52) / 12);
-                default: return total;
+                default:
+                     // console.warn("Unknown interval in calculateMonthlyTotal:", item.interval); // Optional: log unknown intervals
+                     return total;
             }
         }, 0);
     }
@@ -351,48 +341,43 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Auth state changed:', event, "Session:", session ? "Exists" : "Null");
         updateUserStatus(session?.user); // Update UI first
 
-        // Load theme from DB or fallback AFTER user status is known
-        await loadTheme();
+        // Load theme using localStorage immediately
+        loadTheme();
 
-        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') { // Added TOKEN_REFRESHED
              if (session) {
                   console.log("Session valid, calling fetchData.");
-                  fetchData(); // Fetch main data
+                  // Prevent multiple fetches if already fetching or recently fetched? (Advanced)
+                  await fetchData(); // Fetch data for the logged-in user
              } else {
-                  console.log("INITIAL_SESSION event, but no session found. Clearing data.");
+                  console.log(`${event} event, but no session found. Clearing data.`);
                   appState = { incomes: [], expenses: [] };
                   renderAll();
              }
         } else if (event === 'SIGNED_OUT') {
-             console.log("SIGNED_OUT event, clearing data.");
+             console.log("SIGNED_OUT event, clearing data and resetting theme.");
              appState = { incomes: [], expenses: [] };
              renderAll();
-             // Theme reset happens in loadTheme when no user is found
+             // Reset theme visually and in dropdown on logout
+             applyTheme('default'); // Use applyTheme to reset and save to localStorage
+             if(themeSwitcher) themeSwitcher.value = 'default';
         }
     });
 
     toggleDashboardBtn.addEventListener('click', () => { mainContainer.classList.toggle('dashboard-expanded'); });
-
-    // Update theme *visually* immediately on change, save happens on button click
-    themeSwitcher.addEventListener('change', (event) => applyThemeVisually(event.target.value));
-
+    themeSwitcher.addEventListener('change', (event) => applyTheme(event.target.value)); // applyTheme saves to localStorage
     settingsBtn.addEventListener('click', openSettingsModal);
     settingsModalCloseBtn.addEventListener('click', closeSettingsModal);
     settingsModal.addEventListener('click', (event) => { if (event.target === settingsModal) closeSettingsModal(); });
-
-    saveSettingsBtn.addEventListener('click', handleSaveSettings); // Listen to the save button
-
-    // Data Modal Listeners
     showIncomeModalBtn.addEventListener('click', () => showIncomeModal());
     showExpenseModalBtn.addEventListener('click', () => showExpenseModal());
     modalSaveBtn.addEventListener('click', () => { if (onSave) onSave(); }); // For data modal save
     modalCloseBtn.addEventListener('click', closeModal); // For data modal close
     modalCancelBtn.addEventListener('click', closeModal); // For data modal cancel
     appModal.addEventListener('click', (event) => { if (event.target === appModal) closeModal(); }); // For data modal background click
-
-    // List Item Listeners
     incomeList.addEventListener('click', handleListClick);
     expenseList.addEventListener('click', handleListClick);
 
-    // No initial loadTheme() call needed here, handled by onAuthStateChange
+    // Initial theme load on page start (uses localStorage or default)
+    loadTheme();
 });
