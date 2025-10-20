@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let expenseChartInstance = null;
 
     // === DOM SELECTORS ===
+    const currentYearSpan = document.getElementById('current-year'); // New selector
     const mainContainer = document.querySelector('main');
     const toggleDashboardBtn = document.getElementById('toggle-dashboard-btn');
     const userStatus = document.getElementById('user-status');
@@ -44,6 +45,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadMode() {
         const savedMode = localStorage.getItem('sunflower-mode') || 'light'; // Default to light
         setMode(savedMode);
+    }
+
+    // --- Initialize Footer ---
+    function initializeFooter() {
+        if (currentYearSpan) {
+            currentYearSpan.textContent = new Date().getFullYear();
+        }
     }
 
     // --- DATABASE FUNCTIONS ---
