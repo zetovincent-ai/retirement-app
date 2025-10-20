@@ -59,8 +59,9 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    max-width: auto;
-    margin: 0;
+    max-width: auto; 
+    margin: 0 auto;
+    padding: 0 1rem; 
 }
 .header-title-group {
     display: flex;
@@ -72,8 +73,9 @@ header {
 }
 .header-controls {
     display: flex;
-    align-items: center;
-    gap: 1.5rem;
+    flex-direction: column; /* Stack items vertically */
+    align-items: flex-end; /* Align to the right */
+    gap: 0.5rem; /* Space between the rows */
 }
 footer {
     background-color: var(--header-bg-color);
@@ -200,8 +202,9 @@ select {
 #user-status {
     display: flex;
     align-items: center;
-    gap: 1rem; 
+    gap: 1rem;
     font-size: 0.9rem;
+    justify-content: flex-end; /* Ensure items inside are pushed right */
 }
 #user-status button { margin-left: 10px; }
 .chart-container { margin-top: 2rem; position: relative; height: 300px; }
@@ -212,7 +215,6 @@ main.dashboard-expanded #income-section > :not(.section-header), main.dashboard-
 main.dashboard-expanded #income-section .section-header h2, main.dashboard-expanded #expenses-section .section-header h2 { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); margin: auto; }
 /* Styles for the Dark/Light Mode Toggle Switch */
 .theme-switch-wrapper {
-    position: absolute;
     top: 45px;
     right: 25px;
     display: flex;
