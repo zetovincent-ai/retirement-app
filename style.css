@@ -345,6 +345,10 @@ input:checked + .slider:before {
     align-items: center; /* Vertically align label and input */
     margin-bottom: 1rem;
 }
+.form-group label {
+    font-weight: bold;
+    text-align: right; /* Ensures labels are right-aligned within their column */
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
