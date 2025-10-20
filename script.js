@@ -25,40 +25,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const expenseList = document.getElementById('expense-list');
     const dashboardSummary = document.getElementById('dashboard-summary');
     const expenseChartCanvas = document.getElementById('expense-chart');
-    const settingsBtn = document.getElementById('settings-btn');
-    const settingsModal = document.getElementById('settings-modal');
-    const settingsModalCloseBtn = document.getElementById('settings-modal-close-btn');
-    const themeSwitcher = document.getElementById('theme-switcher');
+    const darkModeToggle = document.getElementById('dark-mode-toggle'); // New selector
 
     // === FUNCTIONS ===
 
-    // --- THEME FUNCTIONS (Using localStorage) ---
-    function applyTheme(themeName) {
-        document.body.dataset.theme = themeName;
-        localStorage.setItem('sunflower-theme', themeName); // Save to localStorage
+    // --- NEW Dark/Light Mode Functions ---
+    function setMode(mode) {
+        localStorage.setItem('sunflower-mode', mode);
+        if (mode === 'dark') {
+            document.body.classList.add('dark-mode');
+            darkModeToggle.checked = true;
+        } else {
+            document.body.classList.remove('dark-mode');
+            darkModeToggle.checked = false;
+        }
     }
 
-    function loadTheme() {
-        const savedTheme = localStorage.getItem('sunflower-theme') || 'default';
-        applyTheme(savedTheme);
-        themeSwitcher.value = savedTheme;
+    function loadMode() {
+        const savedMode = localStorage.getItem('sunflower-mode') || 'light'; // Default to light
+        setMode(savedMode);
     }
-
-    // --- SETTINGS MODAL FUNCTIONS ---
-    function openSettingsModal() { settingsModal.classList.remove('modal-hidden'); }
-    function closeSettingsModal() { settingsModal.classList.add('modal-hidden'); }
 
     // --- DATABASE FUNCTIONS ---
     async function fetchData() {
-        console.log("Attempting to fetch data..."); // Diagnostic log
+        console.log("Attempting to fetch data...");
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) {
-             console.log("No user logged in, clearing data."); // Diagnostic log
+             console.log("No user logged in for fetchData, clearing local state.");
              appState = { incomes: [], expenses: [] };
              renderAll();
              return;
         }
-        console.log("User found, fetching incomes and expenses..."); // Diagnostic log
+        console.log("Fetching incomes and expenses for user:", user.id);
         const { data: incomes, error: incomesError } = await supabaseClient.from('incomes').select('*').eq('user_id', user.id);
         if (incomesError) console.error('Error fetching incomes:', incomesError);
         else appState.incomes = incomes || [];
@@ -67,49 +65,45 @@ document.addEventListener('DOMContentLoaded', () => {
         if (expensesError) console.error('Error fetching expenses:', expensesError);
         else appState.expenses = expenses || [];
 
-        console.log("Data fetched, rendering UI."); // Diagnostic log
+        console.log("Data fetch complete, rendering UI.");
         renderAll();
     }
 
     // --- AUTH FUNCTIONS ---
     async function handleLogin() {
-        console.log("Login initiated..."); // Diagnostic log
+        console.log("Login initiated...");
         const { error } = await supabaseClient.auth.signInWithOAuth({ provider: 'github' });
         if (error) console.error('Error logging in:', error);
     }
 
     async function handleLogout() {
-        console.log("Logout initiated..."); // Diagnostic log
+        console.log("Logout function called");
         const { error } = await supabaseClient.auth.signOut();
-        if (error) console.error('Error logging out:', error);
-        // No need to clear state here, onAuthStateChange handles it
+        if (error) {
+            console.error('Error logging out:', error);
+        } else {
+            console.log("Logout successful via function call.");
+        }
     }
 
     function updateUserStatus(user) {
-        console.log("Updating user status UI for user:", user ? user.email : 'null'); // Diagnostic log
+        console.log("Updating user status UI for user:", user ? user.email : 'null');
         if (user) {
             userStatus.innerHTML = `Logged in as ${user.email} <button id="logout-btn" class="btn-secondary">Logout</button>`;
             const logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn) {
-                 // Clean up previous listener before adding new one
                  logoutBtn.removeEventListener('click', handleLogout);
                  logoutBtn.addEventListener('click', handleLogout);
-            } else {
-                 console.error("Logout button not found after update."); // Diagnostic log
-            }
+            } else { console.error("Logout button not found after update."); }
         } else {
             userStatus.innerHTML = `<button id="login-btn" class="btn-primary">Login with GitHub</button>`;
             const loginBtn = document.getElementById('login-btn');
             if (loginBtn) {
-                 // Clean up previous listener before adding new one
                  loginBtn.removeEventListener('click', handleLogin);
                  loginBtn.addEventListener('click', handleLogin);
-            } else {
-                 console.error("Login button not found after update."); // Diagnostic log
-            }
+            } else { console.error("Login button not found after update."); }
         }
     }
-
 
     // --- DATA MODAL FUNCTIONS ---
     function openModal() { appModal.classList.remove('modal-hidden'); }
@@ -163,136 +157,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- RENDER & UTILITY FUNCTIONS ---
     function renderAll() {
-        console.log("Rendering UI..."); // Diagnostic log
+        console.log("Rendering UI...");
         renderIncomes();
         renderExpenses();
         renderDashboard();
         renderExpenseChart();
     }
     
-    function renderDashboard() {
-        const totalMonthlyIncome = calculateMonthlyTotal(appState.incomes);
-        const totalMonthlyExpenses = calculateMonthlyTotal(appState.expenses);
-        const netMonthly = totalMonthlyIncome - totalMonthlyExpenses;
-        const format = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-        dashboardSummary.innerHTML = `<div class="summary-item"><h3 class="income-total">Total Monthly Income</h3><p class="income-total">${format(totalMonthlyIncome)}</p></div><div class="summary-item"><h3 class="expense-total">Total Monthly Expenses</h3><p class="expense-total">${format(totalMonthlyExpenses)}</p></div><div class="summary-item net-total"><h3>Net Monthly Balance</h3><p>${format(netMonthly)}</p></div>`;
-    }
+    function renderDashboard(){const totalMonthlyIncome=calculateMonthlyTotal(appState.incomes);const totalMonthlyExpenses=calculateMonthlyTotal(appState.expenses);const netMonthly=totalMonthlyIncome-totalMonthlyExpenses;const format=num=>num.toLocaleString('en-US',{style:'currency',currency:'USD'});dashboardSummary.innerHTML=`<div class="summary-item"><h3 class="income-total">Total Monthly Income</h3><p class="income-total">${format(totalMonthlyIncome)}</p></div><div class="summary-item"><h3 class="expense-total">Total Monthly Expenses</h3><p class="expense-total">${format(totalMonthlyExpenses)}</p></div><div class="summary-item net-total"><h3>Net Monthly Balance</h3><p>${format(netMonthly)}</p></div>`}
+    function renderIncomes(){renderList(appState.incomes,incomeList)}
+    function renderExpenses(){renderList(appState.expenses,expenseList)}
+    function renderList(items,listElement){listElement.innerHTML='';const listType=listElement.id.includes('income')?'income':'expense';if(!items||items.length===0){listElement.innerHTML=`<li>No ${listType}s added yet.</li>`;return}
+    items.forEach(item=>{if(!item)return;const li=document.createElement('li');const formattedAmount=typeof item.amount==='number'?item.amount.toLocaleString('en-US',{style:'currency',currency:'USD'}):'N/A';const intervalText=item.interval?` / ${item.interval}`:'';const typeOrCategory=item.type||item.category||'N/A';const name=item.name||'Unnamed';li.innerHTML=`<div class="item-details"><strong>${name}</strong> (${typeOrCategory})<br><span>${formattedAmount}${intervalText}</span></div><div class="item-controls"><button class="edit-btn" data-id="${item.id}">Edit</button><button class="delete-btn" data-id="${item.id}">X</button></div>`;listElement.appendChild(li)})}
+    function renderExpenseChart(){if(!expenseChartCanvas)return;const categoryTotals={};if(appState.expenses){appState.expenses.forEach(expense=>{if(!expense||typeof expense.amount!=='number')return;const monthlyAmount=calculateMonthlyTotal([expense]);if(!categoryTotals[expense.category]){categoryTotals[expense.category]=0}
+    categoryTotals[expense.category]+=monthlyAmount})}
+    const labels=Object.keys(categoryTotals);const data=Object.values(categoryTotals);if(expenseChartInstance){expenseChartInstance.destroy();expenseChartInstance=null}
+    const ctx=expenseChartCanvas.getContext('2d');ctx.clearRect(0,0,expenseChartCanvas.width,expenseChartCanvas.height);if(labels.length===0)return;expenseChartInstance=new Chart(ctx,{type:'pie',data:{labels:labels,datasets:[{label:'Expenses by Category',data:data,backgroundColor:['#3498db','#e74c3c','#9b59b6','#f1c40f','#2ecc71','#1abc9c','#e67e22','#95a5a6'],hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}}}})}
+    async function handleListClick(event){const target=event.target;if(!target.classList.contains('edit-btn')&&!target.classList.contains('delete-btn'))return;const id=parseInt(target.dataset.id);if(isNaN(id))return;const listId=target.closest('.item-list')?.id;if(!listId)return;if(target.classList.contains('edit-btn')){if(listId==='income-list')showIncomeModal(id);else if(listId==='expense-list')showExpenseModal(id)}
+    if(target.classList.contains('delete-btn')){const tableName=listId==='income-list'?'incomes':'expenses';const{error}=await supabaseClient.from(tableName).delete().eq('id',id);if(error)console.error(`Error deleting from ${tableName}:`,error);else await fetchData()}}
+    function calculateMonthlyTotal(items){if(!items)return 0;return items.reduce((total,item)=>{if(!item||typeof item.amount!=='number'||item.amount<0)return total;switch(item.interval){case'monthly':return total+item.amount;case'annually':return total+(item.amount/12);case'quarterly':return total+(item.amount/3);case'bi-weekly':return total+((item.amount*26)/12);case'weekly':return total+((item.amount*52)/12);default:return total}},0)}
 
-    function renderIncomes() { renderList(appState.incomes, incomeList); }
-    function renderExpenses() { renderList(appState.expenses, expenseList); }
 
-    function renderList(items, listElement) {
-        listElement.innerHTML = '';
-        const listType = listElement.id.includes('income') ? 'income' : 'expense';
-        if (!items || items.length === 0) {
-             listElement.innerHTML = `<li>No ${listType}s added yet.</li>`;
-             return;
-        }
-        items.forEach(item => {
-            if (!item) return;
-            const li = document.createElement('li');
-            const formattedAmount = typeof item.amount === 'number' ? item.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : 'N/A';
-            const intervalText = item.interval ? ` / ${item.interval}` : '';
-            const typeOrCategory = item.type || item.category || 'N/A';
-            const name = item.name || 'Unnamed';
-            li.innerHTML = `<div class="item-details"><strong>${name}</strong> (${typeOrCategory})<br><span>${formattedAmount}${intervalText}</span></div><div class="item-controls"><button class="edit-btn" data-id="${item.id}">Edit</button><button class="delete-btn" data-id="${item.id}">X</button></div>`;
-            listElement.appendChild(li);
-        });
-    }
-    
-    function renderExpenseChart() {
-        if (!expenseChartCanvas) return;
-        const categoryTotals = {};
-        if (appState.expenses) {
-            appState.expenses.forEach(expense => {
-                if (!expense || typeof expense.amount !== 'number') return;
-                const monthlyAmount = calculateMonthlyTotal([expense]);
-                if (!categoryTotals[expense.category]) {
-                    categoryTotals[expense.category] = 0;
-                }
-                categoryTotals[expense.category] += monthlyAmount;
-            });
-        }
-        const labels = Object.keys(categoryTotals);
-        const data = Object.values(categoryTotals);
-        if (expenseChartInstance) {
-            expenseChartInstance.destroy();
-            expenseChartInstance = null;
-        }
-        const ctx = expenseChartCanvas.getContext('2d');
-        ctx.clearRect(0, 0, expenseChartCanvas.width, expenseChartCanvas.height);
-        if (labels.length === 0) return;
-        expenseChartInstance = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Expenses by Category',
-                    data: data,
-                    backgroundColor: ['#3498db', '#e74c3c', '#9b59b6', '#f1c40f', '#2ecc71', '#1abc9c', '#e67e22', '#95a5a6'],
-                    hoverOffset: 4
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
-        });
-    }
-
-    async function handleListClick(event) {
-        const target = event.target;
-        if (!target.classList.contains('edit-btn') && !target.classList.contains('delete-btn')) return;
-        const id = parseInt(target.dataset.id);
-        if (isNaN(id)) return;
-        const listId = target.closest('.item-list')?.id;
-        if (!listId) return;
-        if (target.classList.contains('edit-btn')) {
-            if (listId === 'income-list') showIncomeModal(id);
-            else if (listId === 'expense-list') showExpenseModal(id);
-        }
-        if (target.classList.contains('delete-btn')) {
-            const tableName = listId === 'income-list' ? 'incomes' : 'expenses';
-            const { error } = await supabaseClient.from(tableName).delete().eq('id', id);
-            if (error) console.error(`Error deleting from ${tableName}:`, error);
-            else await fetchData();
-        }
-    }
-
-    function calculateMonthlyTotal(items) {
-        if (!items) return 0;
-        return items.reduce((total, item) => {
-             if (!item || typeof item.amount !== 'number' || item.amount < 0) return total;
-            switch (item.interval) {
-                case 'monthly': return total + item.amount;
-                case 'annually': return total + (item.amount / 12);
-                case 'quarterly': return total + (item.amount / 3);
-                case 'bi-weekly': return total + ((item.amount * 26) / 12);
-                case 'weekly': return total + ((item.amount * 52) / 12);
-                default: return total;
-            }
-        }, 0);
-    }
-    
     // === EVENT LISTENERS ===
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
-        console.log('Auth state changed:', event); // Diagnostic log
+        console.log('Auth state changed:', event);
         updateUserStatus(session?.user);
-        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-             // Load theme only after confirming user session is established or user signed in
-             await loadTheme();
-             fetchData();
-        } else if (event === 'SIGNED_OUT') {
-             // When user logs out, clear state, render, and reset theme
-             appState = { incomes: [], expenses: [] };
-             renderAll();
-             applyTheme('default'); // Reset theme to default on logout
-             if(themeSwitcher) themeSwitcher.value = 'default'; // Reset dropdown
+        if (session) {
+            fetchData();
+        } else {
+            appState = { incomes: [], expenses: [] };
+            renderAll();
         }
     });
 
     toggleDashboardBtn.addEventListener('click', () => { mainContainer.classList.toggle('dashboard-expanded'); });
-    themeSwitcher.addEventListener('change', (event) => applyTheme(event.target.value));
-    settingsBtn.addEventListener('click', openSettingsModal);
-    settingsModalCloseBtn.addEventListener('click', closeSettingsModal);
-    settingsModal.addEventListener('click', (event) => { if (event.target === settingsModal) closeSettingsModal(); });
+
+    // NEW Listener for the dark mode toggle
+    darkModeToggle.addEventListener('change', () => {
+        if (darkModeToggle.checked) {
+            setMode('dark');
+        } else {
+            setMode('light');
+        }
+    });
+
     showIncomeModalBtn.addEventListener('click', () => showIncomeModal());
     showExpenseModalBtn.addEventListener('click', () => showExpenseModal());
     modalSaveBtn.addEventListener('click', () => { if (onSave) onSave(); });
@@ -301,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
     appModal.addEventListener('click', (event) => { if (event.target === appModal) closeModal(); });
     incomeList.addEventListener('click', handleListClick);
     expenseList.addEventListener('click', handleListClick);
-
-    // Initial theme load on page start (uses localStorage or default)
-    loadTheme();
+    
+    // === INITIALIZATION ===
+    loadMode(); // Load the saved mode on startup
 });
