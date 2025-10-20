@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (user) {
         // Re-add the user's email to the display
         userStatus.innerHTML = `
-            <span>Logged in as ${user.email}</span>
+            <span>LOGGED IN: ${user.email}</span>
             <button id="logout-btn" class="btn-secondary">Logout</button>
         `;
         const logoutBtn = document.getElementById('logout-btn');
