@@ -139,8 +139,9 @@ main {
     writing-mode: horizontal-tb;
     transform: none;
     margin: 0 0 1rem 0;
-    transition: all var(--transition-speed) ease;
     white-space: nowrap;
+    opacity: 1;
+    transition: opacity 0.2s ease, transform 0.2s ease, writing-mode 0s 0.2s; /* Animate opacity/transform, but snap writing-mode after a delay */
 }
 h1 { 
     margin-bottom: 0; 
@@ -211,7 +212,14 @@ select {
 main.dashboard-expanded #dashboard-section { flex-grow: 20; }
 main.dashboard-expanded #income-section, main.dashboard-expanded #expenses-section { flex-grow: 1; overflow: hidden; cursor: pointer; min-width: 60px; }
 main.dashboard-expanded #income-section > :not(.section-header), main.dashboard-expanded #expenses-section > :not(.section-header) { display: none; opacity: 0; }
-main.dashboard-expanded #income-section .section-header h2, main.dashboard-expanded #expenses-section .section-header h2 { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); margin: auto; }
+main.dashboard-expanded #income-section .section-header h2,
+main.dashboard-expanded #expenses-section .section-header h2 {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg) translateY(0); /* Ensure transform starts from a neutral Y position */
+    margin: auto;
+    opacity: 1; /* Fade back in for vertical view */
+}
 /* Styles for the Dark/Light Mode Toggle Switch */
 .theme-switch-wrapper {
     top: 45px;
