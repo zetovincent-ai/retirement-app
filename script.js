@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <option value="Transport">Transport</option>
                     <option value="Health">Health</option>
                     <option value="Entertainment">Entertainment</option>
-                    <option value="Credit Card">Credit Card</option> {/* New Category */}
+                    <option value="Credit Card">Credit Card</option>
                     <option value="Other">Other</option>
                 </select>
             </div>
@@ -263,23 +263,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 </select>
             </div>
             <div class="form-group">
-                <label for="modal-expense-amount">Typical Payment ($):</label> {/* Clarified Label */}
+                <label for="modal-expense-amount">Typical Payment ($):</label>
                 <input type="number" id="modal-expense-amount" placeholder="e.g., 100" min="0" step="0.01" required>
             </div>
             <div class="form-group">
-                <label for="modal-expense-day">Payment Due Day (1-31):</label> {/* Clarified Label */}
+                <label for="modal-expense-day">Payment Due Day (1-31):</label>
                 <input type="number" id="modal-expense-day" min="1" max="31" placeholder="e.g., 1">
             </div>
-
-            {/* Loan Fields (unchanged) */}
             <div id="advanced-loan-fields" style="display: none;">
                 <hr class="divider">
                 <h4>Loan Details (Optional)</h4>
-                 {/* ... loan fields ... */}
                  <div class="form-group"><label for="modal-loan-interest-rate">Interest Rate (%):</label><input type="number" id="modal-loan-interest-rate" placeholder="e.g., 6.5" min="0" step="0.001"></div><div class="form-group"><label for="modal-loan-total-payments">Total Payments (Months):</label><input type="number" id="modal-loan-total-payments" placeholder="e.g., 360" min="1" step="1"></div><div class="form-group"><label for="modal-loan-original-principal">Original Principal ($):</label><input type="number" id="modal-loan-original-principal" placeholder="e.g., 300000" min="0" step="0.01"></div>
             </div>
-
-            {/* NEW: Advanced Credit Card Fields */}
             <div id="advanced-cc-fields" style="display: none;">
                  <hr class="divider">
                  <h4>Credit Card Details (Optional)</h4>
