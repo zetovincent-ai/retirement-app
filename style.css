@@ -341,13 +341,14 @@ input:checked + .slider:before {
 .form-group {
     display: grid;
     grid-template-columns: 1fr 2fr; /* 1 part for label, 2 parts for input */
-    gap: 1rem; /* Space between label and input */
+    gap: 5px; /* Space between label and input */
     align-items: center; /* Vertically align label and input */
-    margin-bottom: 1rem;
+    margin-bottom: 5px;
+    font-size: 12px;
 }
 .form-group label {
     font-weight: bold;
-    text-align: right; /* Ensures labels are right-aligned within their column */
+    text-align: left; /* Ensures labels are right-aligned within their column */
 }
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
