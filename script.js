@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </select>
             </div>
             <div class="form-group">
-                <label for="modal-expense-amount">Typical Payment ($):</label> {/* Clarified Label */}
+                <label for="modal-expense-amount">Typical Payment ($):</label>
                 <input type="number" id="modal-expense-amount" placeholder="e.g., 100" min="0" step="0.01" required>
             </div>
             <div class="form-group">
