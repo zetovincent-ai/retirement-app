@@ -505,16 +505,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const dayText = item.day_of_month ? ` (Day: ${item.day_of_month})` : '';
             const typeOrCategory = item.type || item.category || 'N/A';
             const name = item.name || 'Unnamed';
+            let subTypeText = ''; // Display sub-type if relevant
+             if (item.advanced_data && item.advanced_data.item_type && (item.category === 'Housing' || item.category === 'Transport')) {
+                  subTypeText = ` - ${item.advanced_data.item_type}`;
+             }
+
 
             // --- Conditionally add "View Schedule" button ---
             let scheduleButtonHTML = '';
-            if (listType === 'expense' && item.advanced_data?.item_type === 'Mortgage/Loan') {
-                 scheduleButtonHTML = `<button class="schedule-btn btn-secondary" data-id="${item.id}">Schedule</button>`; // Added btn-secondary for styling
+            // Show for both Mortgage/Loan and Car Loan
+            if (listType === 'expense' && item.advanced_data?.item_type &&
+               (item.advanced_data.item_type === 'Mortgage/Loan' || item.advanced_data.item_type === 'Car Loan')) {
+                 scheduleButtonHTML = `<button class="schedule-btn btn-secondary" data-id="${item.id}">Schedule</button>`;
             }
 
             li.innerHTML = `
                 <div class="item-details">
-                    <strong>${name}</strong> (${typeOrCategory})<br>
+                    <strong>${name}</strong> (${typeOrCategory}${subTypeText})<br> {/* Added subTypeText */}
                     <span>${formattedAmount}${intervalText}${dayText}</span>
                 </div>
                 <div class="item-controls">
