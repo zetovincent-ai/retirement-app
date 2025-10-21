@@ -340,11 +340,11 @@ input:checked + .slider:before {
 }
 .form-group {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* 1 part for label, 2 parts for input */
+    grid-template-columns: 3fr 4fr; /* 1 part for label, 2 parts for input */
     gap: 5px; /* Space between label and input */
     align-items: center; /* Vertically align label and input */
     margin-bottom: 5px;
-    font-size: 12px;
+    font-size: 14px;
 }
 .form-group label {
     font-weight: bold;
