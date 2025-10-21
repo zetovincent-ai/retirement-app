@@ -521,7 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             li.innerHTML = `
                 <div class="item-details">
-                    <strong>${name}</strong> (${typeOrCategory}${subTypeText})<br> {/* Added subTypeText */}
+                    <strong>${name}</strong> (${typeOrCategory}${subTypeText})<br>
                     <span>${formattedAmount}${intervalText}${dayText}</span>
                 </div>
                 <div class="item-controls">
