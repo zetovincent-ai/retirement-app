@@ -267,8 +267,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="number" id="modal-expense-amount" placeholder="e.g., 100" min="0" step="0.01" required>
             </div>
             <div class="form-group">
-                <label for="modal-expense-day">Payment Due Day (1-31):</label>
-                <input type="number" id="modal-expense-day" min="1" max="31" placeholder="e.g., 1">
+                <label for="modal-expense-day">Payment Due Day:</label>
+                <input type="number" id="modal-expense-day" min="1" max="31" placeholder="(1-31) e.g., 1">
             </div>
             <div id="advanced-loan-fields" style="display: none;">
                 <hr class="divider">
@@ -283,8 +283,8 @@ document.addEventListener('DOMContentLoaded', () => {
                      <input type="number" id="modal-cc-limit" placeholder="e.g., 10000" min="0" step="0.01">
                  </div>
                  <div class="form-group">
-                     <label for="modal-cc-statement-day">Statement Closing Day (1-31):</label>
-                     <input type="number" id="modal-cc-statement-day" placeholder="e.g., 20" min="1" max="31" step="1">
+                     <label for="modal-cc-statement-day">Statement Closing Day:</label>
+                     <input type="number" id="modal-cc-statement-day" placeholder="(1-31) e.g., 20" min="1" max="31" step="1">
                  </div>
             </div>
         `;
