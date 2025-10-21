@@ -457,24 +457,30 @@ document.addEventListener('DOMContentLoaded', () => {
              listElement.innerHTML = `<li>No ${listType}s added yet.</li>`;
              return;
         }
-        // Sort items by day_of_month before rendering
-        items.sort((a, b) => (a.day_of_month || 99) - (b.day_of_month || 99)); // Put items without a day at the end
+        items.sort((a, b) => (a.day_of_month || 99) - (b.day_of_month || 99));
 
         items.forEach(item => {
-            if (!item || item.id === undefined || item.id === null) { /* ... */ return; }
+            if (!item || item.id === undefined || item.id === null) { console.warn("Skipping rendering invalid item:", item); return; }
             const li = document.createElement('li');
             const formattedAmount = typeof item.amount === 'number' ? item.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : 'N/A';
             const intervalText = item.interval ? ` / ${item.interval}` : '';
-            // Add day_of_month to the display if it exists
             const dayText = item.day_of_month ? ` (Day: ${item.day_of_month})` : '';
             const typeOrCategory = item.type || item.category || 'N/A';
             const name = item.name || 'Unnamed';
+
+            // --- Conditionally add "View Schedule" button ---
+            let scheduleButtonHTML = '';
+            if (listType === 'expense' && item.advanced_data?.item_type === 'Mortgage/Loan') {
+                 scheduleButtonHTML = `<button class="schedule-btn btn-secondary" data-id="${item.id}">Schedule</button>`; // Added btn-secondary for styling
+            }
+
             li.innerHTML = `
                 <div class="item-details">
                     <strong>${name}</strong> (${typeOrCategory})<br>
                     <span>${formattedAmount}${intervalText}${dayText}</span>
                 </div>
                 <div class="item-controls">
+                    ${scheduleButtonHTML} {/* Insert the button HTML here */}
                     <button class="edit-btn" data-id="${item.id}">Edit</button>
                     <button class="delete-btn" data-id="${item.id}">X</button>
                 </div>`;
@@ -508,22 +514,36 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     )
     }
-    async function handleListClick(event){
-        const target=event.target;
-            if(!target.classList.contains('edit-btn')&&!target.classList.contains('delete-btn'))return;
-            const id=parseInt(target.dataset.id);
-            if(isNaN(id))return;
-            const listId=target.closest('.item-list')?.id;
-            if(!listId)return;
-            if(target.classList.contains('edit-btn')){
-                if(listId==='income-list')showIncomeModal(id);
-                else if(listId==='expense-list')showExpenseModal(id)
+    async function handleListClick(event) {
+        const target = event.target;
+        const idString = target.dataset.id;
+        if (!idString) return; // Ignore clicks on elements without data-id
+
+        const id = parseInt(idString);
+        if (isNaN(id)) { console.error(`Invalid ID found on button: ${idString}`); return; }
+
+        const listElement = target.closest('.item-list');
+        if (!listElement) { console.error("Could not find parent list for clicked button."); return; }
+        const listId = listElement.id;
+
+        if (target.classList.contains('edit-btn')) {
+            console.log(`Edit button clicked for ID ${id} in list ${listId}`);
+            if (listId === 'income-list') showIncomeModal(id);
+            else if (listId === 'expense-list') showExpenseModal(id);
+        }
+        else if (target.classList.contains('delete-btn')) {
+            console.log(`Delete button clicked for ID ${id} in list ${listId}`);
+            if (confirm("Are you sure you want to delete this item?")) {
+                 const tableName = listId === 'income-list' ? 'incomes' : 'expenses';
+                 const { error } = await supabaseClient.from(tableName).delete().eq('id', id);
+                 if (error) { console.error(`Error deleting from ${tableName}:`, error); alert(`Error deleting item: ${error.message}`); }
+                 else { console.log(`Successfully deleted item ID ${id} from ${tableName}`); await fetchData(); }
             }
-        if(target.classList.contains('delete-btn')){
-            const tableName=listId==='income-list'?'incomes':'expenses';
-            const{error}=await supabaseClient.from(tableName).delete().eq('id',id);
-            if(error)console.error(`Error deleting from ${tableName}:`,error);
-            else await fetchData()
+        }
+        // --- NEW: Handle clicks on the Schedule button ---
+        else if (target.classList.contains('schedule-btn')) {
+             console.log(`Schedule button clicked for ID ${id}`);
+             showAmortizationModal(id); // Call the new modal function
         }
     }
     function calculateMonthlyTotal(items){
@@ -594,6 +614,81 @@ document.addEventListener('DOMContentLoaded', () => {
             monthlyPayment: monthlyPayment,
             schedule: schedule
         };
+    }
+    function showAmortizationModal(expenseId) {
+        console.log(`Showing amortization for expense ID: ${expenseId}`);
+        const expenseItem = appState.expenses.find(e => e.id === expenseId);
+
+        if (!expenseItem || !expenseItem.advanced_data || expenseItem.advanced_data.item_type !== 'Mortgage/Loan') {
+            console.error("Could not find valid loan data for this item.");
+            showNotification("No valid loan data found for this item.", "error"); // Use toast
+            return;
+        }
+
+        const principal = expenseItem.advanced_data.original_principal;
+        const annualRate = expenseItem.advanced_data.interest_rate;
+        const termMonths = expenseItem.advanced_data.total_payments;
+
+        if (principal === undefined || annualRate === undefined || termMonths === undefined) {
+             console.error("Missing required loan details (principal, rate, or term).");
+             showNotification("Missing principal, rate, or term for calculation.", "error");
+             return;
+        }
+
+        const amortization = calculateAmortization(principal, annualRate, termMonths);
+
+        if (!amortization) {
+             showNotification("Could not calculate amortization schedule.", "error");
+             return;
+        }
+
+        modalTitle.textContent = `Amortization: ${expenseItem.name}`;
+
+        // --- Generate HTML Table for the Schedule ---
+        let tableHTML = `
+            <p><strong>Monthly Payment:</strong> ${amortization.monthlyPayment.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+            <div class="amortization-table-container">
+                <table class="amortization-table">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Payment</th>
+                            <th>Principal</th>
+                            <th>Interest</th>
+                            <th>Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+        amortization.schedule.forEach(row => {
+            tableHTML += `
+                <tr>
+                    <td>${row.month}</td>
+                    <td>${formatCurrency(row.payment)}</td>
+                    <td>${formatCurrency(row.principalPayment)}</td>
+                    <td>${formatCurrency(row.interestPayment)}</td>
+                    <td>${formatCurrency(row.remainingBalance)}</td>
+                </tr>
+            `;
+        });
+
+        tableHTML += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        // --- End of Table HTML ---
+
+        modalBody.innerHTML = tableHTML;
+
+        // Modify modal footer - remove Save button, maybe add a 'Close' which is already handled
+        // For simplicity, we'll just let the existing Close/Cancel buttons work.
+        // If you wanted *only* a close button, you'd hide modalSaveBtn and modalCancelBtn here.
+
+        openModal(); // Open the main app modal
     }
     // === EVENT LISTENERS ===
     supabaseClient.auth.onAuthStateChange(async (event, session) => {

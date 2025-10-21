@@ -350,6 +350,31 @@ input:checked + .slider:before {
     font-weight: bold;
     text-align: left; /* Ensures labels are right-aligned within their column */
 }
+.amortization-table-container {
+    max-height: 400px; /* Limit height and make it scrollable */
+    overflow-y: auto;
+    margin-top: 1rem;
+    border: 1px solid var(--border-color);
+}
+.amortization-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+.amortization-table th,
+.amortization-table td {
+    border: 1px solid var(--border-color);
+    padding: 6px 8px;
+    text-align: right;
+}
+.amortization-table th {
+    background-color: var(--list-item-bg); /* Use list item background for header */
+    position: sticky; /* Make header stick during scroll */
+    top: 0;
+}
+.amortization-table tbody tr:nth-child(even) {
+    background-color: var(--list-item-bg); /* Zebra striping */
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
