@@ -375,6 +375,9 @@ input:checked + .slider:before {
 .amortization-table tbody tr:nth-child(even) {
     background-color: var(--list-item-bg); /* Zebra striping */
 }
+.modal--read-only .modal-footer {
+    display: none;
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {

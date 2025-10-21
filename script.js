@@ -164,9 +164,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function openModal() { 
         appModal.classList.remove('modal-hidden'); 
     }
-    function closeModal() { 
-        appModal.classList.add('modal-hidden'); modalBody.innerHTML = ''; 
-        onSave = null; 
+    function closeModal() {
+        appModal.classList.add('modal-hidden');
+        appModal.classList.remove('modal--read-only'); // Remove class on close
+        modalBody.innerHTML = '';
+        onSave = null;
     }
     function showIncomeModal(incomeId) {
         const isEditMode = incomeId !== undefined;
@@ -621,10 +623,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!expenseItem || !expenseItem.advanced_data || expenseItem.advanced_data.item_type !== 'Mortgage/Loan') {
             console.error("Could not find valid loan data for this item.");
-            showNotification("No valid loan data found for this item.", "error"); // Use toast
+            showNotification("No valid loan data found for this item.", "error");
             return;
         }
-
         const principal = expenseItem.advanced_data.original_principal;
         const annualRate = expenseItem.advanced_data.interest_rate;
         const termMonths = expenseItem.advanced_data.total_payments;
@@ -634,60 +635,23 @@ document.addEventListener('DOMContentLoaded', () => {
              showNotification("Missing principal, rate, or term for calculation.", "error");
              return;
         }
-
         const amortization = calculateAmortization(principal, annualRate, termMonths);
-
         if (!amortization) {
              showNotification("Could not calculate amortization schedule.", "error");
              return;
         }
 
         modalTitle.textContent = `Amortization: ${expenseItem.name}`;
-
-        // --- Generate HTML Table for the Schedule ---
-        let tableHTML = `
-            <p><strong>Monthly Payment:</strong> ${amortization.monthlyPayment.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
-            <div class="amortization-table-container">
-                <table class="amortization-table">
-                    <thead>
-                        <tr>
-                            <th>Month</th>
-                            <th>Payment</th>
-                            <th>Principal</th>
-                            <th>Interest</th>
-                            <th>Balance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-
+        let tableHTML = `<p><strong>Monthly Payment:</strong> ${amortization.monthlyPayment.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p><div class="amortization-table-container"><table class="amortization-table"><thead><tr><th>Month</th><th>Payment</th><th>Principal</th><th>Interest</th><th>Balance</th></tr></thead><tbody>`;
         const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-
         amortization.schedule.forEach(row => {
-            tableHTML += `
-                <tr>
-                    <td>${row.month}</td>
-                    <td>${formatCurrency(row.payment)}</td>
-                    <td>${formatCurrency(row.principalPayment)}</td>
-                    <td>${formatCurrency(row.interestPayment)}</td>
-                    <td>${formatCurrency(row.remainingBalance)}</td>
-                </tr>
-            `;
+            tableHTML += `<tr><td>${row.month}</td><td>${formatCurrency(row.payment)}</td><td>${formatCurrency(row.principalPayment)}</td><td>${formatCurrency(row.interestPayment)}</td><td>${formatCurrency(row.remainingBalance)}</td></tr>`;
         });
-
-        tableHTML += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-        // --- End of Table HTML ---
-
+        tableHTML += `</tbody></table></div>`;
         modalBody.innerHTML = tableHTML;
 
-        // Modify modal footer - remove Save button, maybe add a 'Close' which is already handled
-        // For simplicity, we'll just let the existing Close/Cancel buttons work.
-        // If you wanted *only* a close button, you'd hide modalSaveBtn and modalCancelBtn here.
-
+        // Add the read-only class before opening
+        appModal.classList.add('modal--read-only');
         openModal(); // Open the main app modal
     }
     // === EVENT LISTENERS ===
