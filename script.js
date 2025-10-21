@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="number" id="modal-expense-amount" placeholder="e.g., 100" min="0" step="0.01" required>
             </div>
             <div class="form-group">
-                <label for="modal-expense-day">Payment Due Day:</label> {/* Clarified Label */}
+                <label for="modal-expense-day">Payment Due Day:</label>
                 <input type="number" id="modal-expense-day" min="1" max="31" placeholder="(1-31) e.g., 1">
             </div>
             <div id="advanced-loan-fields" style="display: none;">
