@@ -648,20 +648,25 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`Showing amortization for expense ID: ${expenseId}`);
         const expenseItem = appState.expenses.find(e => e.id === expenseId);
 
-        if (!expenseItem || !expenseItem.advanced_data || expenseItem.advanced_data.item_type !== 'Mortgage/Loan') {
-            console.error("Could not find valid loan data for this item.");
+        // *** CORRECTED CHECK: Allow both Mortgage/Loan and Car Loan ***
+        if (!expenseItem || !expenseItem.advanced_data ||
+            (expenseItem.advanced_data.item_type !== 'Mortgage/Loan' && expenseItem.advanced_data.item_type !== 'Car Loan') ) {
+            console.error("Could not find valid loan data (Mortgage/Loan or Car Loan) for this item:", expenseItem);
             showNotification("No valid loan data found for this item.", "error");
             return;
         }
+
+        // Check if required fields exist within advanced_data
         const principal = expenseItem.advanced_data.original_principal;
         const annualRate = expenseItem.advanced_data.interest_rate;
         const termMonths = expenseItem.advanced_data.total_payments;
 
         if (principal === undefined || annualRate === undefined || termMonths === undefined) {
-             console.error("Missing required loan details (principal, rate, or term).");
+             console.error("Missing required loan details (principal, rate, or term). Item data:", expenseItem.advanced_data);
              showNotification("Missing principal, rate, or term for calculation.", "error");
              return;
         }
+
         const amortization = calculateAmortization(principal, annualRate, termMonths);
         if (!amortization) {
              showNotification("Could not calculate amortization schedule.", "error");
@@ -677,8 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tableHTML += `</tbody></table></div>`;
         modalBody.innerHTML = tableHTML;
 
-        // Add the read-only class before opening
-        appModal.classList.add('modal--read-only');
+        appModal.classList.add('modal--read-only'); // Add class to hide footer
         openModal(); // Open the main app modal
     }
     // === EVENT LISTENERS ===
