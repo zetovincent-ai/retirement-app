@@ -480,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span>${formattedAmount}${intervalText}${dayText}</span>
                 </div>
                 <div class="item-controls">
-                    ${scheduleButtonHTML} {/* Insert the button HTML here */}
+                    ${scheduleButtonHTML}
                     <button class="edit-btn" data-id="${item.id}">Edit</button>
                     <button class="delete-btn" data-id="${item.id}">X</button>
                 </div>`;
