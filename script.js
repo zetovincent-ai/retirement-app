@@ -539,6 +539,62 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },0)
     }
+    /**
+     * Calculates the monthly payment and amortization schedule for a loan.
+     * @param {number} principal - The initial loan amount.
+     * @param {number} annualRate - The annual interest rate (e.g., 0.065 for 6.5%).
+     * @param {number} termMonths - The loan term in months (e.g., 360 for 30 years).
+     * @returns {object | null} An object containing the monthly payment and the schedule array, or null if inputs are invalid.
+     */
+    function calculateAmortization(principal, annualRate, termMonths) {
+        if (principal <= 0 || annualRate < 0 || termMonths <= 0) {
+            console.error("Invalid input for amortization calculation.");
+            return null;
+        }
+
+        const monthlyRate = annualRate / 12;
+        let monthlyPayment;
+
+        // Calculate monthly payment using the standard formula
+        // Handle edge case of 0% interest
+        if (monthlyRate === 0) {
+            monthlyPayment = principal / termMonths;
+        } else {
+            monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1);
+        }
+
+        let remainingBalance = principal;
+        const schedule = [];
+
+        for (let month = 1; month <= termMonths; month++) {
+            const interestPayment = remainingBalance * monthlyRate;
+            const principalPayment = monthlyPayment - interestPayment;
+            remainingBalance -= principalPayment;
+
+            // Ensure remaining balance doesn't go negative due to rounding at the end
+            if (month === termMonths && Math.abs(remainingBalance) < 0.01) {
+                remainingBalance = 0;
+            }
+             // Handle potential minor overpayment on the last month due to rounding
+             const actualPayment = (month === termMonths && remainingBalance < 0) ? monthlyPayment + remainingBalance : monthlyPayment;
+
+
+            schedule.push({
+                month: month,
+                payment: actualPayment, // Use potentially adjusted last payment
+                principalPayment: principalPayment + (month === termMonths && remainingBalance < 0 ? remainingBalance : 0), // Adjust last principal payment
+                interestPayment: interestPayment,
+                remainingBalance: remainingBalance > 0 ? remainingBalance : 0 // Don't show negative balance
+            });
+
+            if (remainingBalance <= 0) break; // Exit loop if balance is paid off early (unlikely with fixed payments but good practice)
+        }
+
+        return {
+            monthlyPayment: monthlyPayment,
+            schedule: schedule
+        };
+    }
     // === EVENT LISTENERS ===
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
         console.log('Auth state changed:', event);
