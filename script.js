@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const expenseToEdit = isEditMode && Array.isArray(appState.expenses) ? appState.expenses.find(e => e.id === expenseId) : null;
         modalTitle.textContent = isEditMode ? 'Edit Expense' : 'Add New Expense';
 
-        // Add "Credit Card" category and new CC Interest Rate field
+        // Add "Credit Card" category
         modalBody.innerHTML = `
             <div class="form-group">
                 <label for="modal-expense-category">Category:</label>
@@ -243,25 +243,17 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="sub-type-container" class="form-group" style="display: none;">
                 <label for="modal-expense-sub-type">Sub-Type:</label>
                 <select id="modal-expense-sub-type">
-                    <option value="">-- Select Sub-Type --</option>
-                    <option value="Rent">Rent</option>
-                    <option value="Mortgage/Loan">Mortgage/Loan</option>
-                    <option value="HOA">HOA Dues</option>
-                    <option value="Other">Other Housing</option>
                 </select>
             </div>
             <div class="form-group">
                 <label for="modal-expense-name">Description / Name:</label>
-                <input type="text" id="modal-expense-name" placeholder="e.g., Electric Bill or Visa Card" required>
+                <input type="text" id="modal-expense-name" placeholder="e.g., Electric Bill or Car Payment" required>
             </div>
             <div class="form-group">
                 <label for="modal-expense-interval">Payment Interval:</label>
                 <select id="modal-expense-interval" required>
                     <option value="monthly">Monthly</option>
-                    <option value="annually">Annually</option>
-                    <option value="quarterly">Quarterly</option>
-                    <option value="bi-weekly">Bi-Weekly</option>
-                    <option value="weekly">Weekly</option>
+                     <option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option><option value="weekly">Weekly</option>
                 </select>
             </div>
             <div class="form-group">
@@ -282,42 +274,75 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="advanced-cc-fields" style="display: none;">
                  <hr class="divider">
                  <h4>Credit Card Details (Optional)</h4>
-                 <div class="form-group">
-                     <label for="modal-cc-limit">Credit Limit ($):</label>
-                     <input type="number" id="modal-cc-limit" placeholder="e.g., 10000" min="0" step="0.01">
-                 </div>
-                 <div class="form-group">
-                     <label for="modal-cc-statement-day">Statement Closing Day:</label>
-                     <input type="number" id="modal-cc-statement-day" placeholder="(1-31) e.g., 20" min="1" max="31" step="1">
-                 </div>
-                 <div class="form-group">
-                     <label for="modal-cc-interest-rate">Interest Rate (APR %):</label>
-                     <input type="number" id="modal-cc-interest-rate" placeholder="e.g., 21.99" min="0" step="0.01">
-                 </div>
+                 <div class="form-group"><label for="modal-cc-limit">Credit Limit ($):</label><input type="number" id="modal-cc-limit" placeholder="e.g., 10000" min="0" step="0.01"></div>
+                 <div class="form-group"><label for="modal-cc-statement-day">Statement Closing Day:</label><input type="number" id="modal-cc-statement-day" placeholder="(1-31) e.g., 20" min="1" max="31" step="1"></div>
+                 <div class="form-group"><label for="modal-cc-interest-rate">Interest Rate (APR %):</label><input type="number" id="modal-cc-interest-rate" placeholder="e.g., 21.99" min="0" step="0.01"></div>
             </div>
         `;
 
-        // --- Get references to dynamic elements ---
+        // --- Get references ---
         const categorySelect = document.getElementById('modal-expense-category');
         const subTypeContainer = document.getElementById('sub-type-container');
         const subTypeSelect = document.getElementById('modal-expense-sub-type');
         const advancedLoanFields = document.getElementById('advanced-loan-fields');
         const advancedCCFields = document.getElementById('advanced-cc-fields');
 
-        // --- Function to show/hide fields ---
+        // --- Define Sub-Type Options ---
+        const housingSubTypes = `
+            <option value="">-- Select Sub-Type --</option>
+            <option value="Rent">Rent</option>
+            <option value="Mortgage/Loan">Mortgage/Loan</option>
+            <option value="HOA">HOA Dues</option>
+            <option value="Other">Other Housing</option>
+        `;
+        const transportSubTypes = `
+            <option value="">-- Select Sub-Type --</option>
+            <option value="Car Loan">Car Loan</option>
+            <option value="Fuel">Fuel</option>
+            <option value="Insurance">Insurance</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Other">Other Transport</option>
+        `;
+
+        // --- Function to show/hide/update fields ---
         function toggleAdvancedFields() {
             const category = categorySelect.value;
-            const subType = subTypeSelect.value;
+            let subType = subTypeSelect.value; // Get current sub-type before potentially changing options
 
-            // Housing Sub-Type
-            subTypeContainer.style.display = (category === 'Housing') ? 'grid' : 'none';
-            if (category !== 'Housing') subTypeSelect.value = '';
+            let showSub = false;
+            let showLoan = false;
+            let showCC = false;
 
-            // Loan Fields
-            advancedLoanFields.style.display = (category === 'Housing' && subType === 'Mortgage/Loan') ? 'block' : 'none';
+            // Determine visibility based on Category
+            if (category === 'Housing') {
+                showSub = true;
+                subTypeSelect.innerHTML = housingSubTypes; // Populate correct options
+                showLoan = (subType === 'Mortgage/Loan');
+            } else if (category === 'Transport') {
+                showSub = true;
+                subTypeSelect.innerHTML = transportSubTypes; // Populate correct options
+                showLoan = (subType === 'Car Loan');
+            } else if (category === 'Credit Card') {
+                showCC = true;
+            }
 
-            // Credit Card Fields
-            advancedCCFields.style.display = (category === 'Credit Card') ? 'block' : 'none';
+            // Apply visibility
+            subTypeContainer.style.display = showSub ? 'grid' : 'none';
+            advancedLoanFields.style.display = showLoan ? 'block' : 'none';
+            advancedCCFields.style.display = showCC ? 'block' : 'none';
+
+            // Reset sub-type if category changed and doesn't match current sub-type options
+            if (!showSub) {
+                 subTypeSelect.value = '';
+            } else {
+                 // Re-select the previous value if it exists in the new options
+                 const options = Array.from(subTypeSelect.options).map(opt => opt.value);
+                 if (options.includes(subType)) {
+                     subTypeSelect.value = subType;
+                 } else {
+                     subTypeSelect.value = ''; // Reset if previous value is invalid for new category
+                 }
+            }
         }
 
         // --- Add event listeners ---
@@ -327,6 +352,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Pre-populate fields if in Edit Mode ---
         if (isEditMode && expenseToEdit) {
             categorySelect.value = expenseToEdit.category || '';
+
+            // Important: Populate sub-type options *before* trying to set the value
+            if (expenseToEdit.category === 'Housing') {
+                 subTypeSelect.innerHTML = housingSubTypes;
+            } else if (expenseToEdit.category === 'Transport') {
+                 subTypeSelect.innerHTML = transportSubTypes;
+            }
+
             document.getElementById('modal-expense-name').value = expenseToEdit.name || '';
             document.getElementById('modal-expense-interval').value = expenseToEdit.interval || 'monthly';
             document.getElementById('modal-expense-amount').value = expenseToEdit.amount || '';
@@ -334,37 +367,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (expenseToEdit.advanced_data) {
                  const advData = expenseToEdit.advanced_data;
-                 if (expenseToEdit.category === 'Housing' && advData.item_type) {
+                 // Set sub-type value *after* options are populated
+                 if ((expenseToEdit.category === 'Housing' || expenseToEdit.category === 'Transport') && advData.item_type) {
                       subTypeSelect.value = advData.item_type;
                  }
-                 if (advData.item_type === 'Mortgage/Loan') {
+                 // Pre-populate Loan fields (works for both Housing and Transport loans now)
+                 if (advData.item_type === 'Mortgage/Loan' || advData.item_type === 'Car Loan') {
                     document.getElementById('modal-loan-interest-rate').value = advData.interest_rate ? (advData.interest_rate * 100).toFixed(3) : '';
                     document.getElementById('modal-loan-total-payments').value = advData.total_payments || '';
                     document.getElementById('modal-loan-original-principal').value = advData.original_principal || '';
                  }
+                 // Pre-populate CC fields
                  if (expenseToEdit.category === 'Credit Card') {
                       document.getElementById('modal-cc-limit').value = advData.credit_limit || '';
                       document.getElementById('modal-cc-statement-day').value = advData.statement_day || '';
-                      // Pre-populate CC interest rate
-                      document.getElementById('modal-cc-interest-rate').value = advData.interest_rate ? (advData.interest_rate * 100).toFixed(2) : ''; // Convert decimal to %
+                      document.getElementById('modal-cc-interest-rate').value = advData.interest_rate ? (advData.interest_rate * 100).toFixed(2) : '';
                  }
             }
-             toggleAdvancedFields(); // Ensure correct fields are visible
-        } else if (isEditMode && !expenseToEdit) { console.error(`Expense item with ID ${expenseId} not found for editing.`); alert("Error: Could not find item to edit."); return; }
+             toggleAdvancedFields(); // Call AFTER populating to ensure correct visibility
+        } else if (isEditMode && !expenseToEdit) { /* ... error handling ... */ return; }
+         else {
+             // If adding new, ensure options are populated for initial category if needed (though default is '')
+             toggleAdvancedFields(); // Run once on initial load for Add mode
+         }
 
         // --- Define the Save Action ---
         onSave = async () => {
             const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) { alert("You must be logged in to save data."); return; }
+            if (!user) { /* ... error handling ... */ return; }
 
             const category = categorySelect.value;
             const subType = subTypeSelect.value;
             const dayOfMonthValue = document.getElementById('modal-expense-day').value;
             let advancedData = null;
 
-            if (category === 'Housing' && subType) {
-                 advancedData = { item_type: subType };
-                 if (subType === 'Mortgage/Loan') {
+            // Construct advancedData based on Category and Sub-Type
+            if ((category === 'Housing' || category === 'Transport') && subType) {
+                 advancedData = { item_type: subType }; // Generic item_type based on dropdown
+                 if (subType === 'Mortgage/Loan' || subType === 'Car Loan') {
                      const rateInput = document.getElementById('modal-loan-interest-rate').value;
                      const paymentsInput = document.getElementById('modal-loan-total-payments').value;
                      const principalInput = document.getElementById('modal-loan-original-principal').value;
@@ -372,14 +412,15 @@ document.addEventListener('DOMContentLoaded', () => {
                      if (paymentsInput) advancedData.total_payments = parseInt(paymentsInput);
                      if (principalInput) advancedData.original_principal = parseFloat(principalInput);
                  }
+                 // Add logic for other Housing/Transport sub-types if needed later
             } else if (category === 'Credit Card') {
                  advancedData = { item_type: 'credit_card' };
                  const limitInput = document.getElementById('modal-cc-limit').value;
                  const statementDayInput = document.getElementById('modal-cc-statement-day').value;
-                 const rateInput = document.getElementById('modal-cc-interest-rate').value; // Get CC rate
+                 const rateInput = document.getElementById('modal-cc-interest-rate').value;
                  if (limitInput) advancedData.credit_limit = parseFloat(limitInput);
                  if (statementDayInput) advancedData.statement_day = parseInt(statementDayInput);
-                 if (rateInput) advancedData.interest_rate = parseFloat(rateInput) / 100.0; // Save CC rate as decimal
+                 if (rateInput) advancedData.interest_rate = parseFloat(rateInput) / 100.0;
             }
 
             const formItem = {
@@ -392,15 +433,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 advanced_data: advancedData
             };
 
-            if (!formItem.category || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0 || (formItem.day_of_month && (formItem.day_of_month < 1 || formItem.day_of_month > 31))) {
-                 alert("Please fill out all required fields correctly. Day must be between 1 and 31.");
+            // Basic Validation
+            if (!formItem.category || (showSub && !subType) || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0 || (formItem.day_of_month && (formItem.day_of_month < 1 || formItem.day_of_month > 31))) {
+                 alert("Please fill out all required fields correctly (Category, Sub-Type if applicable, Name, Amount). Day must be between 1 and 31.");
                  return;
             }
-            if (advancedData && advancedData.statement_day && (advancedData.statement_day < 1 || advancedData.statement_day > 31)) {
+             // Add validation for CC statement day
+            if (advancedData && advancedData.item_type === 'credit_card' && advancedData.statement_day && (advancedData.statement_day < 1 || advancedData.statement_day > 31)) {
                  alert("Statement Closing Day must be between 1 and 31.");
                  return;
             }
-             // Add validation for CC interest rate if needed
+            // Add validation for loan fields if needed (e.g., rate > 0?)
 
             let { error } = isEditMode
                 ? await supabaseClient.from('expenses').update(formItem).eq('id', expenseId)
@@ -411,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
             closeModal();
         };
         openModal();
-    } 
+    }
     // --- RENDER & UTILITY FUNCTIONS ---
     function renderAll() {
         console.log("Rendering UI...");
