@@ -272,8 +272,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <label for="modal-expense-day">Payment Due Day:</label>
                 <input type="number" id="modal-expense-day" min="1" max="31" placeholder="(1-31) e.g., 1">
             </div>
-
-            {/* Loan Fields (unchanged) */}
             <div id="advanced-loan-fields" style="display: none;">
                 <hr class="divider">
                 <h4>Loan Details (Optional)</h4>
@@ -281,8 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
                  <div class="form-group"><label for="modal-loan-total-payments">Total Payments (Months):</label><input type="number" id="modal-loan-total-payments" placeholder="e.g., 360" min="1" step="1"></div>
                  <div class="form-group"><label for="modal-loan-original-principal">Original Principal ($):</label><input type="number" id="modal-loan-original-principal" placeholder="e.g., 300000" min="0" step="0.01"></div>
             </div>
-
-            {/* Advanced Credit Card Fields (Updated) */}
             <div id="advanced-cc-fields" style="display: none;">
                  <hr class="divider">
                  <h4>Credit Card Details (Optional)</h4>
@@ -294,7 +290,6 @@ document.addEventListener('DOMContentLoaded', () => {
                      <label for="modal-cc-statement-day">Statement Closing Day:</label>
                      <input type="number" id="modal-cc-statement-day" placeholder="(1-31) e.g., 20" min="1" max="31" step="1">
                  </div>
-                 {/* New Field */}
                  <div class="form-group">
                      <label for="modal-cc-interest-rate">Interest Rate (APR %):</label>
                      <input type="number" id="modal-cc-interest-rate" placeholder="e.g., 21.99" min="0" step="0.01">
