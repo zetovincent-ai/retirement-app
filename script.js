@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="form-group"><label for="modal-income-name">Description / Name:</label><input type="text" id="modal-income-name" placeholder="e.g., Vincent's TSP" required></div>
             <div class="form-group"><label for="modal-income-interval">Payment Interval:</label><select id="modal-income-interval" required>...</select></div>
             <div class="form-group"><label for="modal-income-amount">Payment Amount:</label><input type="number" id="modal-income-amount" placeholder="1500" min="0" step="0.01" required></div>
-            <div class="form-group"><label for="modal-income-day">Day of Month (1-31):</label><input type="number" id="modal-income-day" min="1" max="31" placeholder="e.g., 15"></div>
+            <div class="form-group"><label for="modal-income-day">Due Day (1-31):</label><input type="number" id="modal-income-day" min="1" max="31" placeholder="e.g., 15"></div>
         `; // Simplified dropdowns above for brevity
         // Re-add full dropdown options here...
         document.getElementById('modal-income-type').innerHTML = `<option value="">-- Select a Type --</option><option value="Pension">Pension</option><option value="TSP">TSP</option><option value="TSP Supplement">TSP Supplement</option><option value="Social Security">Social Security</option><option value="Investment">Investment Dividend</option><option value="Other">Other</option>`;
@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="form-group"><label for="modal-expense-name">Description / Name:</label><input type="text" id="modal-expense-name" placeholder="e.g., Electric Bill" required></div>
             <div class="form-group"><label for="modal-expense-interval">Payment Interval:</label><select id="modal-expense-interval" required>...</select></div>
             <div class="form-group"><label for="modal-expense-amount">Amount:</label><input type="number" id="modal-expense-amount" placeholder="100" min="0" step="0.01" required></div>
-            <div class="form-group"><label for="modal-expense-day">Day of Month (1-31):</label><input type="number" id="modal-expense-day" min="1" max="31" placeholder="e.g., 1"></div>
+            <div class="form-group"><label for="modal-expense-day">Due Day (1-31):</label><input type="number" id="modal-expense-day" min="1" max="31" placeholder="e.g., 1"></div>
         `; // Simplified dropdowns above for brevity
          // Re-add full dropdown options here...
         document.getElementById('modal-expense-category').innerHTML = `<option value="">-- Select a Category --</option><option value="Housing">Housing</option><option value="Groceries">Groceries</option><option value="Utilities">Utilities</option><option value="Transport">Transport</option><option value="Health">Health</option><option value="Entertainment">Entertainment</option><option value="Other">Other</option>`;
