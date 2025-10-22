@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridContentArea = document.getElementById('grid-content');
     const chartContentArea = document.getElementById('chart-content');
     const expandedExpenseChartCanvas = document.getElementById('expanded-expense-chart'); 
+    const expandedChartContainer = document.getElementById('expanded-expense-chart').parentElement;
     // === FUNCTIONS ===
     // --- Dashboard Tab/View Management ---
     function setActiveDashboardTab(tabId) {
@@ -588,8 +589,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function renderExpenseChart(isExpandedView = false) {
         // Determine which canvas and container to use
-        const canvasElement = isExpandedView ? document.getElementById('expanded-expense-chart') : expenseChartCanvas; // Use correct ID
-        const containerElement = isExpandedView ? document.getElementById('chart-content').querySelector('.chart-container') : document.getElementById('summary-chart-container');
+        const canvasElement = isExpandedView ? expandedExpenseChartCanvas : expenseChartCanvas;
+        const containerElement = isExpandedView ? expandedChartContainer : summaryChartContainer;
 
         // Exit if the necessary elements aren't found for the current view
         if (!canvasElement || !containerElement) {
@@ -689,7 +690,7 @@ document.addEventListener('DOMContentLoaded', () => {
              console.error("Error creating Chart.js instance:", error);
              // Handle potential chart creation errors
         }
-    } 
+    }
     async function handleListClick(event) {
         const target = event.target;
         const idString = target.dataset.id;
