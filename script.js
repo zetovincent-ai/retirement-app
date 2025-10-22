@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const incomeList = document.getElementById('income-list');
     const expenseList = document.getElementById('expense-list');
     const dashboardSummary = document.getElementById('dashboard-summary');
+    const summaryChartContainer = document.getElementById('summary-chart-container');
     const expenseChartCanvas = document.getElementById('expense-chart');
     const darkModeToggle = document.getElementById('dark-mode-toggle'); // New selector
     const authModal = document.getElementById('auth-modal');
