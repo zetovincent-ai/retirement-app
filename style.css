@@ -378,6 +378,80 @@ input:checked + .slider:before {
 .modal--read-only .modal-footer {
     display: none;
 }
+/* === Expanded Dashboard Styles === */
+/* Hide default summary/chart when expanded */
+main.dashboard-expanded #dashboard-summary,
+main.dashboard-expanded #summary-chart-container {
+    display: none;
+}
+/* Show expanded content container when expanded */
+main.dashboard-expanded #expanded-dashboard-content {
+    display: flex; /* Use flexbox for overall layout */
+    flex-direction: column; /* Stack tabs, controls, content vertically */
+    height: 100%; /* Take full height of the section */
+    overflow: hidden; /* Prevent content spill */
+}
+.dashboard-tabs {
+    display: flex;
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 1rem;
+}
+.tab-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    background-color: transparent;
+    color: var(--text-color);
+    cursor: pointer;
+    border-bottom: 2px solid transparent; /* Placeholder for active indicator */
+    margin-bottom: -2px; /* Overlap the container's border */
+    font-size: 1rem;
+}
+.tab-btn.active {
+    color: var(--primary-btn-bg); /* Use primary color for active tab */
+    border-bottom-color: var(--primary-btn-bg);
+    font-weight: bold;
+}
+.tab-btn:hover:not(.active) {
+    background-color: var(--background-color); /* Subtle hover */
+}
+.dashboard-view-controls {
+    margin-bottom: 1rem;
+}
+.view-group {
+    display: flex;
+    gap: 0.5rem;
+}
+.view-btn {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--section-bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+}
+.view-btn.active {
+    background-color: var(--primary-btn-bg);
+    color: var(--header-text-color); /* White text on primary bg */
+    border-color: var(--primary-btn-bg);
+}
+.view-btn:hover:not(.active) {
+    background-color: var(--background-color);
+}
+.dashboard-content-area {
+    flex-grow: 1; /* Allow content to fill remaining space */
+    overflow-y: auto; /* Make content scrollable if needed */
+    padding-top: 1rem;
+}
+.tab-content {
+    display: none; /* Hide content by default */
+}
+.tab-content.active {
+    display: block; /* Show active content */
+}
+/* Ensure chart inside tab content resizes */
+#chart-content .chart-container {
+    height: 400px; /* Adjust height as needed for expanded view */
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
