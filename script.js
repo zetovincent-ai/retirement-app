@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let appState = { incomes: [], expenses: [] };
     let onSave = null;
     let expenseChartInstance = null;
+    let activeDashboardTab = 'grids'; 
+    let activeGridView = '2m'; 
+    let activeChartView = 'expensePie'; 
     // === DOM SELECTORS ===
     const currentYearSpan = document.getElementById('current-year'); // New selector
     const mainContainer = document.querySelector('main');
@@ -30,8 +33,72 @@ document.addEventListener('DOMContentLoaded', () => {
     const emailAuthForm = document.getElementById('email-auth-form');
     const githubLoginBtn = document.getElementById('github-login-btn');
     const notificationContainer = document.getElementById('notification-container');
+    const expandedDashboardContent = document.getElementById('expanded-dashboard-content');
+    const dashboardTabsContainer = document.querySelector('.dashboard-tabs');
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const viewControlsContainer = document.querySelector('.dashboard-view-controls');
+    const viewButtonGroups = document.querySelectorAll('.view-group');
+    const gridViewButtons = document.querySelectorAll('.view-group[data-tab-group="grids"] .view-btn');
+    const chartViewButtons = document.querySelectorAll('.view-group[data-tab-group="charts"] .view-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const gridContentArea = document.getElementById('grid-content');
+    const chartContentArea = document.getElementById('chart-content');
+    const expandedExpenseChartCanvas = document.getElementById('expanded-expense-chart'); 
     // === FUNCTIONS ===
-    // --- NEW Dark/Light Mode Functions ---
+    // --- Dashboard Tab/View Management ---
+    function setActiveDashboardTab(tabId) {
+        activeDashboardTab = tabId;
+        // Update tab button active states
+        tabButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabId);
+        });
+        // Show/Hide corresponding view button groups
+        viewButtonGroups.forEach(group => {
+            group.style.display = (group.dataset.tabGroup === tabId) ? 'flex' : 'none';
+        });
+        // Show/Hide corresponding content areas
+        tabContents.forEach(content => {
+            content.classList.toggle('active', content.id === `${tabId}-content`);
+        });
+        // Trigger render for the newly active content
+        renderActiveDashboardContent();
+    }
+    function setActiveGridView(viewId) {
+        activeGridView = viewId;
+        gridViewButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === viewId);
+        });
+        renderActiveDashboardContent();
+    }
+    function setActiveChartView(viewId) {
+        activeChartView = viewId;
+        chartViewButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === viewId);
+        });
+        renderActiveDashboardContent();
+    }
+    function renderActiveDashboardContent() {
+        if (!mainContainer.classList.contains('dashboard-expanded')) return;
+
+        if (activeDashboardTab === 'grids') {
+            renderGridView(activeGridView === '6m' ? 6 : 2); 
+        } else if (activeDashboardTab === 'charts') {
+            if (activeChartView === 'expensePie') {
+                renderExpenseChart(true); 
+            }
+        }
+    }
+    function renderGridView(numberOfMonths) {
+        console.log(`Rendering grid view for ${numberOfMonths} months...`);
+        // --- TODO: Grid Generation Logic ---
+        // 1. Calculate start/end dates based on numberOfMonths
+        // 2. Filter appState.incomes and appState.expenses for relevant items
+        // 3. Group items by month
+        // 4. Generate HTML table(s)
+        gridContentArea.innerHTML = `<p>Grid view for ${numberOfMonths} months will be implemented here.</p>`;
+        // --- End TODO ---
+    }
+    // --- Dark/Light Mode Functions ---
     function setMode(mode) {
         localStorage.setItem('sunflower-mode', mode);
         if (mode === 'dark') {
@@ -441,11 +508,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // --- RENDER & UTILITY FUNCTIONS ---
     function renderAll() {
-        console.log("Rendering UI...");
         renderIncomes();
         renderExpenses();
-        renderDashboard();
-        renderExpenseChart();
+        renderDashboard(); 
+        renderExpenseChart(false); 
+        if (mainContainer.classList.contains('dashboard-expanded')) {
+             renderActiveDashboardContent();
+        }
     }
     function renderDashboard(){
         const totalMonthlyIncome=calculateMonthlyTotal(appState.incomes);
@@ -516,33 +585,110 @@ document.addEventListener('DOMContentLoaded', () => {
             listElement.appendChild(li);
         });
     }
-    function renderExpenseChart(){
-        if(!expenseChartCanvas)return;
-            const categoryTotals={};
-        if(appState.expenses){appState.expenses.forEach(expense=>{
-            if(!expense||typeof expense.amount!=='number')return;
-                const monthlyAmount=calculateMonthlyTotal([expense]);
-                    if(!categoryTotals[expense.category]){
-                        categoryTotals[expense.category]=0}
-                        categoryTotals[expense.category]+=monthlyAmount}
-        )}
-            const labels=Object.keys(categoryTotals);
-            const data=Object.values(categoryTotals);
-                if(expenseChartInstance){expenseChartInstance.destroy();
-                    expenseChartInstance=null}
-            const ctx=expenseChartCanvas.getContext('2d');
-            ctx.clearRect(0,0,expenseChartCanvas.width,expenseChartCanvas.height);
-                if(labels.length===0)return;
-                    expenseChartInstance=new Chart(ctx,
-                        {type:'pie',data:{labels:labels,datasets:[
-                            {label:'Expenses by Category',data:data,backgroundColor:
-                                ['#3498db','#e74c3c','#9b59b6','#f1c40f','#2ecc71','#1abc9c','#e67e22','#95a5a6'],
-                                hoverOffset:4}
-                        ]},
-                            options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}}}
-                        }
-                    )
-    }
+    function renderExpenseChart(isExpandedView = false) {
+        // Determine which canvas and container to use
+        const canvasElement = isExpandedView ? document.getElementById('expanded-expense-chart') : expenseChartCanvas; // Use correct ID
+        const containerElement = isExpandedView ? document.getElementById('chart-content').querySelector('.chart-container') : document.getElementById('summary-chart-container');
+
+        // Exit if the necessary elements aren't found for the current view
+        if (!canvasElement || !containerElement) {
+             console.warn(`Canvas or container not found for ${isExpandedView ? 'expanded' : 'summary'} chart view.`);
+             return;
+        }
+
+        // Only render the chart if its container is potentially visible
+        // Check offsetParent; null means element or ancestor has display:none
+        // Allow rendering if dashboard is expanding OR if it's the default view
+        const dashboardIsExpanded = mainContainer.classList.contains('dashboard-expanded');
+        if (!dashboardIsExpanded && isExpandedView) return; // Don't render expanded if not expanded
+        if (dashboardIsExpanded && !isExpandedView) return; // Don't render default if expanded
+
+
+        // --- Data Aggregation ---
+        const categoryTotals = {};
+        if (appState.expenses && Array.isArray(appState.expenses)) {
+            appState.expenses.forEach(expense => {
+                // Ensure expense item is valid before processing
+                if (!expense || typeof expense.amount !== 'number' || typeof expense.category !== 'string') {
+                    console.warn("Skipping invalid expense item for chart:", expense);
+                    return; // Skip this invalid item
+                }
+                const monthlyAmount = calculateMonthlyTotal([expense]); // Calculate based on valid item
+                if (!categoryTotals[expense.category]) {
+                    categoryTotals[expense.category] = 0;
+                }
+                categoryTotals[expense.category] += monthlyAmount;
+            });
+        }
+        const labels = Object.keys(categoryTotals);
+        const data = Object.values(categoryTotals);
+
+        // --- Chart Lifecycle Management ---
+        // Destroy existing instance *only if it belongs to the currently targeted canvas*
+        if (expenseChartInstance && expenseChartInstance.canvas === canvasElement) {
+            console.log(`Destroying existing chart instance on canvas: ${canvasElement.id}`);
+            expenseChartInstance.destroy();
+            expenseChartInstance = null; // Reset instance
+        } else if (expenseChartInstance && expenseChartInstance.canvas !== canvasElement) {
+             // If an instance exists but belongs to the *other* canvas, destroy it too
+             // This prevents having two charts active if the user toggles expand/collapse quickly
+             console.log(`Destroying chart instance on inactive canvas: ${expenseChartInstance.canvas.id}`);
+             expenseChartInstance.destroy();
+             expenseChartInstance = null;
+        }
+
+        // --- Chart Rendering ---
+        const ctx = canvasElement.getContext('2d');
+        ctx.clearRect(0, 0, canvasElement.width, canvasElement.height); // Clear explicitly before drawing
+
+        if (labels.length === 0) {
+            console.log("No expense data to render chart.");
+            // Optionally display a "No data" message on the canvas
+            // ctx.textAlign = 'center';
+            // ctx.fillText('No expense data available', canvasElement.width / 2, canvasElement.height / 2);
+            return; // Exit if no valid data
+        }
+
+        console.log(`Rendering expense chart on canvas: ${canvasElement.id} with labels:`, labels, "and data:", data);
+        try {
+             expenseChartInstance = new Chart(ctx, {
+                  type: 'pie',
+                  data: {
+                       labels: labels,
+                       datasets: [{
+                            label: 'Expenses by Category',
+                            data: data,
+                            backgroundColor: ['#3498db', '#e74c3c', '#9b59b6', '#f1c40f', '#2ecc71', '#1abc9c', '#e67e22', '#95a5a6'], // Cycle colors if more categories
+                            hoverOffset: 4
+                       }]
+                  },
+                  options: {
+                       responsive: true,
+                       maintainAspectRatio: false, // Important for fitting in container
+                       plugins: {
+                            legend: {
+                                 position: 'top',
+                            },
+                            tooltip: { // Improved tooltips
+                                 callbacks: {
+                                      label: function(context) {
+                                           let label = context.label || '';
+                                           if (label) { label += ': '; }
+                                           if (context.parsed !== null) {
+                                                label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
+                                           }
+                                           return label;
+                                      }
+                                 }
+                            }
+                       }
+                  }
+             });
+        } catch (error) {
+             console.error("Error creating Chart.js instance:", error);
+             // Handle potential chart creation errors
+        }
+    } 
     async function handleListClick(event) {
         const target = event.target;
         const idString = target.dataset.id;
@@ -696,12 +842,43 @@ document.addEventListener('DOMContentLoaded', () => {
             renderAll();
         }
     });
-    toggleDashboardBtn.addEventListener('click', () => { mainContainer.classList.toggle('dashboard-expanded'); });
+    toggleDashboardBtn.addEventListener('click', () => {
+        const isExpanding = !mainContainer.classList.contains('dashboard-expanded');
+        mainContainer.classList.toggle('dashboard-expanded');
+
+        // Show/Hide default vs expanded content
+        if (isExpanding) {
+            dashboardSummary.style.display = 'none';
+            summaryChartContainer.style.display = 'none';
+            expandedDashboardContent.style.display = 'flex'; // Use flex display
+            setActiveDashboardTab(activeDashboardTab); // Ensure correct initial tab/view renders
+        } else {
+            dashboardSummary.style.display = 'block';
+            summaryChartContainer.style.display = 'block';
+            expandedDashboardContent.style.display = 'none';
+            renderExpenseChart(false); // Ensure default chart renders correctly on collapse
+        }
+    });
     darkModeToggle.addEventListener('change', () => {
         if (darkModeToggle.checked) {
             setMode('dark');
         } else {
             setMode('light');
+        }
+    });
+    dashboardTabsContainer.addEventListener('click', (event) => {
+        if (event.target.classList.contains('tab-btn')) {
+            setActiveDashboardTab(event.target.dataset.tab);
+        }
+    });
+    viewControlsContainer.addEventListener('click', (event) => {
+        if (event.target.classList.contains('view-btn')) {
+            const viewId = event.target.dataset.view;
+            if (activeDashboardTab === 'grids') {
+                setActiveGridView(viewId);
+            } else if (activeDashboardTab === 'charts') {
+                setActiveChartView(viewId);
+            }
         }
     });
     authModalCloseBtn.addEventListener('click', closeAuthModal);
