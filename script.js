@@ -58,10 +58,18 @@ document.addEventListener('DOMContentLoaded', () => {
         viewButtonGroups.forEach(group => {
             group.style.display = (group.dataset.tabGroup === tabId) ? 'flex' : 'none';
         });
+        
         // Show/Hide corresponding content areas
         tabContents.forEach(content => {
-            content.classList.toggle('active', content.id === `${tabId}-content`);
+            // *** CORRECTED LINE ***
+            // Match 'grids' -> 'grid-content' and 'charts' -> 'chart-content'
+            const contentId = (tabId === 'grids' || tabId === 'charts') 
+                ? `${tabId.slice(0, -1)}-content` // "grids" -> "grid"
+                : `${tabId}-content`;
+
+            content.classList.toggle('active', content.id === contentId);
         });
+
         // Trigger render for the newly active content
         renderActiveDashboardContent();
     }
