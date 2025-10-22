@@ -20,7 +20,7 @@
             <div class="header-controls">
                 <div id="user-status"></div>
                 <div class="theme-toggle-group">
-                    <span class="theme-label">Light/Dark Mode</span>
+                    <span class="theme-label">Dark/Light Mode</span>
                     <div class="theme-switch-wrapper">
                         <label class="theme-switch" for="dark-mode-toggle">
                             <input type="checkbox" id="dark-mode-toggle" />
@@ -37,38 +37,69 @@
                 <h2>Dashboard</h2>
                 <button id="toggle-dashboard-btn" title="Toggle Dashboard View">↔️</button>
             </div>
+
+            {/* Default Summary - Visible when dashboard is NOT expanded */}
             <div id="dashboard-summary"></div>
-            <div class="chart-container">
+            <div class="chart-container" id="summary-chart-container">
                 <canvas id="expense-chart"></canvas>
             </div>
+
+            {/* NEW: Container for Expanded Dashboard Content */}
+            <div id="expanded-dashboard-content" style="display: none;"> {/* Initially hidden */}
+                {/* Tab Row */}
+                <div class="dashboard-tabs">
+                    <button class="tab-btn active" data-tab="grids">Grids</button>
+                    <button class="tab-btn" data-tab="charts">Charts</button>
+                </div>
+
+                {/* View Controls Row (Context Specific) */}
+                <div class="dashboard-view-controls">
+                    {/* Grid View Buttons (Initially Visible) */}
+                    <div class="view-group" data-tab-group="grids">
+                        <button class="view-btn active" data-view="2m">2 Month</button>
+                        <button class="view-btn" data-view="6m">6 Month</button>
+                    </div>
+                    {/* Chart View Buttons (Initially Hidden) */}
+                    <div class="view-group" data-tab-group="charts" style="display: none;">
+                        {/* Add chart view buttons here later if needed */}
+                         <button class="view-btn active" data-view="expensePie">Expenses</button>
+                    </div>
+                </div>
+
+                {/* Content Area */}
+                <div class="dashboard-content-area">
+                    {/* Grid Content (Initially Visible) */}
+                    <div id="grid-content" class="tab-content active">
+                        {/* Grid tables will be generated here by JS */}
+                        Grid content will go here...
+                    </div>
+                    {/* Chart Content (Initially Hidden) */}
+                    <div id="chart-content" class="tab-content">
+                        {/* Move existing chart canvas here */}
+                         <div class="chart-container">
+                             <canvas id="expanded-expense-chart"></canvas> {/* Use a new ID */}
+                         </div>
+                        {/* Add more chart canvases here later */}
+                    </div>
+                </div>
+            </div> {/* End of expanded-dashboard-content */}
+
         </section>
 
+        {/* --- Income Section (unchanged) --- */}
         <section id="income-section" class="app-section">
-            <div class="section-header">
-                <h2>Income Sources</h2>
-            </div>
-            <div class="section-controls">
-                <button id="show-income-modal-btn" class="btn-primary">Add Income</button>
-            </div>
+            <div class="section-header"><h2>Income Sources</h2></div>
+            <div class="section-controls"><button id="show-income-modal-btn" class="btn-primary">Add Income</button></div>
             <hr class="divider">
-            <div id="income-list-container">
-                <h3>Current Incomes</h3>
-                <ul id="income-list" class="item-list"></ul>
-            </div>
+            <div id="income-list-container"><h3>Current Incomes</h3><ul id="income-list" class="item-list"></ul></div>
         </section>
 
+        {/* --- Expenses Section (unchanged) --- */}
         <section id="expenses-section" class="app-section">
-            <div class="section-header">
-                <h2>Expense Log</h2>
-            </div>
-            <div class="section-controls">
-                <button id="show-expense-modal-btn" class="btn-primary">Add Expense</button>
-            </div>
+            <div class="section-header"><h2>Expense Log</h2></div>
+            <div class="section-controls"><button id="show-expense-modal-btn" class="btn-primary">Add Expense</button></div>
             <hr class="divider">
-            <div id="expense-list-container">
-                <h3>Current Expenses</h3>
-                <ul id="expense-list" class="item-list"></ul>
-            </div>
+            <div id="expense-list-container"><h3>Current Expenses</h3><ul id="expense-list" class="item-list"></ul></div>
         </section>
     </main>
 
