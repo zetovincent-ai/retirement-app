@@ -521,7 +521,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderIncomes();
         renderExpenses();
         renderDashboard(); 
-        renderExpenseChart(false); 
         if (mainContainer.classList.contains('dashboard-expanded')) {
              renderActiveDashboardContent();
         }
@@ -866,7 +865,6 @@ document.addEventListener('DOMContentLoaded', () => {
             dashboardSummary.style.display = 'block';
             summaryChartContainer.style.display = 'block';
             expandedDashboardContent.style.display = 'none';
-            renderExpenseChart(false); // Ensure default chart renders correctly on collapse
         }
     });
     darkModeToggle.addEventListener('change', () => {
