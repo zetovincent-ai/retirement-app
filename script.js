@@ -289,8 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 name: document.getElementById('modal-income-name').value.trim(),
                 interval: document.getElementById('modal-income-interval').value,
                 amount: parseFloat(document.getElementById('modal-income-amount').value),
-                start_date: startDateValue ? startDateValue : null, // Save start_date
-                day_of_month: null // Explicitly nullify the old field
+                start_date: startDateValue ? startDateValue : null, 
             };
             
             // Update validation to check for start_date
@@ -501,8 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 name: document.getElementById('modal-expense-name').value.trim(),
                 interval: document.getElementById('modal-expense-interval').value,
                 amount: parseFloat(document.getElementById('modal-expense-amount').value),
-                start_date: startDateValue ? startDateValue : null, // Save start_date
-                day_of_month: null, // Explicitly nullify the old field
+                start_date: startDateValue ? startDateValue : null, 
                 advanced_data: advancedData
             };
 
