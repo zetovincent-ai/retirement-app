@@ -251,14 +251,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const isEditMode = incomeId !== undefined;
         const incomeToEdit = isEditMode && Array.isArray(appState.incomes) ? appState.incomes.find(i => i.id === incomeId) : null;
         modalTitle.textContent = isEditMode ? 'Edit Income' : 'Add New Income';
-        // Add the new "Day of Month" field to the modal HTML
+        
+        // Change "Due Day" to "Start Date"
         modalBody.innerHTML = `
             <div class="form-group"><label for="modal-income-type">Type:</label><select id="modal-income-type" required>...</select></div>
             <div class="form-group"><label for="modal-income-name">Description / Name:</label><input type="text" id="modal-income-name" placeholder="e.g., Vincent's TSP" required></div>
             <div class="form-group"><label for="modal-income-interval">Payment Interval:</label><select id="modal-income-interval" required>...</select></div>
             <div class="form-group"><label for="modal-income-amount">Payment Amount:</label><input type="number" id="modal-income-amount" placeholder="1500" min="0" step="0.01" required></div>
-            <div class="form-group"><label for="modal-income-day">Due Day (1-31):</label><input type="number" id="modal-income-day" min="1" max="31" placeholder="e.g., 15"></div>
+            <div class="form-group"><label for="modal-income-date">Payment Start Date:</label><input type="date" id="modal-income-date" required></div>
         `; // Simplified dropdowns above for brevity
+        
         // Re-add full dropdown options here...
         document.getElementById('modal-income-type').innerHTML = `<option value="">-- Select a Type --</option><option value="Pension">Pension</option><option value="TSP">TSP</option><option value="TSP Supplement">TSP Supplement</option><option value="Social Security">Social Security</option><option value="Investment">Investment Dividend</option><option value="Other">Other</option>`;
         document.getElementById('modal-income-interval').innerHTML = `<option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option>`;
@@ -268,29 +270,40 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('modal-income-name').value = incomeToEdit.name || '';
             document.getElementById('modal-income-interval').value = incomeToEdit.interval || 'monthly';
             document.getElementById('modal-income-amount').value = incomeToEdit.amount || '';
-            document.getElementById('modal-income-day').value = incomeToEdit.day_of_month || ''; // Populate day
+            // Populate date field. Assumes start_date is stored as 'YYYY-MM-DD'
+            document.getElementById('modal-income-date').value = incomeToEdit.start_date || ''; 
+        } else if (!isEditMode) {
+            // Default to today's date for new items
+            document.getElementById('modal-income-date').value = new Date().toISOString().split('T')[0];
         }
+
         onSave = async () => {
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) { /* ... error handling ... */ return; }
-            const dayOfMonthValue = document.getElementById('modal-income-day').value;
+            
+            const startDateValue = document.getElementById('modal-income-date').value;
+            
             const formItem = {
                 user_id: user.id,
                 type: document.getElementById('modal-income-type').value,
                 name: document.getElementById('modal-income-name').value.trim(),
                 interval: document.getElementById('modal-income-interval').value,
                 amount: parseFloat(document.getElementById('modal-income-amount').value),
-                day_of_month: dayOfMonthValue ? parseInt(dayOfMonthValue) : null // Save day_of_month (or null if empty)
+                start_date: startDateValue ? startDateValue : null, // Save start_date
+                day_of_month: null // Explicitly nullify the old field
             };
-            // Add validation for day_of_month (1-31) if needed
-            if (!formItem.type || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0 || (formItem.day_of_month && (formItem.day_of_month < 1 || formItem.day_of_month > 31))) {
-                alert("Please fill out all fields correctly. Day must be between 1 and 31.");
+            
+            // Update validation to check for start_date
+            if (!formItem.type || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0 || !formItem.start_date) {
+                alert("Please fill out all fields correctly, including a valid start date.");
                 return;
             }
+            
             let { error } = isEditMode
                 ? await supabaseClient.from('incomes').update(formItem).eq('id', incomeId)
                 : await supabaseClient.from('incomes').insert([formItem]).select();
-            if (error) { /* ... error handling ... */ }
+            
+            if (error) { console.error("Error saving income:", error); alert(`Error: ${error.message}`); }
             else { await fetchData(); }
             closeModal();
         };
@@ -341,8 +354,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="number" id="modal-expense-amount" placeholder="e.g., 100" min="0" step="0.01" required>
             </div>
             <div class="form-group">
-                <label for="modal-expense-day">Payment Due Day:</label>
-                <input type="number" id="modal-expense-day" min="1" max="31" placeholder="(1-31) e.g., 1">
+                <label for="modal-expense-date">Payment Start Date:</label>
+                <input type="date" id="modal-expense-date" required>
             </div>
             <div id="advanced-loan-fields" style="display: none;">
                 <hr class="divider">
@@ -420,10 +433,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Populate correct sub-type options *before* setting value
             if (expenseToEdit.category === 'Housing') subTypeSelect.innerHTML = housingSubTypes;
             else if (expenseToEdit.category === 'Transport') subTypeSelect.innerHTML = transportSubTypes;
+            
             document.getElementById('modal-expense-name').value = expenseToEdit.name || '';
             document.getElementById('modal-expense-interval').value = expenseToEdit.interval || 'monthly';
             document.getElementById('modal-expense-amount').value = expenseToEdit.amount || '';
-            document.getElementById('modal-expense-day').value = expenseToEdit.day_of_month || '';
+            // Populate date field
+            document.getElementById('modal-expense-date').value = expenseToEdit.start_date || ''; 
+
             if (expenseToEdit.advanced_data) {
                  const advData = expenseToEdit.advanced_data;
                  if ((expenseToEdit.category === 'Housing' || expenseToEdit.category === 'Transport') && advData.item_type) {
@@ -443,7 +459,8 @@ document.addEventListener('DOMContentLoaded', () => {
              toggleAdvancedFields(); // Call AFTER populating to ensure correct visibility
         } else if (isEditMode && !expenseToEdit) { console.error(`Expense item with ID ${expenseId} not found for editing.`); alert("Error: Could not find item to edit."); return; }
          else {
-             // If adding new, ensure options are populated for initial category if needed
+             // If adding new, default to today's date
+             document.getElementById('modal-expense-date').value = new Date().toISOString().split('T')[0];
              toggleAdvancedFields(); // Run once on initial load for Add mode
          }
 
@@ -454,7 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const category = categorySelect.value;
             const subType = subTypeSelect.value;
-            const dayOfMonthValue = document.getElementById('modal-expense-day').value;
+            const startDateValue = document.getElementById('modal-expense-date').value;
             let advancedData = null;
 
             // Construct advancedData based on Category and Sub-Type
@@ -484,14 +501,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 name: document.getElementById('modal-expense-name').value.trim(),
                 interval: document.getElementById('modal-expense-interval').value,
                 amount: parseFloat(document.getElementById('modal-expense-amount').value),
-                day_of_month: dayOfMonthValue ? parseInt(dayOfMonthValue) : null,
+                start_date: startDateValue ? startDateValue : null, // Save start_date
+                day_of_month: null, // Explicitly nullify the old field
                 advanced_data: advancedData
             };
 
             // *** CORRECTED VALIDATION LOGIC ***
             // Check base fields first
-            if (!formItem.category || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0 || (formItem.day_of_month && (formItem.day_of_month < 1 || formItem.day_of_month > 31))) {
-                 alert("Please fill out required fields (Category, Name, Amount). Day must be between 1 and 31.");
+            if (!formItem.category || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0 || !formItem.start_date) {
+                 alert("Please fill out required fields (Category, Name, Amount, Start Date).");
                  return;
             }
             // Check sub-type requirement specifically for Housing and Transport
@@ -557,14 +575,34 @@ document.addEventListener('DOMContentLoaded', () => {
              listElement.innerHTML = `<li>No ${listType}s added yet.</li>`;
              return;
         }
-        items.sort((a, b) => (a.day_of_month || 99) - (b.day_of_month || 99));
+        
+        // Sort by start_date (newest first, or handle nulls)
+        items.sort((a, b) => {
+            if (a.start_date && b.start_date) return new Date(b.start_date) - new Date(a.start_date);
+            if (a.start_date) return -1; // a comes first
+            if (b.start_date) return 1;  // b comes first
+            return 0;
+        });
 
         items.forEach(item => {
             if (!item || item.id === undefined || item.id === null) { console.warn("Skipping rendering invalid item:", item); return; }
             const li = document.createElement('li');
             const formattedAmount = typeof item.amount === 'number' ? item.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : 'N/A';
             const intervalText = item.interval ? ` / ${item.interval}` : '';
-            const dayText = item.day_of_month ? ` (Day: ${item.day_of_month})` : '';
+            
+            // Format the start_date for display
+            let dateText = '';
+            if (item.start_date) {
+                try {
+                    // Create date object assuming YYYY-MM-DD (which is UTC)
+                    const date = new Date(item.start_date + 'T00:00:00'); 
+                    dateText = ` (Starts: ${date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })})`;
+                } catch (e) {
+                    console.warn(`Invalid date format for item ${item.id}: ${item.start_date}`);
+                    dateText = ' (Invalid Date)';
+                }
+            }
+            
             const typeOrCategory = item.type || item.category || 'N/A';
             const name = item.name || 'Unnamed';
             let subTypeText = ''; // Display sub-type if relevant
@@ -584,7 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
             li.innerHTML = `
                 <div class="item-details">
                     <strong>${name}</strong> (${typeOrCategory}${subTypeText})<br>
-                    <span>${formattedAmount}${intervalText}${dayText}</span>
+                    <span>${formattedAmount}${intervalText}${dateText}</span>
                 </div>
                 <div class="item-controls">
                     ${scheduleButtonHTML}
