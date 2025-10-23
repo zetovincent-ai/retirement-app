@@ -4,12 +4,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13dXhycndiZ3l0YnFybGh6d3NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MjcxNTYsImV4cCI6MjA3NjEwMzE1Nn0.up3JOKKXEyw6axEGhI2eESJbrZzoH-93zRmCSXukYZY';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     // === STATE MANAGEMENT ===
-    let appState = { incomes: [], expenses: [] };
+    let appState = { incomes: [], expenses: [], transactions: [] };
     let onSave = null;
     let expenseChartInstance = null;
     let activeDashboardTab = 'grids'; 
     let activeGridView = '2m'; 
     let activeChartView = 'expensePie'; 
+    let currentContextItem = null;
     // === DOM SELECTORS ===
     const currentYearSpan = document.getElementById('current-year'); // New selector
     const mainContainer = document.querySelector('main');
@@ -46,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const chartContentArea = document.getElementById('chart-content');
     const expandedExpenseChartCanvas = document.getElementById('expanded-expense-chart'); 
     const expandedChartContainer = document.getElementById('expanded-expense-chart').parentElement;
+    const gridContextMenu = document.getElementById('grid-context-menu');
     // === FUNCTIONS ===
     // --- Dashboard Tab/View Management ---
     function setActiveDashboardTab(tabId) {
@@ -101,18 +103,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderGridView(numberOfMonths) {
         console.log(`Rendering grid view for ${numberOfMonths} months...`);
         
-        // 1. Get the months to render
-        const now = new Date(); // Use system's local time 'now'
-        // Create a UTC date from local components to pass to our UTC-based helpers
+        const now = new Date();
         const startOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
         const months = getMonthsToRender(startOfMonth, numberOfMonths);
         
         const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-        const formatDay = date => date.getUTCDate(); // Just get the number
+        const formatDay = date => date.getUTCDate();
 
         let finalHTML = '<div class="grid-view-container">';
 
-        // 2. Loop through each month
         months.forEach(monthDate => {
             const monthYear = monthDate.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
             
@@ -121,24 +120,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 let rowsHTML = '';
                 let hasItems = false;
                 
+                // 1. Create a sorted list of all individual occurrences for this month
+                const allOccurrences = [];
                 items.forEach(item => {
                     const occurrences = getOccurrencesInMonth(item, monthDate);
-                    
-                    if (occurrences.length > 0) {
-                        hasItems = true;
-                        // For items with multiple occurrences (e.g., weekly), show them on one line
-                        const dueDays = occurrences.map(formatDay).join(', ');
-                        const amount = formatCurrency(item.amount * occurrences.length); // Total for the month
+                    occurrences.forEach(occ => {
+                        allOccurrences.push({
+                            item: item,
+                            date: occ
+                        });
+                    });
+                });
+
+                // Sort all occurrences by date
+                allOccurrences.sort((a, b) => a.date.getUTCDate() - b.date.getUTCDate());
+
+                // 2. Generate HTML for each row
+                if (allOccurrences.length > 0) {
+                    hasItems = true;
+                    allOccurrences.forEach(occurrence => {
+                        const { item, date } = occurrence;
+                        
+                        // Find the status and set a class
+                        const statusRecord = findTransactionStatus(item.id, type, date);
+                        let statusClass = 'row-pending'; // default
+                        if (statusRecord?.status === 'paid') statusClass = 'row-paid';
+                        if (statusRecord?.status === 'overdue') statusClass = 'row-overdue';
+
+                        // Get data attributes for the click handler
+                        const dateString = date.toISOString().split('T')[0];
+                        const dueDay = formatDay(date);
+                        const amount = formatCurrency(item.amount);
                         
                         rowsHTML += `
-                            <tr>
+                            <tr class="${statusClass}" 
+                                data-item-id="${item.id}" 
+                                data-item-type="${type}" 
+                                data-date="${dateString}"
+                                title="Right-click to change status">
+                                
                                 <td>${item.name}</td>
-                                <td>${dueDays}</td>
+                                <td>${dueDay}</td>
                                 <td>${amount}</td>
                             </tr>
                         `;
-                    }
-                });
+                    });
+                }
                 
                 if (!hasItems) {
                     rowsHTML = `<tr><td colspan="3">No ${type.toLowerCase()}s this month.</td></tr>`;
@@ -146,10 +173,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return rowsHTML;
             };
 
-            const incomeRows = generateRows(appState.incomes, 'Income');
-            const expenseRows = generateRows(appState.expenses, 'Expenses');
+            const incomeRows = generateRows(appState.incomes, 'income');
+            const expenseRows = generateRows(appState.expenses, 'expense');
             
-            // 3. Build the HTML for this month's table
             finalHTML += `
                 <div class="month-grid-container">
                     <h3 class="month-grid-header">${monthYear}</h3>
@@ -161,25 +187,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <th>Amount</th>
                             </tr>
                         </thead>
-                        
                         <tbody class="grid-group-income">
-                            <tr class="grid-group-header">
-                                <td colspan="3">Income</td>
-                            </tr>
+                            <tr class="grid-group-header"><td colspan="3">Income</td></tr>
                             ${incomeRows}
                         </tbody>
-                        
                         <tbody class="grid-group-expense">
-                            <tr class="grid-group-header">
-                                <td colspan="3">Expenses</td>
-                            </tr>
+                            <tr class="grid-group-header"><td colspan="3">Expenses</td></tr>
                             ${expenseRows}
                         </tbody>
-
                         <tbody class="grid-group-banking">
-                            <tr class="grid-group-header">
-                                <td colspan="3">Banking</td>
-                            </tr>
+                            <tr class="grid-group-header"><td colspan="3">Banking</td></tr>
                             <tr>
                                 <td>*Net Totals (Coming Soon)*</td>
                                 <td>-</td>
@@ -191,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
 
-        finalHTML += '</div>'; // Close .grid-view-container
+        finalHTML += '</div>';
         gridContentArea.innerHTML = finalHTML;
     }
     // --- Dark/Light Mode Functions ---
@@ -227,18 +244,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) {
              console.log("No user logged in for fetchData, clearing local state.");
-             appState = { incomes: [], expenses: [] };
+             appState = { incomes: [], expenses: [], transactions: [] }; // Clear all
              renderAll();
              return;
         }
-        console.log("Fetching incomes and expenses for user:", user.id);
-        const { data: incomes, error: incomesError } = await supabaseClient.from('incomes').select('*').eq('user_id', user.id);
+        console.log("Fetching data for user:", user.id);
+        
+        // Use Promise.all to fetch concurrently
+        const [
+            { data: incomes, error: incomesError },
+            { data: expenses, error: expensesError },
+            { data: transactions, error: transactionsError }
+        ] = await Promise.all([
+            supabaseClient.from('incomes').select('*').eq('user_id', user.id),
+            supabaseClient.from('expenses').select('*').eq('user_id', user.id),
+            supabaseClient.from('transaction_log').select('*').eq('user_id', user.id) // Fetch new log
+        ]);
+
         if (incomesError) console.error('Error fetching incomes:', incomesError);
         else appState.incomes = incomes || [];
 
-        const { data: expenses, error: expensesError } = await supabaseClient.from('expenses').select('*').eq('user_id', user.id);
         if (expensesError) console.error('Error fetching expenses:', expensesError);
         else appState.expenses = expenses || [];
+
+        if (transactionsError) console.error('Error fetching transactions:', transactionsError);
+        else appState.transactions = transactions || []; // Store transactions
 
         console.log("Data fetch complete, rendering UI.");
         renderAll();
@@ -1083,7 +1113,124 @@ document.addEventListener('DOMContentLoaded', () => {
         
         return occurrences;
     }
+    /**
+     * Finds the status record for a specific item occurrence.
+     * @param {number} itemId - The ID of the parent income/expense item.
+     * @param {string} itemType - "income" or "expense".
+     * @param {Date} occurrenceDate - The UTC Date object for the occurrence.
+     * @returns {object | null} The transaction log entry, or null if not found.
+     */
+    function findTransactionStatus(itemId, itemType, occurrenceDate) {
+        if (!appState.transactions) return null;
+        
+        // Convert the UTC date object to a 'YYYY-MM-DD' string for comparison
+        const dateString = occurrenceDate.toISOString().split('T')[0];
+        
+        return appState.transactions.find(t =>
+            t.item_id === itemId &&
+            t.item_type === itemType &&
+            t.occurrence_date === dateString
+        );
+    }
+    /**
+     * Saves or updates the status of a specific transaction.
+     * @param {number} itemId
+     * @param {string} itemType
+     * @param {string} dateString - 'YYYY-MM-DD'
+     * @param {string} newStatus - 'paid', 'overdue', 'pending'
+     */
+    async function saveTransactionStatus(itemId, itemType, dateString, newStatus) {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) {
+            showNotification("You must be logged in.", "error");
+            return;
+        }
+
+        // 1. Check if a record already exists
+        const existingRecord = appState.transactions.find(t =>
+            t.item_id === itemId &&
+            t.item_type === itemType &&
+            t.occurrence_date === dateString
+        );
+        
+        let error;
+
+        if (existingRecord) {
+            // 2. Update existing record
+            console.log(`Updating status to ${newStatus} for record ${existingRecord.id}`);
+            const { error: updateError } = await supabaseClient
+                .from('transaction_log')
+                .update({ status: newStatus })
+                .eq('id', existingRecord.id);
+            error = updateError;
+        } else {
+            // 3. Insert new record
+            console.log(`Inserting new ${newStatus} record for item ${itemId} on ${dateString}`);
+            const { error: insertError } = await supabaseClient
+                .from('transaction_log')
+                .insert({
+                    user_id: user.id,
+                    item_id: itemId,
+                    item_type: itemType,
+                    occurrence_date: dateString,
+                    status: newStatus
+                });
+            error = insertError;
+        }
+
+        if (error) {
+            console.error("Error saving transaction status:", error);
+            showNotification(`Error saving status: ${error.message}`, "error");
+        } else {
+            // 4. Refresh data to show the change
+            await fetchData();
+            showNotification("Status updated!", "success");
+        }
+    }
     // === EVENT LISTENERS ===
+    gridContentArea.addEventListener('contextmenu', (event) => {
+        event.preventDefault(); // Stop the default right-click menu
+        
+        const row = event.target.closest('tr');
+        if (!row || !row.dataset.itemId) { // Not a valid data row
+            gridContextMenu.classList.add('modal-hidden');
+            return;
+        }
+
+        // Store the data from the row
+        currentContextItem = {
+            itemId: parseInt(row.dataset.itemId),
+            itemType: row.dataset.itemType,
+            dateString: row.dataset.date
+        };
+
+        // Position and show the menu
+        gridContextMenu.style.top = `${event.clientY}px`;
+        gridContextMenu.style.left = `${event.clientX}px`;
+        gridContextMenu.classList.remove('modal-hidden');
+    });
+    gridContextMenu.addEventListener('click', (event) => {
+        const newStatus = event.target.dataset.status;
+        if (newStatus && currentContextItem) {
+            // Call our save function
+            saveTransactionStatus(
+                currentContextItem.itemId,
+                currentContextItem.itemType,
+                currentContextItem.dateString,
+                newStatus
+            );
+        }
+        // Hide the menu and clear the temp data
+        gridContextMenu.classList.add('modal-hidden');
+        currentContextItem = null;
+    });
+    document.addEventListener('click', (event) => {
+        // Hide if the click is outside the menu
+        if (!gridContextMenu.contains(event.target)) {
+            gridContextMenu.classList.add('modal-hidden');
+            currentContextItem = null;
+        }
+    });
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
         console.log('Auth state changed:', event);
         updateUserStatus(session?.user);
@@ -1145,6 +1292,6 @@ document.addEventListener('DOMContentLoaded', () => {
     incomeList.addEventListener('click', handleListClick);
     expenseList.addEventListener('click', handleListClick);
     // === INITIALIZATION ===
-    loadMode(); // Load the saved mode on startup
+    loadMode(); 
     initializeFooter();
 });

@@ -518,6 +518,55 @@ main.dashboard-expanded #expanded-dashboard-content {
 .month-grid-table tbody tr:not(.grid-group-header):hover {
     background-color: var(--background-color);
 }
+/* === Context Menu Styles === */
+.context-menu {
+    position: fixed;
+    z-index: 10000;
+    background-color: var(--section-bg-color);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 6px;
+    padding: 0.5rem 0;
+}
+.context-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.context-menu li {
+    padding: 0.5rem 1.5rem;
+    cursor: pointer;
+}
+.context-menu li:hover {
+    background-color: var(--background-color);
+}
+.context-menu li[data-status="paid"]:hover { color: var(--income-total-color); }
+.context-menu li[data-status="overdue"]:hover { color: var(--expense-total-color); }
+/* === Grid Row Status Styles === */
+.month-grid-table tr.row-paid {
+    background-color: #27ae6020; /* Faint green */
+}
+.month-grid-table tr.row-paid:hover {
+    background-color: #27ae6040; /* Stronger green on hover */
+}
+.month-grid-table tr.row-overdue {
+    background-color: #e74c3c20; /* Faint red */
+}
+.month-grid-table tr.row-overdue:hover {
+    background-color: #e74c3c40; /* Stronger red on hover */
+}
+body.dark-mode .month-grid-table tr.row-paid {
+    background-color: #48bb7820;
+}
+body.dark-mode .month-grid-table tr.row-paid:hover {
+    background-color: #48bb7840;
+}
+body.dark-mode .month-grid-table tr.row-overdue {
+    background-color: #f5656520;
+}
+body.dark-mode .month-grid-table tr.row-overdue:hover {
+    background-color: #f5656540;
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
