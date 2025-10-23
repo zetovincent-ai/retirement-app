@@ -452,6 +452,72 @@ main.dashboard-expanded #expanded-dashboard-content {
 #chart-content .chart-container {
     height: 400px; /* Adjust height as needed for expanded view */
 }
+/* === Grid View Styles === */
+.grid-view-container {
+    display: flex;
+    flex-direction: row; /* Lay out months side-by-side */
+    gap: 1.5rem;
+    overflow-x: auto; /* Allow horizontal scrolling */
+    padding-bottom: 1rem; /* Space for scrollbar */
+}
+.month-grid-container {
+    flex-shrink: 0; /* Prevent containers from shrinking */
+    width: 450px; /* Give each month-table a fixed width */
+    max-width: 100%;
+}
+.month-grid-header {
+    background-color: var(--header-bg-color);
+    color: var(--header-text-color);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px 6px 0 0;
+    text-align: center;
+    font-size: 1.25rem;
+    margin: 0;
+}
+.month-grid-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid var(--border-color);
+    border-top: none; /* Header is the top */
+}
+.month-grid-table th,
+.month-grid-table td {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    text-align: left;
+}
+.month-grid-table th {
+    background-color: var(--list-item-bg);
+}
+/* Make second and third columns right-aligned */
+.month-grid-table th:nth-child(2),
+.month-grid-table td:nth-child(2),
+.month-grid-table th:nth-child(3),
+.month-grid-table td:nth-child(3) {
+    text-align: right;
+    width: 25%; /* Give them a set width */
+}
+.grid-group-header td {
+    font-weight: bold;
+    font-size: 1.1rem;
+    background-color: var(--list-item-bg);
+}
+/* Group Colors */
+.grid-group-income .grid-group-header td {
+    color: var(--income-total-color);
+    border-left: 4px solid var(--income-total-color);
+}
+.grid-group-expense .grid-group-header td {
+    color: var(--expense-total-color);
+    border-left: 4px solid var(--expense-total-color);
+}
+.grid-group-banking .grid-group-header td {
+    color: #3498db; /* Using a standard blue for now */
+    border-left: 4px solid #3498db;
+}
+.month-grid-table tbody tr:not(.grid-group-header):hover {
+    background-color: var(--background-color);
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {

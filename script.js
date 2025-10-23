@@ -100,13 +100,99 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function renderGridView(numberOfMonths) {
         console.log(`Rendering grid view for ${numberOfMonths} months...`);
-        // --- TODO: Grid Generation Logic ---
-        // 1. Calculate start/end dates based on numberOfMonths
-        // 2. Filter appState.incomes and appState.expenses for relevant items
-        // 3. Group items by month
-        // 4. Generate HTML table(s)
-        gridContentArea.innerHTML = `<p>Grid view for ${numberOfMonths} months will be implemented here.</p>`;
-        // --- End TODO ---
+        
+        // 1. Get the months to render
+        const now = new Date(); // Use system's local time 'now'
+        // Create a UTC date from local components to pass to our UTC-based helpers
+        const startOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+        const months = getMonthsToRender(startOfMonth, numberOfMonths);
+        
+        const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        const formatDay = date => date.getUTCDate(); // Just get the number
+
+        let finalHTML = '<div class="grid-view-container">';
+
+        // 2. Loop through each month
+        months.forEach(monthDate => {
+            const monthYear = monthDate.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+            
+            // --- Generate Rows for a single type (Income/Expense) ---
+            const generateRows = (items, type) => {
+                let rowsHTML = '';
+                let hasItems = false;
+                
+                items.forEach(item => {
+                    const occurrences = getOccurrencesInMonth(item, monthDate);
+                    
+                    if (occurrences.length > 0) {
+                        hasItems = true;
+                        // For items with multiple occurrences (e.g., weekly), show them on one line
+                        const dueDays = occurrences.map(formatDay).join(', ');
+                        const amount = formatCurrency(item.amount * occurrences.length); // Total for the month
+                        
+                        rowsHTML += `
+                            <tr>
+                                <td>${item.name}</td>
+                                <td>${dueDays}</td>
+                                <td>${amount}</td>
+                            </tr>
+                        `;
+                    }
+                });
+                
+                if (!hasItems) {
+                    rowsHTML = `<tr><td colspan="3">No ${type.toLowerCase()}s this month.</td></tr>`;
+                }
+                return rowsHTML;
+            };
+
+            const incomeRows = generateRows(appState.incomes, 'Income');
+            const expenseRows = generateRows(appState.expenses, 'Expenses');
+            
+            // 3. Build the HTML for this month's table
+            finalHTML += `
+                <div class="month-grid-container">
+                    <h3 class="month-grid-header">${monthYear}</h3>
+                    <table class="month-grid-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Due Day(s)</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        
+                        <tbody class="grid-group-income">
+                            <tr class="grid-group-header">
+                                <td colspan="3">Income</td>
+                            </tr>
+                            ${incomeRows}
+                        </tbody>
+                        
+                        <tbody class="grid-group-expense">
+                            <tr class="grid-group-header">
+                                <td colspan="3">Expenses</td>
+                            </tr>
+                            ${expenseRows}
+                        </tbody>
+
+                        <tbody class="grid-group-banking">
+                            <tr class="grid-group-header">
+                                <td colspan="3">Banking</td>
+                            </tr>
+                            <tr>
+                                <td>*Net Totals (Coming Soon)*</td>
+                                <td>-</td>
+                                <td>-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        });
+
+        finalHTML += '</div>'; // Close .grid-view-container
+        gridContentArea.innerHTML = finalHTML;
     }
     // --- Dark/Light Mode Functions ---
     function setMode(mode) {
@@ -875,6 +961,127 @@ document.addEventListener('DOMContentLoaded', () => {
 
         appModal.classList.add('modal--read-only'); // Add class to hide footer
         openModal(); // Open the main app modal
+    }
+    /**
+     * Parses a 'YYYY-MM-DD' date string as UTC to avoid timezone issues.
+     * @param {string} dateString - The date string to parse.
+     * @returns {Date} A Date object set to midnight UTC for that date.
+     */
+    function parseUTCDate(dateString) {
+        if (!dateString) return null;
+        // T00:00:00Z specifies UTC (Zulu) time.
+        const date = new Date(dateString + 'T00:00:00Z');
+        if (isNaN(date.getTime())) {
+             console.warn(`Invalid date string provided: ${dateString}`);
+             return null;
+        }
+        return date;
+    }
+    /**
+     * Generates an array of Date objects for the first of each month to render.
+     * @param {Date} startDate - The date to start from (e.g., new Date()).
+     * @param {number} numMonths - The number of months to generate.
+     * @returns {Date[]} An array of Date objects, each set to the 1st of the month.
+     */
+    function getMonthsToRender(startDate, numMonths) {
+        const months = [];
+        // Get the year and month of the starting date
+        const startYear = startDate.getUTCFullYear();
+        const startMonth = startDate.getUTCMonth();
+
+        for (let i = 0; i < numMonths; i++) {
+            // Create a new date set to the 1st of the month
+            // We use UTC methods to remain consistent
+            const monthDate = new Date(Date.UTC(startYear, startMonth + i, 1));
+            months.push(monthDate);
+        }
+        return months;
+    }
+    /**
+     * Calculates all occurrences of a recurring item within a given month.
+     * @param {object} item - The income or expense item (must have start_date and interval).
+     * @param {Date} monthDate - A Date object representing the *start* of the target month (e.g., Oct 1, 2025).
+     * @returns {Date[]} An array of Date objects for each occurrence in that month.
+     */
+    function getOccurrencesInMonth(item, monthDate) {
+        const occurrences = [];
+        const itemStartDate = parseUTCDate(item.start_date);
+
+        if (!itemStartDate) return []; // No start date, can't calculate
+
+        // Get the boundaries of the target month in UTC
+        const targetYear = monthDate.getUTCFullYear();
+        const targetMonth = monthDate.getUTCMonth();
+        
+        const monthStart = new Date(Date.UTC(targetYear, targetMonth, 1));
+        // Get the *end* of the month (start of next month, minus 1 millisecond)
+        const monthEnd = new Date(Date.UTC(targetYear, targetMonth + 1, 0, 23, 59, 59, 999));
+        
+        // Optimization: If the item starts *after* this month ends, skip it.
+        if (itemStartDate > monthEnd) {
+            return [];
+        }
+
+        const itemStartDayOfMonth = itemStartDate.getUTCDate(); // e.g., 15
+
+        switch (item.interval) {
+            case 'monthly':
+                // Check if the item's start date is on or before the end of the target month
+                if (itemStartDate <= monthEnd) {
+                    // Create the potential date in this month
+                    const potentialDate = new Date(Date.UTC(targetYear, targetMonth, itemStartDayOfMonth));
+                    // Add it only if it's within the month's bounds (handles 30 vs 31 days)
+                    // and on or after the item's actual start date
+                    if (potentialDate.getUTCMonth() === targetMonth && potentialDate >= monthStart && potentialDate >= itemStartDate) {
+                        occurrences.push(potentialDate);
+                    }
+                }
+                break;
+
+            case 'annually':
+                // Check if the target month is the *same month* as the item's start month
+                if (itemStartDate.getUTCMonth() === targetMonth && itemStartDate <= monthEnd) {
+                    const potentialDate = new Date(Date.UTC(targetYear, targetMonth, itemStartDayOfMonth));
+                    // Add it if it's valid for this month and on/after the start date
+                    if (potentialDate.getUTCMonth() === targetMonth && potentialDate >= itemStartDate) {
+                        occurrences.push(potentialDate);
+                    }
+                }
+                break;
+
+            case 'quarterly':
+                // Check if the target month is a valid quarter (0, 3, 6, 9 months) from the start month
+                const monthDiff = (targetMonth - itemStartDate.getUTCMonth()) + (targetYear - itemStartDate.getUTCFullYear()) * 12;
+                if (monthDiff >= 0 && monthDiff % 3 === 0 && itemStartDate <= monthEnd) {
+                    const potentialDate = new Date(Date.UTC(targetYear, targetMonth, itemStartDayOfMonth));
+                    if (potentialDate.getUTCMonth() === targetMonth && potentialDate >= itemStartDate) {
+                        occurrences.push(potentialDate);
+                    }
+                }
+                break;
+
+            case 'weekly':
+            case 'bi-weekly':
+                const daysToAdd = (item.interval === 'weekly' ? 7 : 14);
+                // Start from the item's actual start date
+                let currentDate = parseUTCDate(item.start_date);
+                
+                // Loop forward until we pass the end of the target month
+                while (currentDate <= monthEnd) {
+                    // If the current date is *also* after the month *started*, it's an occurrence
+                    if (currentDate >= monthStart) {
+                        occurrences.push(new Date(currentDate.getTime())); // Add a copy
+                    }
+                    // Move to the next occurrence
+                    currentDate.setUTCDate(currentDate.getUTCDate() + daysToAdd);
+                }
+                break;
+
+            default:
+                console.warn(`Unknown interval: ${item.interval}`);
+        }
+        
+        return occurrences;
     }
     // === EVENT LISTENERS ===
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
