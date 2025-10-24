@@ -130,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderGridView(numberOfMonths, startDate, startingNetTotal = 0) {
         console.log(`Rendering grid view for ${numberOfMonths} months starting from ${startDate.toISOString()} with starting net: ${startingNetTotal}`);
         
-        // --- THIS IS THE FIX ---
         // Use UTC methods to read the date, avoiding local timezone conversion
         const startOfMonth = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
         
@@ -145,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const oneTimeIncomes = appState.incomes.filter(i => i.interval === 'one-time');
         const oneTimeExpenses = appState.expenses.filter(i => i.interval === 'one-time');
 
-        let finalHTML = '<div class="grid-view-container">'; // This container now lives inside #grid-monthly-content
+        let finalHTML = '<div class="grid-view-container">'; 
         let runningOverallNet = startingNetTotal; 
 
         months.forEach(monthDate => {
@@ -160,7 +159,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const allOccurrences = [];
 
                 items.forEach(item => {
-                    const occurrences = getOccurrencesInMonth(item, monthDate);
+                    // This function is now payoff-aware and will only return valid occurrences
+                    const occurrences = getOccurrencesInMonth(item, monthDate); 
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ });
                         sectionTotal += item.amount; 
@@ -181,13 +181,24 @@ document.addEventListener('DOMContentLoaded', () => {
                         const dateString = date.toISOString().split('T')[0];
                         const dueDay = formatDay(date);
                         const amount = formatCurrency(item.amount);
+
+                        // --- NEW: Add (X of Y) for loans ---
+                        letitemName = item.name;
+                        const totalPayments = item.advanced_data?.total_payments;
+                        if (totalPayments && (item.advanced_data?.item_type === 'Mortgage/Loan' || item.advanced_data?.item_type === 'Car Loan')) {
+                            const currentPaymentNum = calculatePaymentNumber(item.start_date, date, item.interval);
+                            if (currentPaymentNum) {
+                                itemName += ` <span class="payment-number">(${currentPaymentNum} of ${totalPayments})</span>`;
+                            }
+                        }
+                        
                         rowsHTML += `
                             <tr class="${statusClass}" 
                                 data-item-id="${item.id}" 
                                 data-item-type="${type}" 
                                 data-date="${dateString}"
                                 title="Right-click to change status">
-                                <td>${item.name}</td>
+                                <td>${itemName}</td>
                                 <td>${dueDay}</td>
                                 <td>${amount}</td>
                             </tr>
@@ -238,15 +249,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         const dateString = date.toISOString().split('T')[0];
                         const dueDay = formatDay(date);
                         const amount = formatCurrency(item.amount);
+
+                        // --- NEW: Add (X of Y) for one-time loans (if any) ---
+                        let itemName = item.name;
+                        const totalPayments = item.advanced_data?.total_payments;
+                         if (totalPayments && (item.advanced_data?.item_type === 'Mortgage/Loan' || item.advanced_data?.item_type === 'Car Loan')) {
+                            const currentPaymentNum = calculatePaymentNumber(item.start_date, date, item.interval);
+                            if (currentPaymentNum) {
+                                itemName += ` <span class="payment-number">(${currentPaymentNum} of ${totalPayments})</span>`;
+                            }
+                        }
+
                         rowsHTML += `
                             <tr class="${statusClass} ${typeClass}" 
                                 data-item-id="${item.id}" 
                                 data-item-type="${type}" 
                                 data-date="${dateString}"
                                 title="Right-click to change status">
-                                <td>${item.name}</td>
+                                <td>${itemName}</td>
                                 <td>${dueDay}</td>
-                                Example: <td>${amount}</td>
+                                <td>${amount}</td>
                             </tr>
                         `;
                     });
@@ -282,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <table class="month-grid-table">
                         <thead>
                             <tr>
-                                Example: <th>Name</th>
+                                <th>Name</th>
                                 <th>Due Day(s)</th>
                                 <th>Amount</th>
                             </tr>
@@ -290,11 +312,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <tbody class="grid-grand-total">
                             <tr class="grid-monthly-net-total-row">
                                 <td colspan="2">MONTHLY NET TOTAL</td>
-                                Example: <td>${monthlyNetTotalFormatted}</td>
+                                <td>${monthlyNetTotalFormatted}</td>
                             </tr>
                             <tr class="grid-overall-net-total-row">
                                 <td colspan="2">OVERALL NET TOTAL</td>
-                                Example: <td>${overallNetTotalFormatted}</td>
+                                <td>${overallNetTotalFormatted}</td>
                             </tr>
                         </tbody>
                         <tbody class="grid-group-income">
@@ -1218,6 +1240,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!itemStartDate) return []; // No start date, can't calculate
 
+        // --- NEW: Determine the payoff date for loans ---
+        let payoffDate = null;
+        if (item.advanced_data && (item.advanced_data.item_type === 'Mortgage/Loan' || item.advanced_data.item_type === 'Car Loan')) {
+            const totalPayments = item.advanced_data.total_payments;
+            if (totalPayments && totalPayments > 0) {
+                payoffDate = new Date(itemStartDate.getTime());
+                // Set the date to the *first day* it is paid off
+                // e.g., 30 payments. Start Jan 1. Last payment is June 1 (month 5 + 29). 
+                // payoffDate will be July 1 (month 0 + 30).
+                payoffDate.setUTCMonth(itemStartDate.getUTCMonth() + totalPayments);
+            }
+        }
+
         // Get the boundaries of the target month in UTC
         const targetYear = monthDate.getUTCFullYear();
         const targetMonth = monthDate.getUTCMonth();
@@ -1227,8 +1262,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const monthEnd = new Date(Date.UTC(targetYear, targetMonth + 1, 0, 23, 59, 59, 999));
         
         // Optimization: If the item starts *after* this month ends, skip it.
-        // (For one-time, we check this *inside* the case)
         if (item.interval !== 'one-time' && itemStartDate > monthEnd) {
+            return [];
+        }
+        
+        // --- NEW: Optimization: If the payoff date is *before* this month starts, skip it. ---
+        if (payoffDate && payoffDate <= monthStart) {
             return [];
         }
 
@@ -1236,43 +1275,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
         switch (item.interval) {
             case 'one-time':
-                // Check if the single event date is within this month
                 if (itemStartDate >= monthStart && itemStartDate <= monthEnd) {
-                    occurrences.push(itemStartDate);
+                    // Check against payoff date (for a 1-payment loan, this would be true)
+                    if (!payoffDate || itemStartDate < payoffDate) {
+                        occurrences.push(itemStartDate);
+                    }
                 }
                 break;
 
             case 'monthly':
-                // Check if the item's start date is on or before the end of the target month
                 if (itemStartDate <= monthEnd) {
-                    // Create the potential date in this month
                     const potentialDate = new Date(Date.UTC(targetYear, targetMonth, itemStartDayOfMonth));
-                    // Add it only if it's within the month's bounds (handles 30 vs 31 days)
-                    // and on or after the item's actual start date
                     if (potentialDate.getUTCMonth() === targetMonth && potentialDate >= monthStart && potentialDate >= itemStartDate) {
-                        occurrences.push(potentialDate);
+                        // --- NEW: Check if this date is before the payoff date ---
+                        if (!payoffDate || potentialDate < payoffDate) {
+                            occurrences.push(potentialDate);
+                        }
                     }
                 }
                 break;
 
             case 'annually':
-                // Check if the target month is the *same month* as the item's start month
                 if (itemStartDate.getUTCMonth() === targetMonth && itemStartDate <= monthEnd) {
                     const potentialDate = new Date(Date.UTC(targetYear, targetMonth, itemStartDayOfMonth));
-                    // Add it if it's valid for this month and on/after the start date
                     if (potentialDate.getUTCMonth() === targetMonth && potentialDate >= itemStartDate) {
-                        occurrences.push(potentialDate);
+                         // --- NEW: Check if this date is before the payoff date ---
+                        if (!payoffDate || potentialDate < payoffDate) {
+                            occurrences.push(potentialDate);
+                        }
                     }
                 }
                 break;
 
             case 'quarterly':
-                // Check if the target month is a valid quarter (0, 3, 6, 9 months) from the start month
                 const monthDiff = (targetMonth - itemStartDate.getUTCMonth()) + (targetYear - itemStartDate.getUTCFullYear()) * 12;
                 if (monthDiff >= 0 && monthDiff % 3 === 0 && itemStartDate <= monthEnd) {
                     const potentialDate = new Date(Date.UTC(targetYear, targetMonth, itemStartDayOfMonth));
                     if (potentialDate.getUTCMonth() === targetMonth && potentialDate >= itemStartDate) {
-                        occurrences.push(potentialDate);
+                         // --- NEW: Check if this date is before the payoff date ---
+                        if (!payoffDate || potentialDate < payoffDate) {
+                            occurrences.push(potentialDate);
+                        }
                     }
                 }
                 break;
@@ -1280,12 +1323,14 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'weekly':
             case 'bi-weekly':
                 const daysToAdd = (item.interval === 'weekly' ? 7 : 14);
-                // Start from the item's actual start date
                 let currentDate = parseUTCDate(item.start_date);
                 
-                // Loop forward until we pass the end of the target month
                 while (currentDate <= monthEnd) {
-                    // If the current date is *also* after the month *started*, it's an occurrence
+                    // --- NEW: Stop loop if we're at or past the payoff date ---
+                    if (payoffDate && currentDate >= payoffDate) {
+                        break;
+                    }
+
                     if (currentDate >= monthStart) {
                         occurrences.push(new Date(currentDate.getTime())); // Add a copy
                     }
@@ -1582,6 +1627,46 @@ document.addEventListener('DOMContentLoaded', () => {
         // Hide the config UI
         document.getElementById('yearly-forecast-years').style.display = 'none';
         document.getElementById('btn-generate-yearly-summary').style.display = 'none';
+    }
+    /**
+     * Calculates the payment number for a loan based on its occurrence date.
+     * @param {string} startDateString - The 'YYYY-MM-DD' start date of the loan.
+     * @param {Date} occurrenceDate - The UTC Date object of the specific payment.
+     * @param {string} interval - The item's interval ('monthly', 'weekly', etc.).
+     * @returns {number} The payment number (e.g., 1, 2, 30).
+     */
+    function calculatePaymentNumber(startDateString, occurrenceDate, interval) {
+        try {
+            const itemStartDate = parseUTCDate(startDateString);
+            if (!itemStartDate) return null;
+
+            // Use Math.round to account for small DST/leap second discrepancies
+            const msPerDay = 1000 * 60 * 60 * 24;
+            const diffInMs = occurrenceDate.getTime() - itemStartDate.getTime();
+            const diffInDays = Math.round(diffInMs / msPerDay);
+
+            switch (interval) {
+                case 'monthly':
+                    const yearDiff = occurrenceDate.getUTCFullYear() - itemStartDate.getUTCFullYear();
+                    const monthDiff = occurrenceDate.getUTCMonth() - itemStartDate.getUTCMonth();
+                    return (yearDiff * 12) + monthDiff + 1;
+                case 'annually':
+                    return (occurrenceDate.getUTCFullYear() - itemStartDate.getUTCFullYear()) + 1;
+                case 'quarterly':
+                    const qYearDiff = occurrenceDate.getUTCFullYear() - itemStartDate.getUTCFullYear();
+                    const qMonthDiff = occurrenceDate.getUTCMonth() - itemStartDate.getUTCMonth();
+                    return ((qYearDiff * 12) + qMonthDiff) / 3 + 1;
+                case 'weekly':
+                    return Math.round(diffInDays / 7) + 1;
+                case 'bi-weekly':
+                    return Math.round(diffInDays / 14) + 1;
+                default:
+                    return 1; // For 'one-time' or unknown
+            }
+        } catch (e) {
+            console.error("Error calculating payment number:", e);
+            return null;
+        }
     }
     // === EVENT LISTENERS ===
     gridContentArea.addEventListener('contextmenu', (event) => {

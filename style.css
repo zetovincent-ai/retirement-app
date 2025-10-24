@@ -759,6 +759,13 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
 .btn-link:hover {
     opacity: 0.8;
 }
+/* === Grid Payment Number Style === */
+.payment-number {
+    font-size: 0.8rem;
+    color: var(--secondary-btn-bg); /* Use a muted gray color */
+    font-weight: normal;
+    margin-left: 0.25rem;
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
