@@ -369,19 +369,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const incomeToEdit = isEditMode && Array.isArray(appState.incomes) ? appState.incomes.find(i => i.id === incomeId) : null;
         modalTitle.textContent = isEditMode ? 'Edit Income' : 'Add New Income';
         
-        // Change "Due Day" to "Start Date"
         modalBody.innerHTML = `
             <div class="form-group"><label for="modal-income-type">Type:</label><select id="modal-income-type" required>...</select></div>
             <div class="form-group"><label for="modal-income-name">Description / Name:</label><input type="text" id="modal-income-name" placeholder="e.g., Vincent's TSP" required></div>
             <div class="form-group"><label for="modal-income-interval">Payment Interval:</label><select id="modal-income-interval" required>...</select></div>
             <div class="form-group"><label for="modal-income-amount">Payment Amount:</label><input type="number" id="modal-income-amount" placeholder="1500" min="0" step="0.01" required></div>
             <div class="form-group"><label for="modal-income-date">Payment Start Date:</label><input type="date" id="modal-income-date" required></div>
-        `; // Simplified dropdowns above for brevity
+        `; 
         
-        // Re-add full dropdown options here...
         document.getElementById('modal-income-type').innerHTML = `<option value="">-- Select a Type --</option><option value="Pension">Pension</option><option value="TSP">TSP</option><option value="TSP Supplement">TSP Supplement</option><option value="Social Security">Social Security</option><option value="Investment">Investment Dividend</option><option value="Other">Other</option>`;
-        document.getElementById('modal-income-interval').innerHTML = `<option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option>`;
-
+        document.getElementById('modal-income-interval').innerHTML = `<option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option><option value="one-time">One-time</option>`;
         if (isEditMode && incomeToEdit) {
             document.getElementById('modal-income-type').value = incomeToEdit.type || '';
             document.getElementById('modal-income-name').value = incomeToEdit.name || '';
@@ -463,6 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <option value="quarterly">Quarterly</option>
                     <option value="bi-weekly">Bi-Weekly</option>
                     <option value="weekly">Weekly</option>
+                    <option value="one-time">One-time</option>
                 </select>
             </div>
             <div class="form-group">
@@ -1049,13 +1047,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const monthEnd = new Date(Date.UTC(targetYear, targetMonth + 1, 0, 23, 59, 59, 999));
         
         // Optimization: If the item starts *after* this month ends, skip it.
-        if (itemStartDate > monthEnd) {
+        // (For one-time, we check this *inside* the case)
+        if (item.interval !== 'one-time' && itemStartDate > monthEnd) {
             return [];
         }
 
         const itemStartDayOfMonth = itemStartDate.getUTCDate(); // e.g., 15
 
         switch (item.interval) {
+            case 'one-time':
+                // Check if the single event date is within this month
+                if (itemStartDate >= monthStart && itemStartDate <= monthEnd) {
+                    occurrences.push(itemStartDate);
+                }
+                break;
+
             case 'monthly':
                 // Check if the item's start date is on or before the end of the target month
                 if (itemStartDate <= monthEnd) {
