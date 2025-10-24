@@ -581,8 +581,8 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     background-color: #3498db40;
 }
 .grid-group-onetime .grid-group-header td {
-    color: var(--text-color);
-    background-color: var(--secondary-btn-bg);
+    color: var(--secondary-btn-bg); /* Set text color to gray */
+    /* Background is inherited from .grid-group-header td */
     border-left: 4px solid var(--secondary-btn-bg);
 }
 /* Style the text color for one-time item rows */
