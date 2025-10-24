@@ -117,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const oneTimeExpenses = appState.expenses.filter(i => i.interval === 'one-time');
 
         let finalHTML = '<div class="grid-view-container">';
+        let runningOverallNet = 0; // <-- NEW: Initialize running total *outside* the loop
 
         months.forEach(monthDate => {
             const monthYear = monthDate.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -124,18 +125,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const monthString = monthDate.toISOString().split('T')[0];
 
             // --- Generate Rows for RECURRING items ---
-            // This function now returns an object { html, total }
             const generateRows = (items, type) => {
                 let rowsHTML = '';
                 let hasItems = false;
-                let sectionTotal = 0; // <-- Track total
+                let sectionTotal = 0; 
                 const allOccurrences = [];
 
                 items.forEach(item => {
                     const occurrences = getOccurrencesInMonth(item, monthDate);
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ });
-                        sectionTotal += item.amount; // <-- Add to total
+                        sectionTotal += item.amount; 
                     });
                 });
                 
@@ -169,30 +169,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!hasItems) {
                     rowsHTML = `<tr><td colspan="3">No recurring ${type.toLowerCase()}s this month.</td></tr>`;
                 }
-                return { html: rowsHTML, total: sectionTotal }; // <-- Return object
+                return { html: rowsHTML, total: sectionTotal };
             };
 
             // --- Generate Rows for ONE-TIME items ---
-            // This function now returns an object { html, net }
             const generateOneTimeRows = () => {
                 let rowsHTML = '';
                 let hasItems = false;
-                let totalIncome = 0; // <-- Track one-time income
-                let totalExpense = 0; // <-- Track one-time expense
+                let totalIncome = 0; 
+                let totalExpense = 0; 
                 const allOccurrences = [];
 
                 oneTimeIncomes.forEach(item => {
                     const occurrences = getOccurrencesInMonth(item, monthDate);
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ, type: 'income' });
-                        totalIncome += item.amount; // <-- Add to total
+                        totalIncome += item.amount; 
                     });
                 });
                 oneTimeExpenses.forEach(item => {
                     const occurrences = getOccurrencesInMonth(item, monthDate);
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ, type: 'expense' });
-                        totalExpense += item.amount; // <-- Add to total
+                        totalExpense += item.amount; 
                     });
                 });
                 
@@ -227,8 +226,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!hasItems) {
                     rowsHTML = `<tr><td colspan="3">No one-time items this month.</td></tr>`;
                 }
-                const net = totalIncome - totalExpense; // <-- Calculate net
-                return { html: rowsHTML, net: net }; // <-- Return object
+                const net = totalIncome - totalExpense; 
+                return { html: rowsHTML, net: net }; 
             };
 
 
@@ -238,15 +237,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const oneTimeData = generateOneTimeRows();
             
             // --- Calculate totals ---
-            const grandNetTotal = (incomeData.total - expenseData.total) + oneTimeData.net;
+            const monthlyNetTotal = (incomeData.total - expenseData.total) + oneTimeData.net;
+            runningOverallNet += monthlyNetTotal; // <-- Add this month's net to the running total
             
             // --- Format totals for display ---
             const incomeTotalFormatted = formatCurrency(incomeData.total);
             const expenseTotalFormatted = formatCurrency(expenseData.total);
             const oneTimeNetFormatted = formatCurrency(oneTimeData.net);
-            const grandNetTotalFormatted = formatCurrency(grandNetTotal);
+            const monthlyNetTotalFormatted = formatCurrency(monthlyNetTotal);
+            const overallNetTotalFormatted = formatCurrency(runningOverallNet); // <-- Format the new running total
 
-            // --- Assemble the final table HTML (with NEW TOTAL ROWS) ---
+            // --- Assemble the final table HTML (with TOTALS AT TOP) ---
             finalHTML += `
                 <div class="month-grid-container">
                     <h3 class="month-grid-header">${monthYear}</h3>
@@ -258,6 +259,18 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <th>Amount</th>
                             </tr>
                         </thead>
+                        
+                        <tbody class="grid-grand-total">
+                            <tr class="grid-monthly-net-total-row">
+                                <td colspan="2">MONTHLY NET TOTAL</td>
+                                <td>${monthlyNetTotalFormatted}</td>
+                            </tr>
+                            <tr class="grid-overall-net-total-row">
+                                <td colspan="2">OVERALL NET TOTAL</td>
+                                <td>${overallNetTotalFormatted}</td>
+                            </tr>
+                        </tbody>
+
                         <tbody class="grid-group-income">
                             <tr class="grid-group-header">
                                 <td colspan="3">
@@ -307,13 +320,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             </tr>
                         </tbody>
                         
-                        <tbody class="grid-grand-total">
-                            <tr class="grid-net-total-row">
-                                <td colspan="2">NET TOTAL</td>
-                                <td>${grandNetTotalFormatted}</td>
-                            </tr>
-                        </tbody>
-
                         <tbody class="grid-group-banking">
                             <tr class="grid-group-header">
                                 <td colspan="3">

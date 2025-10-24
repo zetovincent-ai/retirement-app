@@ -637,15 +637,35 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     text-align: right;
     padding-right: 0.75rem;
 }
-.grid-net-total-row td {
+.grid-monthly-net-total-row td {
     font-weight: bold;
-    font-size: 1.1rem; /* A bit bigger */
+    font-size: 1.1rem; 
     color: var(--net-total-color);
-    background-color: var(--background-color); /* Slightly different bg */
-    border-top: 2px solid var(--net-total-color);
-    border-bottom: 2px solid var(--net-total-color);
+    background-color: var(--background-color); 
+    border-bottom: 1px dashed var(--border-color); /* Separator between the two totals */
 }
-.grid-net-total-row td[colspan="2"] {
+.grid-monthly-net-total-row td[colspan="2"] {
+    text-align: right;
+    padding-right: 0.75rem;
+}
+/* Fix for banking "coming soon" row */
+.grid-group-banking tr:last-child td {
+    text-align: left;
+    font-style: italic;
+    color: var(--secondary-btn-bg);
+}
+.grid-grand-total {
+    /* Separates the totals block from the Income block */
+    border-bottom: 1px solid var(--border-color);
+}
+.grid-overall-net-total-row td {
+    font-weight: bold;
+    font-size: 1.1rem; 
+    color: var(--net-total-color);
+    background-color: var(--background-color); 
+    /* No border-bottom here, the tbody has it */
+}
+.grid-overall-net-total-row td[colspan="2"] {
     text-align: right;
     padding-right: 0.75rem;
 }
