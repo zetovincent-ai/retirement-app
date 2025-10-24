@@ -691,7 +691,7 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
 /* Left Panel: Summary */
 #grid-yearly-summary-panel {
     flex-shrink: 0;
-    width: 400px;
+    width: 425px;
     height: 100%;
     overflow-y: auto; /* Allow this panel to scroll vertically */
     border: 1px solid var(--border-color);
