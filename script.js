@@ -129,9 +129,11 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function renderGridView(numberOfMonths, startDate, startingNetTotal = 0) {
         console.log(`Rendering grid view for ${numberOfMonths} months starting from ${startDate.toISOString()} with starting net: ${startingNetTotal}`);
-
-        // Use UTC date from local components for consistent helpers
-        const startOfMonth = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), 1));
+        
+        // --- THIS IS THE FIX ---
+        // Use UTC methods to read the date, avoiding local timezone conversion
+        const startOfMonth = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
+        
         const months = getMonthsToRender(startOfMonth, numberOfMonths);
         
         const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -144,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const oneTimeExpenses = appState.expenses.filter(i => i.interval === 'one-time');
 
         let finalHTML = '<div class="grid-view-container">'; // This container now lives inside #grid-monthly-content
-        let runningOverallNet = startingNetTotal;
+        let runningOverallNet = startingNetTotal; 
 
         months.forEach(monthDate => {
             const monthYear = monthDate.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -244,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 title="Right-click to change status">
                                 <td>${item.name}</td>
                                 <td>${dueDay}</td>
-                                <td>${amount}</td>
+                                Example: <td>${amount}</td>
                             </tr>
                         `;
                     });
@@ -280,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <table class="month-grid-table">
                         <thead>
                             <tr>
-                                <th>Name</th>
+                                Example: <th>Name</th>
                                 <th>Due Day(s)</th>
                                 <th>Amount</th>
                             </tr>
@@ -288,11 +290,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <tbody class="grid-grand-total">
                             <tr class="grid-monthly-net-total-row">
                                 <td colspan="2">MONTHLY NET TOTAL</td>
-                                <td>${monthlyNetTotalFormatted}</td>
+                                Example: <td>${monthlyNetTotalFormatted}</td>
                             </tr>
                             <tr class="grid-overall-net-total-row">
                                 <td colspan="2">OVERALL NET TOTAL</td>
-                                <td>${overallNetTotalFormatted}</td>
+                                Example: <td>${overallNetTotalFormatted}</td>
                             </tr>
                         </tbody>
                         <tbody class="grid-group-income">
@@ -362,8 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         finalHTML += '</div>';
         
-        // --- THIS IS THE KEY CHANGE ---
-        // Render the final HTML into the correct container
+        // This function returns the HTML string to be injected by the caller
         return finalHTML;
     }
     // --- Dark/Light Mode Functions ---
