@@ -110,7 +110,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         const formatDay = date => date.getUTCDate();
 
-        // --- Filter items into recurring and one-time lists ---
         const recurringIncomes = appState.incomes.filter(i => i.interval !== 'one-time');
         const recurringExpenses = appState.expenses.filter(i => i.interval !== 'one-time');
         const oneTimeIncomes = appState.incomes.filter(i => i.interval === 'one-time');
@@ -120,12 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         months.forEach(monthDate => {
             const monthYear = monthDate.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-            
+            // Get the 'YYYY-MM-01' string for this month
+            const monthString = monthDate.toISOString().split('T')[0];
+
             // --- Generate Rows for RECURRING items ---
             const generateRows = (items, type) => {
                 let rowsHTML = '';
                 let hasItems = false;
-                
                 const allOccurrences = [];
                 items.forEach(item => {
                     const occurrences = getOccurrencesInMonth(item, monthDate);
@@ -134,29 +134,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 });
                 allOccurrences.sort((a, b) => a.date.getUTCDate() - b.date.getUTCDate());
-
                 if (allOccurrences.length > 0) {
                     hasItems = true;
                     allOccurrences.forEach(occurrence => {
                         const { item, date } = occurrence;
-                        
                         const statusRecord = findTransactionStatus(item.id, type, date);
                         let statusClass = 'row-pending';
                         if (statusRecord?.status === 'paid') statusClass = 'row-paid';
                         if (statusRecord?.status === 'overdue') statusClass = 'row-overdue';
                         if (statusRecord?.status === 'highlighted') statusClass = 'row-highlighted';
-
                         const dateString = date.toISOString().split('T')[0];
                         const dueDay = formatDay(date);
                         const amount = formatCurrency(item.amount);
-                        
                         rowsHTML += `
                             <tr class="${statusClass}" 
                                 data-item-id="${item.id}" 
                                 data-item-type="${type}" 
                                 data-date="${dateString}"
                                 title="Right-click to change status">
-                                
                                 <td>${item.name}</td>
                                 <td>${dueDay}</td>
                                 <td>${amount}</td>
@@ -164,7 +159,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         `;
                     });
                 }
-                
                 if (!hasItems) {
                     rowsHTML = `<tr><td colspan="3">No recurring ${type.toLowerCase()}s this month.</td></tr>`;
                 }
@@ -175,71 +169,57 @@ document.addEventListener('DOMContentLoaded', () => {
             const generateOneTimeRows = () => {
                 let rowsHTML = '';
                 let hasItems = false;
-                
                 const allOccurrences = [];
-                // Add one-time incomes
                 oneTimeIncomes.forEach(item => {
                     const occurrences = getOccurrencesInMonth(item, monthDate);
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ, type: 'income' });
                     });
                 });
-                // Add one-time expenses
                 oneTimeExpenses.forEach(item => {
                     const occurrences = getOccurrencesInMonth(item, monthDate);
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ, type: 'expense' });
                     });
                 });
-
                 allOccurrences.sort((a, b) => a.date.getUTCDate() - b.date.getUTCDate());
-
                 if (allOccurrences.length > 0) {
                     hasItems = true;
                     allOccurrences.forEach(occurrence => {
                         const { item, date, type } = occurrence;
-                        
                         const statusRecord = findTransactionStatus(item.id, type, date);
                         let statusClass = 'row-pending';
                         if (statusRecord?.status === 'paid') statusClass = 'row-paid';
                         if (statusRecord?.status === 'overdue') statusClass = 'row-overdue';
                         if (statusRecord?.status === 'highlighted') statusClass = 'row-highlighted';
-                        
-                        // Add text color class
                         const typeClass = (type === 'income') ? 'row-income-text' : 'row-expense-text';
-
                         const dateString = date.toISOString().split('T')[0];
                         const dueDay = formatDay(date);
                         const amount = formatCurrency(item.amount);
-                        
                         rowsHTML += `
                             <tr class="${statusClass} ${typeClass}" 
                                 data-item-id="${item.id}" 
                                 data-item-type="${type}" 
                                 data-date="${dateString}"
                                 title="Right-click to change status">
-                                
                                 <td>${item.name}</td>
-                                <td>${dueDay}</td>
+                                G<td>${dueDay}</td>
                                 <td>${amount}</td>
                             </tr>
                         `;
                     });
                 }
-                
                 if (!hasItems) {
                     rowsHTML = `<tr><td colspan="3">No one-time items this month.</td></tr>`;
                 }
                 return rowsHTML;
             };
 
-
-            // --- Generate all row sections ---
             const incomeRows = generateRows(recurringIncomes, 'income');
             const expenseRows = generateRows(recurringExpenses, 'expense');
             const oneTimeRows = generateOneTimeRows();
             
-            // --- Assemble the final table HTML ---
+            // --- Assemble the final table HTML (with new buttons) ---
             finalHTML += `
                 <div class="month-grid-container">
                     <h3 class="month-grid-header">${monthYear}</h3>
@@ -252,19 +232,41 @@ document.addEventListener('DOMContentLoaded', () => {
                             </tr>
                         </thead>
                         <tbody class="grid-group-income">
-                            <tr class="grid-group-header"><td colspan="3">Income</td></tr>
+                            <tr class="grid-group-header">
+                                <td colspan="3">
+                                    <span>Income</span>
+                                    <button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}">+ Add</button>
+                                </td>
+                            </tr>
                             ${incomeRows}
                         </tbody>
                         <tbody class="grid-group-expense">
-                            <tr class="grid-group-header"><td colspan="3">Expenses</td></tr>
+                            <tr class="grid-group-header">
+                                <td colspan="3">
+                                    <span>Expenses</span>
+                                    <button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}">+ Add</button>
+                                </td>
+                            </tr>
                             ${expenseRows}
                         </tbody>
                         <tbody class="grid-group-onetime">
-                            <tr class="grid-group-header"><td colspan="3">One-time</td></tr>
+                            <tr class="grid-group-header">
+                                <td colspan="3">
+                                    <span>One-time</span>
+                                    <div class="grid-header-buttons">
+                                        <button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}" data-interval="one-time">+ Income</button>
+                                        <button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}" data-interval="one-time">+ Expense</button>
+                                    </div>
+                                </td>
+                            </tr>
                             ${oneTimeRows}
                         </tbody>
                         <tbody class="grid-group-banking">
-                            <tr class="grid-group-header"><td colspan="3">Banking</td></tr>
+                            <tr class="grid-group-header">
+                                <td colspan="3">
+                                    <span>Banking</span>
+                                </td>
+                            </tr>
                             <tr>
                                 <td>*Net Totals (Coming Soon)*</td>
                                 <td>-</td>
@@ -431,30 +433,39 @@ document.addEventListener('DOMContentLoaded', () => {
         modalBody.innerHTML = '';
         onSave = null;
     }
-    function showIncomeModal(incomeId) {
+    function showIncomeModal(incomeId, prefillData = null) {
         const isEditMode = incomeId !== undefined;
         const incomeToEdit = isEditMode && Array.isArray(appState.incomes) ? appState.incomes.find(i => i.id === incomeId) : null;
         modalTitle.textContent = isEditMode ? 'Edit Income' : 'Add New Income';
         
+        // Change "Due Day" to "Start Date"
         modalBody.innerHTML = `
             <div class="form-group"><label for="modal-income-type">Type:</label><select id="modal-income-type" required>...</select></div>
             <div class="form-group"><label for="modal-income-name">Description / Name:</label><input type="text" id="modal-income-name" placeholder="e.g., Vincent's TSP" required></div>
             <div class="form-group"><label for="modal-income-interval">Payment Interval:</label><select id="modal-income-interval" required>...</select></div>
             <div class="form-group"><label for="modal-income-amount">Payment Amount:</label><input type="number" id="modal-income-amount" placeholder="1500" min="0" step="0.01" required></div>
             <div class="form-group"><label for="modal-income-date">Payment Start Date:</label><input type="date" id="modal-income-date" required></div>
-        `; 
+        `; // Simplified dropdowns above for brevity
         
-        document.getElementById('modal-income-type').innerHTML = `<option value="">-- Select a Type --</option><option value="Pension">Pension</option><option value="TSP">TSP</option><option value="TSP Supplement">TSP Supplement</option><option value="Social Security">Social Security</option><option value="Investment">Investment Dividend</option><option value="Other">Other</option>`;
+        // Re-add full dropdown options here...
         document.getElementById('modal-income-interval').innerHTML = `<option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option><option value="one-time">One-time</option>`;
+        document.getElementById('modal-income-type').innerHTML = `<option value="">-- Select a Type --</option><option value="Pension">Pension</option><option value="TSP">TSP</option><option value="TSP Supplement">TSP Supplement</option><option value="Social Security">Social Security</option><option value="Investment">Investment Dividend</option><option value="Other">Other</option>`;
+
         if (isEditMode && incomeToEdit) {
+            // --- EDIT MODE ---
             document.getElementById('modal-income-type').value = incomeToEdit.type || '';
             document.getElementById('modal-income-name').value = incomeToEdit.name || '';
             document.getElementById('modal-income-interval').value = incomeToEdit.interval || 'monthly';
             document.getElementById('modal-income-amount').value = incomeToEdit.amount || '';
-            // Populate date field. Assumes start_date is stored as 'YYYY-MM-DD'
             document.getElementById('modal-income-date').value = incomeToEdit.start_date || ''; 
+        } else if (prefillData) {
+            // --- NEW: PRE-FILL MODE (from grid) ---
+            document.getElementById('modal-income-date').value = prefillData.startDate;
+            if (prefillData.interval) {
+                document.getElementById('modal-income-interval').value = prefillData.interval;
+            }
         } else if (!isEditMode) {
-            // Default to today's date for new items
+            // --- DEFAULT ADD MODE (from main button) ---
             document.getElementById('modal-income-date').value = new Date().toISOString().split('T')[0];
         }
 
@@ -470,10 +481,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 name: document.getElementById('modal-income-name').value.trim(),
                 interval: document.getElementById('modal-income-interval').value,
                 amount: parseFloat(document.getElementById('modal-income-amount').value),
-                start_date: startDateValue ? startDateValue : null, 
+                start_date: startDateValue ? startDateValue : null
             };
             
-            // Update validation to check for start_date
             if (!formItem.type || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0 || !formItem.start_date) {
                 alert("Please fill out all fields correctly, including a valid start date.");
                 return;
@@ -489,12 +499,11 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         openModal();
     }
-    function showExpenseModal(expenseId) {
+    function showExpenseModal(expenseId, prefillData = null) {
         const isEditMode = expenseId !== undefined;
         const expenseToEdit = isEditMode && Array.isArray(appState.expenses) ? appState.expenses.find(e => e.id === expenseId) : null;
         modalTitle.textContent = isEditMode ? 'Edit Expense' : 'Add New Expense';
 
-        // Add "Credit Card" category
         modalBody.innerHTML = `
             <div class="form-group">
                 <label for="modal-expense-category">Category:</label>
@@ -506,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <option value="Transport">Transport</option>
                     <option value="Health">Health</option>
                     <option value="Entertainment">Entertainment</option>
-                    <option value="Credit Card">Credit Card</option> {/* New Category */}
+                    <option value="Credit Card">Credit Card</option>
                     <option value="Other">Other</option>
                 </select>
             </div>
@@ -564,63 +573,50 @@ document.addEventListener('DOMContentLoaded', () => {
         const housingSubTypes = `<option value="">-- Select Sub-Type --</option><option value="Rent">Rent</option><option value="Mortgage/Loan">Mortgage/Loan</option><option value="HOA">HOA Dues</option><option value="Other">Other Housing</option>`;
         const transportSubTypes = `<option value="">-- Select Sub-Type --</option><option value="Car Loan">Car Loan</option><option value="Fuel">Fuel</option><option value="Insurance">Insurance</option><option value="Maintenance">Maintenance</option><option value="Other">Other Transport</option>`;
 
-        // --- Function to show/hide/update fields ---
         function toggleAdvancedFields() {
             const category = categorySelect.value;
-            let subType = subTypeSelect.value; // Get current sub-type before potentially changing options
-
-            let showSubTypeDropdown = false; // Flag to control sub-type visibility
+            let subType = subTypeSelect.value;
+            let showSubTypeDropdown = false;
             let showLoan = false;
             let showCC = false;
-
-            // Determine visibility based on Category
             if (category === 'Housing') {
                 showSubTypeDropdown = true;
-                if (subTypeSelect.innerHTML !== housingSubTypes) { subTypeSelect.innerHTML = housingSubTypes; } // Set options if needed
+                if (subTypeSelect.innerHTML !== housingSubTypes) { subTypeSelect.innerHTML = housingSubTypes; }
                 showLoan = (subType === 'Mortgage/Loan');
             } else if (category === 'Transport') {
                 showSubTypeDropdown = true;
-                if (subTypeSelect.innerHTML !== transportSubTypes) { subTypeSelect.innerHTML = transportSubTypes; } // Set options if needed
+                if (subTypeSelect.innerHTML !== transportSubTypes) { subTypeSelect.innerHTML = transportSubTypes; }
                 showLoan = (subType === 'Car Loan');
             } else if (category === 'Credit Card') {
                 showCC = true;
             }
-
-            // Apply visibility
             subTypeContainer.style.display = showSubTypeDropdown ? 'grid' : 'none';
             advancedLoanFields.style.display = showLoan ? 'block' : 'none';
             advancedCCFields.style.display = showCC ? 'block' : 'none';
-
-            // Ensure subType value is valid after options might have changed
             if (showSubTypeDropdown) {
                  const currentOptions = Array.from(subTypeSelect.options).map(opt => opt.value);
                  if (!currentOptions.includes(subType)) {
-                      subTypeSelect.value = ''; // Reset if invalid
+                      subTypeSelect.value = '';
                  } else {
-                      subTypeSelect.value = subType; // Keep if valid
+                      subTypeSelect.value = subType;
                  }
             } else {
-                 subTypeSelect.value = ''; // Hide and reset
+                 subTypeSelect.value = '';
             }
         }
 
-        // --- Add event listeners ---
         categorySelect.addEventListener('change', toggleAdvancedFields);
         subTypeSelect.addEventListener('change', toggleAdvancedFields);
 
-        // --- Pre-populate fields if in Edit Mode ---
         if (isEditMode && expenseToEdit) {
+            // --- EDIT MODE ---
             categorySelect.value = expenseToEdit.category || '';
-            // Populate correct sub-type options *before* setting value
             if (expenseToEdit.category === 'Housing') subTypeSelect.innerHTML = housingSubTypes;
             else if (expenseToEdit.category === 'Transport') subTypeSelect.innerHTML = transportSubTypes;
-            
             document.getElementById('modal-expense-name').value = expenseToEdit.name || '';
             document.getElementById('modal-expense-interval').value = expenseToEdit.interval || 'monthly';
             document.getElementById('modal-expense-amount').value = expenseToEdit.amount || '';
-            // Populate date field
             document.getElementById('modal-expense-date').value = expenseToEdit.start_date || ''; 
-
             if (expenseToEdit.advanced_data) {
                  const advData = expenseToEdit.advanced_data;
                  if ((expenseToEdit.category === 'Housing' || expenseToEdit.category === 'Transport') && advData.item_type) {
@@ -637,25 +633,27 @@ document.addEventListener('DOMContentLoaded', () => {
                       document.getElementById('modal-cc-interest-rate').value = advData.interest_rate ? (advData.interest_rate * 100).toFixed(2) : '';
                  }
             }
-             toggleAdvancedFields(); // Call AFTER populating to ensure correct visibility
-        } else if (isEditMode && !expenseToEdit) { console.error(`Expense item with ID ${expenseId} not found for editing.`); alert("Error: Could not find item to edit."); return; }
-         else {
-             // If adding new, default to today's date
+             toggleAdvancedFields();
+        } else if (prefillData) {
+            // --- NEW: PRE-FILL MODE (from grid) ---
+            document.getElementById('modal-expense-date').value = prefillData.startDate;
+            if (prefillData.interval) {
+                document.getElementById('modal-expense-interval').value = prefillData.interval;
+            }
+            toggleAdvancedFields();
+        } else if (!isEditMode) {
+             // --- DEFAULT ADD MODE (from main button) ---
              document.getElementById('modal-expense-date').value = new Date().toISOString().split('T')[0];
-             toggleAdvancedFields(); // Run once on initial load for Add mode
+             toggleAdvancedFields();
          }
 
-        // --- Define the Save Action ---
         onSave = async () => {
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) { alert("You must be logged in to save data."); return; }
-
             const category = categorySelect.value;
             const subType = subTypeSelect.value;
             const startDateValue = document.getElementById('modal-expense-date').value;
             let advancedData = null;
-
-            // Construct advancedData based on Category and Sub-Type
             if ((category === 'Housing' || category === 'Transport') && subType) {
                  advancedData = { item_type: subType };
                  if (subType === 'Mortgage/Loan' || subType === 'Car Loan') {
@@ -675,39 +673,30 @@ document.addEventListener('DOMContentLoaded', () => {
                  if (statementDayInput) advancedData.statement_day = parseInt(statementDayInput);
                  if (rateInput) advancedData.interest_rate = parseFloat(rateInput) / 100.0;
             }
-
             const formItem = {
                 user_id: user.id,
                 category: category,
                 name: document.getElementById('modal-expense-name').value.trim(),
                 interval: document.getElementById('modal-expense-interval').value,
                 amount: parseFloat(document.getElementById('modal-expense-amount').value),
-                start_date: startDateValue ? startDateValue : null, 
+                start_date: startDateValue ? startDateValue : null,
                 advanced_data: advancedData
             };
-
-            // *** CORRECTED VALIDATION LOGIC ***
-            // Check base fields first
             if (!formItem.category || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0 || !formItem.start_date) {
                  alert("Please fill out required fields (Category, Name, Amount, Start Date).");
                  return;
             }
-            // Check sub-type requirement specifically for Housing and Transport
             if ((category === 'Housing' || category === 'Transport') && !subType) {
                  alert(`Please select a Sub-Type for the ${category} category.`);
                  return;
             }
-            // Add validation for CC statement day
             if (advancedData && advancedData.item_type === 'credit_card' && advancedData.statement_day && (advancedData.statement_day < 1 || advancedData.statement_day > 31)) {
                  alert("Statement Closing Day must be between 1 and 31.");
                  return;
             }
-            // Add other advanced field validations if needed (e.g., rate > 0?)
-
             let { error } = isEditMode
                 ? await supabaseClient.from('expenses').update(formItem).eq('id', expenseId)
                 : await supabaseClient.from('expenses').insert([formItem]).select();
-
             if (error) { console.error("Error saving expense:", error); alert(`Error saving expense: ${error.message}`); }
             else { await fetchData(); }
             closeModal();
@@ -1262,6 +1251,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     // === EVENT LISTENERS ===
+    gridContentArea.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-action="add-grid-item"]');
+        if (!button) return; // Not our button
+
+        // Construct the prefill data from the button's attributes
+        const prefillData = {
+            startDate: button.dataset.date,
+            interval: button.dataset.interval || null // Will be null or 'one-time'
+        };
+
+        const type = button.dataset.type;
+
+        // Call the correct modal
+        if (type === 'income') {
+            showIncomeModal(undefined, prefillData);
+        } else if (type === 'expense') {
+            showExpenseModal(undefined, prefillData);
+        }
+    });
     gridContentArea.addEventListener('contextmenu', (event) => {
         event.preventDefault(); // Stop the default right-click menu
         

@@ -594,6 +594,33 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     color: var(--expense-total-color);
     font-weight: 500;
 }
+/* === Grid Header Button Styles === */
+/* Make header TD a flex container */
+.grid-group-header td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+/* A container for the two buttons in "One-time" */
+.grid-header-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+/* Style for the new buttons */
+.btn-grid-add {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: 500;
+}
+.btn-grid-add:hover {
+    background-color: var(--list-item-bg);
+    border-color: var(--text-color);
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
