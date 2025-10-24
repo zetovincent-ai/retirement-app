@@ -146,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         let statusClass = 'row-pending'; // default
                         if (statusRecord?.status === 'paid') statusClass = 'row-paid';
                         if (statusRecord?.status === 'overdue') statusClass = 'row-overdue';
+                        if (statusRecord?.status === 'highlighted') statusClass = 'row-highlighted';
 
                         // Get data attributes for the click handler
                         const dateString = date.toISOString().split('T')[0];

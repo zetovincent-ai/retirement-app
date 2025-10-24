@@ -542,6 +542,7 @@ main.dashboard-expanded #expanded-dashboard-content {
 }
 .context-menu li[data-status="paid"]:hover { color: var(--income-total-color); }
 .context-menu li[data-status="overdue"]:hover { color: var(--expense-total-color); }
+.context-menu li[data-status="highlighted"]:hover { color: #3498db; }
 /* === Grid Row Status Styles === */
 .month-grid-table tr.row-paid {
     background-color: #27ae6020; /* Faint green */
@@ -566,6 +567,18 @@ body.dark-mode .month-grid-table tr.row-overdue {
 }
 body.dark-mode .month-grid-table tr.row-overdue:hover {
     background-color: #f5656540;
+}
+.month-grid-table tr.row-highlighted {
+    background-color: #3498db20; /* Faint blue */
+}
+.month-grid-table tr.row-highlighted:hover {
+    background-color: #3498db40; /* Stronger blue on hover */
+}
+body.dark-mode .month-grid-table tr.row-highlighted {
+    background-color: #3498db20;
+}
+body.dark-mode .month-grid-table tr.row-highlighted:hover {
+    background-color: #3498db40;
 }
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
