@@ -110,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         const formatDay = date => date.getUTCDate();
 
+        // --- Filter items into recurring and one-time lists ---
         const recurringIncomes = appState.incomes.filter(i => i.interval !== 'one-time');
         const recurringExpenses = appState.expenses.filter(i => i.interval !== 'one-time');
         const oneTimeIncomes = appState.incomes.filter(i => i.interval === 'one-time');
@@ -196,14 +197,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         const dateString = date.toISOString().split('T')[0];
                         const dueDay = formatDay(date);
                         const amount = formatCurrency(item.amount);
+                        
                         rowsHTML += `
                             <tr class="${statusClass} ${typeClass}" 
                                 data-item-id="${item.id}" 
                                 data-item-type="${type}" 
                                 data-date="${dateString}"
                                 title="Right-click to change status">
+                                
                                 <td>${item.name}</td>
-                                G<td>${dueDay}</td>
+                                <td>${dueDay}</td>
                                 <td>${amount}</td>
                             </tr>
                         `;
@@ -215,6 +218,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return rowsHTML;
             };
 
+
+            // --- Generate all row sections ---
             const incomeRows = generateRows(recurringIncomes, 'income');
             const expenseRows = generateRows(recurringExpenses, 'expense');
             const oneTimeRows = generateOneTimeRows();
@@ -235,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <tr class="grid-group-header">
                                 <td colspan="3">
                                     <span>Income</span>
-                                    <button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}">+ Add</button>
+                                    <button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}">+ Add</R>
                                 </td>
                             </tr>
                             ${incomeRows}
