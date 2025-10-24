@@ -110,45 +110,42 @@ document.addEventListener('DOMContentLoaded', () => {
         const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         const formatDay = date => date.getUTCDate();
 
+        // --- Filter items into recurring and one-time lists ---
+        const recurringIncomes = appState.incomes.filter(i => i.interval !== 'one-time');
+        const recurringExpenses = appState.expenses.filter(i => i.interval !== 'one-time');
+        const oneTimeIncomes = appState.incomes.filter(i => i.interval === 'one-time');
+        const oneTimeExpenses = appState.expenses.filter(i => i.interval === 'one-time');
+
         let finalHTML = '<div class="grid-view-container">';
 
         months.forEach(monthDate => {
             const monthYear = monthDate.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
             
-            // --- Generate Rows for a single type (Income/Expense) ---
+            // --- Generate Rows for RECURRING items ---
             const generateRows = (items, type) => {
                 let rowsHTML = '';
                 let hasItems = false;
                 
-                // 1. Create a sorted list of all individual occurrences for this month
                 const allOccurrences = [];
                 items.forEach(item => {
                     const occurrences = getOccurrencesInMonth(item, monthDate);
                     occurrences.forEach(occ => {
-                        allOccurrences.push({
-                            item: item,
-                            date: occ
-                        });
+                        allOccurrences.push({ item: item, date: occ });
                     });
                 });
-
-                // Sort all occurrences by date
                 allOccurrences.sort((a, b) => a.date.getUTCDate() - b.date.getUTCDate());
 
-                // 2. Generate HTML for each row
                 if (allOccurrences.length > 0) {
                     hasItems = true;
                     allOccurrences.forEach(occurrence => {
                         const { item, date } = occurrence;
                         
-                        // Find the status and set a class
                         const statusRecord = findTransactionStatus(item.id, type, date);
-                        let statusClass = 'row-pending'; // default
+                        let statusClass = 'row-pending';
                         if (statusRecord?.status === 'paid') statusClass = 'row-paid';
                         if (statusRecord?.status === 'overdue') statusClass = 'row-overdue';
                         if (statusRecord?.status === 'highlighted') statusClass = 'row-highlighted';
 
-                        // Get data attributes for the click handler
                         const dateString = date.toISOString().split('T')[0];
                         const dueDay = formatDay(date);
                         const amount = formatCurrency(item.amount);
@@ -169,14 +166,80 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 if (!hasItems) {
-                    rowsHTML = `<tr><td colspan="3">No ${type.toLowerCase()}s this month.</td></tr>`;
+                    rowsHTML = `<tr><td colspan="3">No recurring ${type.toLowerCase()}s this month.</td></tr>`;
                 }
                 return rowsHTML;
             };
 
-            const incomeRows = generateRows(appState.incomes, 'income');
-            const expenseRows = generateRows(appState.expenses, 'expense');
+            // --- Generate Rows for ONE-TIME items ---
+            const generateOneTimeRows = () => {
+                let rowsHTML = '';
+                let hasItems = false;
+                
+                const allOccurrences = [];
+                // Add one-time incomes
+                oneTimeIncomes.forEach(item => {
+                    const occurrences = getOccurrencesInMonth(item, monthDate);
+                    occurrences.forEach(occ => {
+                        allOccurrences.push({ item: item, date: occ, type: 'income' });
+                    });
+                });
+                // Add one-time expenses
+                oneTimeExpenses.forEach(item => {
+                    const occurrences = getOccurrencesInMonth(item, monthDate);
+                    occurrences.forEach(occ => {
+                        allOccurrences.push({ item: item, date: occ, type: 'expense' });
+                    });
+                });
+
+                allOccurrences.sort((a, b) => a.date.getUTCDate() - b.date.getUTCDate());
+
+                if (allOccurrences.length > 0) {
+                    hasItems = true;
+                    allOccurrences.forEach(occurrence => {
+                        const { item, date, type } = occurrence;
+                        
+                        const statusRecord = findTransactionStatus(item.id, type, date);
+                        let statusClass = 'row-pending';
+                        if (statusRecord?.status === 'paid') statusClass = 'row-paid';
+                        if (statusRecord?.status === 'overdue') statusClass = 'row-overdue';
+                        if (statusRecord?.status === 'highlighted') statusClass = 'row-highlighted';
+                        
+                        // Add text color class
+                        const typeClass = (type === 'income') ? 'row-income-text' : 'row-expense-text';
+
+                        const dateString = date.toISOString().split('T')[0];
+                        const dueDay = formatDay(date);
+                        const amount = formatCurrency(item.amount);
+                        
+                        rowsHTML += `
+                            <tr class="${statusClass} ${typeClass}" 
+                                data-item-id="${item.id}" 
+                                data-item-type="${type}" 
+                                data-date="${dateString}"
+                                title="Right-click to change status">
+                                
+                                <td>${item.name}</td>
+                                <td>${dueDay}</td>
+                                <td>${amount}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                if (!hasItems) {
+                    rowsHTML = `<tr><td colspan="3">No one-time items this month.</td></tr>`;
+                }
+                return rowsHTML;
+            };
+
+
+            // --- Generate all row sections ---
+            const incomeRows = generateRows(recurringIncomes, 'income');
+            const expenseRows = generateRows(recurringExpenses, 'expense');
+            const oneTimeRows = generateOneTimeRows();
             
+            // --- Assemble the final table HTML ---
             finalHTML += `
                 <div class="month-grid-container">
                     <h3 class="month-grid-header">${monthYear}</h3>
@@ -195,6 +258,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <tbody class="grid-group-expense">
                             <tr class="grid-group-header"><td colspan="3">Expenses</td></tr>
                             ${expenseRows}
+                        </tbody>
+                        <tbody class="grid-group-onetime">
+                            <tr class="grid-group-header"><td colspan="3">One-time</td></tr>
+                            ${oneTimeRows}
                         </tbody>
                         <tbody class="grid-group-banking">
                             <tr class="grid-group-header"><td colspan="3">Banking</td></tr>

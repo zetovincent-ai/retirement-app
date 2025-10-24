@@ -580,6 +580,20 @@ body.dark-mode .month-grid-table tr.row-highlighted {
 body.dark-mode .month-grid-table tr.row-highlighted:hover {
     background-color: #3498db40;
 }
+.grid-group-onetime .grid-group-header td {
+    color: var(--text-color);
+    background-color: var(--secondary-btn-bg);
+    border-left: 4px solid var(--secondary-btn-bg);
+}
+/* Style the text color for one-time item rows */
+.month-grid-table tr.row-income-text td {
+    color: var(--income-total-color);
+    font-weight: 500;
+}
+.month-grid-table tr.row-expense-text td {
+    color: var(--expense-total-color);
+    font-weight: 500;
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
