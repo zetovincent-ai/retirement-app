@@ -388,8 +388,6 @@ main.dashboard-expanded #summary-chart-container {
 main.dashboard-expanded #expanded-dashboard-content {
     display: flex; /* Use flexbox for overall layout */
     flex-direction: column; /* Stack tabs, controls, content vertically */
-    height: 100%; /* Take full height of the section */
-    overflow: hidden; /* Prevent content spill */
 }
 .dashboard-tabs {
     display: flex;
