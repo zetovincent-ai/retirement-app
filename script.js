@@ -654,10 +654,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const subTypeSelect = document.getElementById('modal-expense-sub-type');
         const advancedLoanFields = document.getElementById('advanced-loan-fields');
         const advancedCCFields = document.getElementById('advanced-cc-fields');
+        
+        // --- NEW: Get refs for auto-calculation ---
+        const paymentAmountInput = document.getElementById('modal-expense-amount');
+        const loanInterestInput = document.getElementById('modal-loan-interest-rate');
+        const loanTermInput = document.getElementById('modal-loan-total-payments');
+        const loanPrincipalInput = document.getElementById('modal-loan-original-principal');
+
 
         // --- Define Sub-Type Options ---
         const housingSubTypes = `<option value="">-- Select Sub-Type --</option><option value="Rent">Rent</option><option value="Mortgage/Loan">Mortgage/Loan</option><option value="HOA">HOA Dues</option><option value="Other">Other Housing</option>`;
         const transportSubTypes = `<option value="">-- Select Sub-Type --</option><option value="Car Loan">Car Loan</option><option value="Fuel">Fuel</option><option value="Insurance">Insurance</option><option value="Maintenance">Maintenance</option><option value="Other">Other Transport</option>`;
+
+        // --- NEW: Helper to calculate payment ---
+        function calculateAndSetPayment() {
+            const principal = parseFloat(loanPrincipalInput.value);
+            const rate = parseFloat(loanInterestInput.value) / 100.0; // Convert % to decimal
+            const term = parseInt(loanTermInput.value);
+
+            // Only calculate if all fields are valid
+            if (principal > 0 && rate >= 0 && term > 0) {
+                const amortization = calculateAmortization(principal, rate, term);
+                if (amortization) {
+                    paymentAmountInput.value = amortization.monthlyPayment.toFixed(2);
+                    paymentAmountInput.readOnly = true;
+                }
+            } else {
+                // If fields are invalid or empty, unlock the payment field
+                paymentAmountInput.readOnly = false;
+            }
+        }
 
         function toggleAdvancedFields() {
             const category = categorySelect.value;
@@ -689,10 +715,20 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                  subTypeSelect.value = '';
             }
+            
+            // Re-run calculation in case fields were hidden/shown
+            calculateAndSetPayment(); 
         }
 
+        // --- Add event listeners ---
         categorySelect.addEventListener('change', toggleAdvancedFields);
         subTypeSelect.addEventListener('change', toggleAdvancedFields);
+        
+        // --- NEW: Add listeners to loan fields ---
+        loanInterestInput.addEventListener('input', calculateAndSetPayment);
+        loanTermInput.addEventListener('input', calculateAndSetPayment);
+        loanPrincipalInput.addEventListener('input', calculateAndSetPayment);
+
 
         if (isEditMode && expenseToEdit) {
             // --- EDIT MODE ---
@@ -720,6 +756,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  }
             }
              toggleAdvancedFields();
+             // calculateAndSetPayment(); // Already called by toggleAdvancedFields
         } else if (prefillData) {
             // --- NEW: PRE-FILL MODE (from grid) ---
             document.getElementById('modal-expense-date').value = prefillData.startDate;
@@ -734,6 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
          }
 
         onSave = async () => {
+            // ... (onSave function remains unchanged) ...
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) { alert("You must be logged in to save data."); return; }
             const category = categorySelect.value;
@@ -1370,6 +1408,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!itemStartDate) return; // Skip items without a start date
             
             const itemStartYear = itemStartDate.getUTCFullYear();
+            const itemStartMonth = itemStartDate.getUTCMonth(); // 0-11
 
             // Item hasn't started yet, so it contributes 0
             if (year < itemStartYear) {
@@ -1404,11 +1443,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     amountPerYear = 0;
             }
 
-            // Special handling for the first year
+            // Special handling for the item's first year
             if (year === itemStartYear) {
                 // Prorate the first year based on the start month
-                const startMonth = itemStartDate.getUTCMonth(); // 0 (Jan) - 11 (Dec)
-                const monthsRemaining = 12 - startMonth;
+                const monthsRemaining = 12 - itemStartMonth;
                 
                 switch (item.interval) {
                     case 'monthly':
@@ -1420,7 +1458,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     case 'quarterly':
                         // Count how many quarters are left
                         let quarters = 0;
-                        for (let m = startMonth; m < 12; m += 3) {
+                        for (let m = itemStartMonth; m < 12; m += 3) {
                             quarters++;
                         }
                         amountPerYear = item.amount * quarters;
@@ -1438,27 +1476,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
-            // Handle loan payoffs for amortization
+            // --- CORRECTED LOAN PAYOFF LOGIC ---
             if (item.advanced_data && (item.advanced_data.item_type === 'Mortgage/Loan' || item.advanced_data.item_type === 'Car Loan')) {
                 const totalPayments = item.advanced_data.total_payments; // in months
                 if (totalPayments) {
-                    const totalYears = totalPayments / 12;
-                    const payoffYear = itemStartYear + Math.floor(totalYears);
+                    // Calculate the exact payoff date
+                    const payoffDate = new Date(itemStartDate.getTime());
+                    payoffDate.setUTCMonth(itemStartDate.getUTCMonth() + totalPayments);
+
+                    const payoffYear = payoffDate.getUTCFullYear();
+                    const payoffMonth = payoffDate.getUTCMonth(); // 0-11
                     
                     if (year > payoffYear) {
                         amountPerYear = 0; // Loan is paid off
                     } else if (year === payoffYear) {
                         // Prorate the final year
-                        const lastMonth = (totalPayments % 12) || 12; // 0 becomes 12 (Dec)
-                        const monthsInLastYear = lastMonth;
+                        // payoffMonth is 0-indexed, so 0 (Jan) means 1 month of payment.
+                        const monthsInLastYear = payoffMonth + 1; 
 
                          switch (item.interval) {
                             case 'monthly':
-                                amountPerYear = item.amount * monthsInLastYear;
+                                // If it also started this year, don't double-dip proration
+                                // Use the smaller of the two partial year values
+                                const firstYearMonths = 12 - itemStartMonth;
+                                amountPerYear = item.amount * (year === itemStartYear ? Math.min(monthsInLastYear, firstYearMonths) : monthsInLastYear);
                                 break;
                             // Add other intervals if loans can be non-monthly
                             default:
-                                amountPerYear = item.amount * monthsInLastYear; 
+                                // Fallback for safety
+                                amountPerYear = item.amount * (year === itemStartYear ? Math.min(monthsInLastYear, 12 - itemStartMonth) : monthsInLastYear);
                          }
                     }
                 }
