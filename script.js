@@ -124,17 +124,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const monthString = monthDate.toISOString().split('T')[0];
 
             // --- Generate Rows for RECURRING items ---
+            // This function now returns an object { html, total }
             const generateRows = (items, type) => {
                 let rowsHTML = '';
                 let hasItems = false;
+                let sectionTotal = 0; // <-- Track total
                 const allOccurrences = [];
+
                 items.forEach(item => {
                     const occurrences = getOccurrencesInMonth(item, monthDate);
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ });
+                        sectionTotal += item.amount; // <-- Add to total
                     });
                 });
+                
                 allOccurrences.sort((a, b) => a.date.getUTCDate() - b.date.getUTCDate());
+
                 if (allOccurrences.length > 0) {
                     hasItems = true;
                     allOccurrences.forEach(occurrence => {
@@ -163,27 +169,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!hasItems) {
                     rowsHTML = `<tr><td colspan="3">No recurring ${type.toLowerCase()}s this month.</td></tr>`;
                 }
-                return rowsHTML;
+                return { html: rowsHTML, total: sectionTotal }; // <-- Return object
             };
 
             // --- Generate Rows for ONE-TIME items ---
+            // This function now returns an object { html, net }
             const generateOneTimeRows = () => {
                 let rowsHTML = '';
                 let hasItems = false;
+                let totalIncome = 0; // <-- Track one-time income
+                let totalExpense = 0; // <-- Track one-time expense
                 const allOccurrences = [];
+
                 oneTimeIncomes.forEach(item => {
                     const occurrences = getOccurrencesInMonth(item, monthDate);
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ, type: 'income' });
+                        totalIncome += item.amount; // <-- Add to total
                     });
                 });
                 oneTimeExpenses.forEach(item => {
                     const occurrences = getOccurrencesInMonth(item, monthDate);
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ, type: 'expense' });
+                        totalExpense += item.amount; // <-- Add to total
                     });
                 });
+                
                 allOccurrences.sort((a, b) => a.date.getUTCDate() - b.date.getUTCDate());
+
                 if (allOccurrences.length > 0) {
                     hasItems = true;
                     allOccurrences.forEach(occurrence => {
@@ -197,14 +211,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         const dateString = date.toISOString().split('T')[0];
                         const dueDay = formatDay(date);
                         const amount = formatCurrency(item.amount);
-                        
                         rowsHTML += `
                             <tr class="${statusClass} ${typeClass}" 
                                 data-item-id="${item.id}" 
                                 data-item-type="${type}" 
                                 data-date="${dateString}"
                                 title="Right-click to change status">
-                                
                                 <td>${item.name}</td>
                                 <td>${dueDay}</td>
                                 <td>${amount}</td>
@@ -215,15 +227,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!hasItems) {
                     rowsHTML = `<tr><td colspan="3">No one-time items this month.</td></tr>`;
                 }
-                return rowsHTML;
+                const net = totalIncome - totalExpense; // <-- Calculate net
+                return { html: rowsHTML, net: net }; // <-- Return object
             };
 
-            // --- Generate all row sections ---
-            const incomeRows = generateRows(recurringIncomes, 'income');
-            const expenseRows = generateRows(recurringExpenses, 'expense');
-            const oneTimeRows = generateOneTimeRows();
+
+            // --- Generate all row sections and get data ---
+            const incomeData = generateRows(recurringIncomes, 'income');
+            const expenseData = generateRows(recurringExpenses, 'expense');
+            const oneTimeData = generateOneTimeRows();
             
-            // --- Assemble the final table HTML (with FIXED headers) ---
+            // --- Calculate totals ---
+            const grandNetTotal = (incomeData.total - expenseData.total) + oneTimeData.net;
+            
+            // --- Format totals for display ---
+            const incomeTotalFormatted = formatCurrency(incomeData.total);
+            const expenseTotalFormatted = formatCurrency(expenseData.total);
+            const oneTimeNetFormatted = formatCurrency(oneTimeData.net);
+            const grandNetTotalFormatted = formatCurrency(grandNetTotal);
+
+            // --- Assemble the final table HTML (with NEW TOTAL ROWS) ---
             finalHTML += `
                 <div class="month-grid-container">
                     <h3 class="month-grid-header">${monthYear}</h3>
@@ -244,7 +267,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                 </td>
                             </tr>
-                            ${incomeRows}
+                            ${incomeData.html}
+                            <tr class="grid-total-row">
+                                <td colspan="2">Total Income</td>
+                                <td>${incomeTotalFormatted}</td>
+                            </tr>
                         </tbody>
                         <tbody class="grid-group-expense">
                             <tr class="grid-group-header">
@@ -255,7 +282,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                 </td>
                             </tr>
-                            ${expenseRows}
+                            ${expenseData.html}
+                            <tr class="grid-total-row">
+                                <td colspan="2">Total Expenses</td>
+                                <td>${expenseTotalFormatted}</td>
+                            </tr>
                         </tbody>
                         <tbody class="grid-group-onetime">
                             <tr class="grid-group-header">
@@ -269,20 +300,30 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                 </td>
                             </tr>
-                            ${oneTimeRows}
+                            ${oneTimeData.html}
+                            <tr class="grid-total-row">
+                                <td colspan="2">One-time Net</td>
+                                <td>${oneTimeNetFormatted}</td>
+                            </tr>
                         </tbody>
+                        
+                        <tbody class="grid-grand-total">
+                            <tr class="grid-net-total-row">
+                                <td colspan="2">NET TOTAL</td>
+                                <td>${grandNetTotalFormatted}</td>
+                            </tr>
+                        </tbody>
+
                         <tbody class="grid-group-banking">
                             <tr class="grid-group-header">
                                 <td colspan="3">
                                     <div class="grid-header-content">
                                         <span>Banking</span>
-                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                             <tr>
-                                <td>*Net Totals (Coming Soon)*</td>
-                                <td>-</td>
-                                <td>-</td>
+                                <td colspan="3">*Net Totals (Coming Soon)*</td>
                             </tr>
                         </tbody>
                     </table>

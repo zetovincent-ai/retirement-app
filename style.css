@@ -627,6 +627,34 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     background-color: var(--list-item-bg);
     border-color: var(--text-color);
 }
+.grid-total-row td {
+    font-weight: bold;
+    background-color: var(--list-item-bg);
+    border-top: 1px solid var(--border-color);
+}
+/* Make Total label span 2 cols and be right-aligned */
+.grid-total-row td[colspan="2"] {
+    text-align: right;
+    padding-right: 0.75rem;
+}
+.grid-net-total-row td {
+    font-weight: bold;
+    font-size: 1.1rem; /* A bit bigger */
+    color: var(--net-total-color);
+    background-color: var(--background-color); /* Slightly different bg */
+    border-top: 2px solid var(--net-total-color);
+    border-bottom: 2px solid var(--net-total-color);
+}
+.grid-net-total-row td[colspan="2"] {
+    text-align: right;
+    padding-right: 0.75rem;
+}
+/* Fix for banking "coming soon" row */
+.grid-group-banking tr:last-child td {
+    text-align: left;
+    font-style: italic;
+    color: var(--secondary-btn-bg);
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
