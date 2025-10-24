@@ -597,9 +597,15 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
 /* === Grid Header Button Styles === */
 /* Make header TD a flex container */
 .grid-group-header td {
+    font-weight: bold;
+    font-size: 1.1rem;
+    background-color: var(--list-item-bg);
+}
+.grid-header-content {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 100%; 
 }
 /* A container for the two buttons in "One-time" */
 .grid-header-buttons {

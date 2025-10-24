@@ -218,13 +218,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 return rowsHTML;
             };
 
-
             // --- Generate all row sections ---
             const incomeRows = generateRows(recurringIncomes, 'income');
             const expenseRows = generateRows(recurringExpenses, 'expense');
             const oneTimeRows = generateOneTimeRows();
             
-            // --- Assemble the final table HTML (with new buttons) ---
+            // --- Assemble the final table HTML (with FIXED headers) ---
             finalHTML += `
                 <div class="month-grid-container">
                     <h3 class="month-grid-header">${monthYear}</h3>
@@ -239,8 +238,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <tbody class="grid-group-income">
                             <tr class="grid-group-header">
                                 <td colspan="3">
-                                    <span>Income</span>
-                                    <button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}">+ Add</R>
+                                    <div class="grid-header-content">
+                                        <span>Income</span>
+                                        <button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}">+ Add</button>
+                                    </div>
                                 </td>
                             </tr>
                             ${incomeRows}
@@ -248,8 +249,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <tbody class="grid-group-expense">
                             <tr class="grid-group-header">
                                 <td colspan="3">
-                                    <span>Expenses</span>
-                                    <button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}">+ Add</button>
+                                    <div class="grid-header-content">
+                                        <span>Expenses</span>
+                                        <button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}">+ Add</button>
+                                    </div>
                                 </td>
                             </tr>
                             ${expenseRows}
@@ -257,10 +260,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <tbody class="grid-group-onetime">
                             <tr class="grid-group-header">
                                 <td colspan="3">
-                                    <span>One-time</span>
-                                    <div class="grid-header-buttons">
-                                        <button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}" data-interval="one-time">+ Income</button>
-                                        <button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}" data-interval="one-time">+ Expense</button>
+                                    <div class="grid-header-content">
+                                        <span>One-time</span>
+                                        <div class="grid-header-buttons">
+                                            <button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}" data-interval="one-time">+ Income</button>
+                                            <button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}" data-interval="one-time">+ Expense</button>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -269,7 +274,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <tbody class="grid-group-banking">
                             <tr class="grid-group-header">
                                 <td colspan="3">
-                                    <span>Banking</span>
+                                    <div class="grid-header-content">
+                                        <span>Banking</span>
+                                        </div>
                                 </td>
                             </tr>
                             <tr>
