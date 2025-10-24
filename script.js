@@ -125,10 +125,11 @@ document.addEventListener('DOMContentLoaded', () => {
      * Renders the 2-month or 6-month grid view.
      * @param {number} numberOfMonths - The number of months to show.
      * @param {Date} startDate - The date to start the grid from.
+     * @param {number} [startingNetTotal=0] - The starting net total to carry over.
      */
-    function renderGridView(numberOfMonths, startDate) {
-        console.log(`Rendering grid view for ${numberOfMonths} months starting from ${startDate.toISOString()}`);
-        
+    function renderGridView(numberOfMonths, startDate, startingNetTotal = 0) {
+        console.log(`Rendering grid view for ${numberOfMonths} months starting from ${startDate.toISOString()} with starting net: ${startingNetTotal}`);
+
         // Use UTC date from local components for consistent helpers
         const startOfMonth = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), 1));
         const months = getMonthsToRender(startOfMonth, numberOfMonths);
@@ -143,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const oneTimeExpenses = appState.expenses.filter(i => i.interval === 'one-time');
 
         let finalHTML = '<div class="grid-view-container">'; // This container now lives inside #grid-monthly-content
-        let runningOverallNet = 0; 
+        let runningOverallNet = startingNetTotal;
 
         months.forEach(monthDate => {
             const monthYear = monthDate.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -1644,14 +1645,25 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 3. Handle click on a "Year" button (btn-link)
         if (target.classList.contains('btn-link') && target.dataset.year) {
-            const year = parseInt(target.dataset.year, 10);
-            if (isNaN(year)) return;
+            const clickedYear = parseInt(target.dataset.year, 10);
+            if (isNaN(clickedYear)) return;
             
-            // Create a start date for Jan 1 of that year
-            const startDate = new Date(Date.UTC(year, 0, 1));
+            // --- NEW: Calculate the starting net total from all *previous* years ---
+            let startingNetTotal = 0;
+            const startYear = new Date().getFullYear();
             
-            // Clear the detail panel and render the 12-month grid
-            gridDetailContent.innerHTML = renderGridView(12, startDate); // Pass 12 months and the start date
+            for (let y = startYear; y < clickedYear; y++) {
+                const yearIncome = calculateYearlyTotals(appState.incomes, y);
+                const yearExpense = calculateYearlyTotals(appState.expenses, y);
+                startingNetTotal += (yearIncome - yearExpense);
+            }
+            // --- END NEW CALCULATION ---
+            
+            // Create a start date for Jan 1 of the *clicked* year
+            const startDate = new Date(Date.UTC(clickedYear, 0, 1));
+            
+            // Clear the detail panel and render the 12-month grid, passing the starting total
+            gridDetailContent.innerHTML = renderGridView(12, startDate, startingNetTotal); 
             
             return; 
         }
