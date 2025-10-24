@@ -50,6 +50,7 @@
                     <div class="view-group" data-tab-group="grids">
                         <button class="view-btn active" data-view="2m">2 Month</button>
                         <button class="view-btn" data-view="6m">6 Month</button>
+                        <button class="view-btn" data-view="yearly">Yearly Summary</button> </div>
                     </div>
                     <div class="view-group" data-tab-group="charts" style="display: none;">
                          <button class="view-btn active" data-view="expensePie">Expenses</button>
@@ -57,7 +58,17 @@
                 </div>
                 <div class="dashboard-content-area">
                     <div id="grid-content" class="tab-content active">
-                        Grid content will go here...
+                        <div id="grid-monthly-content" class="grid-layout-container" style="display: none;">
+                            </div>
+                        
+                        <div id="grid-yearly-content" class="grid-layout-container" style="display: none;">
+                            <div id="grid-yearly-summary-panel">
+                                Yearly Summary Panel
+                            </div>
+                            <div id="grid-detail-content">
+                                Detail Panel
+                            </div>
+                        </div>
                     </div>
                     <div id="chart-content" class="tab-content">
                          <div class="chart-container">

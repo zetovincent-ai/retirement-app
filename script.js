@@ -44,6 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const chartViewButtons = document.querySelectorAll('.view-group[data-tab-group="charts"] .view-btn');
     const tabContents = document.querySelectorAll('.tab-content');
     const gridContentArea = document.getElementById('grid-content');
+    const gridMonthlyContent = document.getElementById('grid-monthly-content');
+    const gridYearlyContent = document.getElementById('grid-yearly-content');
+    const gridYearlySummaryPanel = document.getElementById('grid-yearly-summary-panel');
+    const gridDetailContent = document.getElementById('grid-detail-content');
     const chartContentArea = document.getElementById('chart-content');
     const expandedExpenseChartCanvas = document.getElementById('expanded-expense-chart'); 
     const expandedChartContainer = document.getElementById('expanded-expense-chart').parentElement;
@@ -80,6 +84,16 @@ document.addEventListener('DOMContentLoaded', () => {
         gridViewButtons.forEach(btn => {
             btn.classList.toggle('active', btn.dataset.view === viewId);
         });
+
+        // --- NEW: Show/Hide the correct grid layout container ---
+        if (viewId === 'yearly') {
+            gridMonthlyContent.style.display = 'none';
+            gridYearlyContent.style.display = 'flex'; // Use 'flex' for the left/right layout
+        } else {
+            gridMonthlyContent.style.display = 'flex'; // Use 'flex' for the 2m/6m layout
+            gridYearlyContent.style.display = 'none';
+        }
+        
         renderActiveDashboardContent();
     }
     function setActiveChartView(viewId) {
@@ -93,18 +107,30 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!mainContainer.classList.contains('dashboard-expanded')) return;
 
         if (activeDashboardTab === 'grids') {
-            renderGridView(activeGridView === '6m' ? 6 : 2); 
+            // --- UPDATED LOGIC ---
+            if (activeGridView === 'yearly') {
+                renderYearlyConfigUI();
+            } else {
+                // Default to 2 months if not 6m
+                const months = (activeGridView === '6m') ? 6 : 2;
+                gridMonthlyContent.innerHTML = renderGridView(months, new Date());
+            }
         } else if (activeDashboardTab === 'charts') {
             if (activeChartView === 'expensePie') {
                 renderExpenseChart(true); 
             }
         }
     }
-    function renderGridView(numberOfMonths) {
-        console.log(`Rendering grid view for ${numberOfMonths} months...`);
+    /**
+     * Renders the 2-month or 6-month grid view.
+     * @param {number} numberOfMonths - The number of months to show.
+     * @param {Date} startDate - The date to start the grid from.
+     */
+    function renderGridView(numberOfMonths, startDate) {
+        console.log(`Rendering grid view for ${numberOfMonths} months starting from ${startDate.toISOString()}`);
         
-        const now = new Date();
-        const startOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+        // Use UTC date from local components for consistent helpers
+        const startOfMonth = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), 1));
         const months = getMonthsToRender(startOfMonth, numberOfMonths);
         
         const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -116,12 +142,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const oneTimeIncomes = appState.incomes.filter(i => i.interval === 'one-time');
         const oneTimeExpenses = appState.expenses.filter(i => i.interval === 'one-time');
 
-        let finalHTML = '<div class="grid-view-container">';
-        let runningOverallNet = 0; // <-- NEW: Initialize running total *outside* the loop
+        let finalHTML = '<div class="grid-view-container">'; // This container now lives inside #grid-monthly-content
+        let runningOverallNet = 0; 
 
         months.forEach(monthDate => {
             const monthYear = monthDate.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-            // Get the 'YYYY-MM-01' string for this month
             const monthString = monthDate.toISOString().split('T')[0];
 
             // --- Generate Rows for RECURRING items ---
@@ -238,16 +263,16 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // --- Calculate totals ---
             const monthlyNetTotal = (incomeData.total - expenseData.total) + oneTimeData.net;
-            runningOverallNet += monthlyNetTotal; // <-- Add this month's net to the running total
+            runningOverallNet += monthlyNetTotal;
             
             // --- Format totals for display ---
             const incomeTotalFormatted = formatCurrency(incomeData.total);
             const expenseTotalFormatted = formatCurrency(expenseData.total);
             const oneTimeNetFormatted = formatCurrency(oneTimeData.net);
             const monthlyNetTotalFormatted = formatCurrency(monthlyNetTotal);
-            const overallNetTotalFormatted = formatCurrency(runningOverallNet); // <-- Format the new running total
+            const overallNetTotalFormatted = formatCurrency(runningOverallNet); 
 
-            // --- Assemble the final table HTML (with TOTALS AT TOP) ---
+            // --- Assemble the final table HTML ---
             finalHTML += `
                 <div class="month-grid-container">
                     <h3 class="month-grid-header">${monthYear}</h3>
@@ -259,7 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <th>Amount</th>
                             </tr>
                         </thead>
-                        
                         <tbody class="grid-grand-total">
                             <tr class="grid-monthly-net-total-row">
                                 <td colspan="2">MONTHLY NET TOTAL</td>
@@ -270,7 +294,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <td>${overallNetTotalFormatted}</td>
                             </tr>
                         </tbody>
-
                         <tbody class="grid-group-income">
                             <tr class="grid-group-header">
                                 <td colspan="3">
@@ -319,7 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <td>${oneTimeNetFormatted}</td>
                             </tr>
                         </tbody>
-                        
                         <tbody class="grid-group-banking">
                             <tr class="grid-group-header">
                                 <td colspan="3">
@@ -338,7 +360,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         finalHTML += '</div>';
-        gridContentArea.innerHTML = finalHTML;
+        
+        // --- THIS IS THE KEY CHANGE ---
+        // Render the final HTML into the correct container
+        return finalHTML;
     }
     // --- Dark/Light Mode Functions ---
     function setMode(mode) {
@@ -1309,6 +1334,207 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification("Status updated!", "success");
         }
     }
+    /**
+     * Renders the initial configuration UI for the Yearly Summary view.
+     */
+    function renderYearlyConfigUI() {
+        // Render the config UI into the left panel
+        gridYearlySummaryPanel.innerHTML = `
+            <h3>Yearly Forecast</h3>
+            <p>Select the number of years to forecast.</p>
+            <div class="form-group">
+                <label for="yearly-forecast-years">Years (1-30):</label>
+                <input type="number" id="yearly-forecast-years" value="10" min="1" max="30" step="1">
+            </div>
+            <button id="btn-generate-yearly-summary" class="btn-primary">Generate Summary</button>
+            <div id="yearly-summary-table-container">
+                </div>
+        `;
+        
+        // Clear the right (detail) panel
+        gridDetailContent.innerHTML = '<p>Click a year in the summary to see details.</p>';
+    }
+    /**
+     * Calculates the total annual value of a list of items for a specific year.
+     * @param {object[]} items - The array of income or expense items.
+     * @param {number} year - The specific year (e.g., 2025) to calculate for.
+     * @returns {number} The total value of all items for that year.
+     */
+    function calculateYearlyTotals(items, year) {
+        let total = 0;
+
+        items.forEach(item => {
+            const itemStartDate = parseUTCDate(item.start_date);
+            if (!itemStartDate) return; // Skip items without a start date
+            
+            const itemStartYear = itemStartDate.getUTCFullYear();
+
+            // Item hasn't started yet, so it contributes 0
+            if (year < itemStartYear) {
+                return; 
+            }
+
+            let amountPerYear = 0;
+
+            switch (item.interval) {
+                case 'monthly':
+                    amountPerYear = item.amount * 12;
+                    break;
+                case 'annually':
+                    amountPerYear = item.amount;
+                    break;
+                case 'quarterly':
+                    amountPerYear = item.amount * 4;
+                    break;
+                case 'bi-weekly':
+                    amountPerYear = item.amount * 26;
+                    break;
+                case 'weekly':
+                    amountPerYear = item.amount * 52;
+                    break;
+                case 'one-time':
+                    // Only add if the item's start year is this year
+                    if (itemStartYear === year) {
+                        amountPerYear = item.amount;
+                    }
+                    break;
+                default:
+                    amountPerYear = 0;
+            }
+
+            // Special handling for the first year
+            if (year === itemStartYear) {
+                // Prorate the first year based on the start month
+                const startMonth = itemStartDate.getUTCMonth(); // 0 (Jan) - 11 (Dec)
+                const monthsRemaining = 12 - startMonth;
+                
+                switch (item.interval) {
+                    case 'monthly':
+                        amountPerYear = item.amount * monthsRemaining;
+                        break;
+                    case 'annually':
+                        amountPerYear = item.amount; // Already counted
+                        break;
+                    case 'quarterly':
+                        // Count how many quarters are left
+                        let quarters = 0;
+                        for (let m = startMonth; m < 12; m += 3) {
+                            quarters++;
+                        }
+                        amountPerYear = item.amount * quarters;
+                        break;
+                    // For weekly/bi-weekly, a simple proration is close enough for a high-level summary
+                    case 'bi-weekly':
+                        amountPerYear = (item.amount * 26) * (monthsRemaining / 12);
+                        break;
+                    case 'weekly':
+                        amountPerYear = (item.amount * 52) * (monthsRemaining / 12);
+                        break;
+                    case 'one-time':
+                        amountPerYear = item.amount; // Already counted
+                        break;
+                }
+            }
+            
+            // Handle loan payoffs for amortization
+            if (item.advanced_data && (item.advanced_data.item_type === 'Mortgage/Loan' || item.advanced_data.item_type === 'Car Loan')) {
+                const totalPayments = item.advanced_data.total_payments; // in months
+                if (totalPayments) {
+                    const totalYears = totalPayments / 12;
+                    const payoffYear = itemStartYear + Math.floor(totalYears);
+                    
+                    if (year > payoffYear) {
+                        amountPerYear = 0; // Loan is paid off
+                    } else if (year === payoffYear) {
+                        // Prorate the final year
+                        const lastMonth = (totalPayments % 12) || 12; // 0 becomes 12 (Dec)
+                        const monthsInLastYear = lastMonth;
+
+                         switch (item.interval) {
+                            case 'monthly':
+                                amountPerYear = item.amount * monthsInLastYear;
+                                break;
+                            // Add other intervals if loans can be non-monthly
+                            default:
+                                amountPerYear = item.amount * monthsInLastYear; 
+                         }
+                    }
+                }
+            }
+            
+            total += amountPerYear;
+        });
+
+        return total;
+    }
+    /**
+     * Calculates and renders the N-year summary table into the left panel.
+     */
+    function renderYearlySummaryTable() {
+        const numYearsInput = document.getElementById('yearly-forecast-years');
+        const numYears = parseInt(numYearsInput.value, 10);
+
+        if (isNaN(numYears) || numYears < 1 || numYears > 30) {
+            showNotification("Please enter a number of years between 1 and 30.", "error");
+            return;
+        }
+
+        const tableContainer = document.getElementById('yearly-summary-table-container');
+        if (!tableContainer) {
+            console.error("Could not find #yearly-summary-table-container");
+            return;
+        }
+
+        const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        const startYear = new Date().getFullYear();
+        let runningOverallNet = 0;
+        
+        let tableHTML = `
+            <div class="yearly-summary-header">
+                <h4>${numYears}-Year Summary</h4>
+                <button id="btn-reset-yearly-summary" class="btn-secondary">Reset</button>
+            </div>
+            <table class="yearly-summary-table">
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>Income</th>
+                        <th>Expenses</th>
+                        <th>Yearly Net</th>
+                        <th>Overall Net</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        for (let i = 0; i < numYears; i++) {
+            const currentYear = startYear + i;
+            
+            // Calculate totals for the current year
+            const totalIncome = calculateYearlyTotals(appState.incomes, currentYear);
+            const totalExpense = calculateYearlyTotals(appState.expenses, currentYear);
+            const yearlyNet = totalIncome - totalExpense;
+            runningOverallNet += yearlyNet;
+
+            // Add the row
+            tableHTML += `
+                <tr class="year-summary-row" data-year="${currentYear}">
+                    <td><button class="btn-link" data-year="${currentYear}">${currentYear}</button></td>
+                    <td>${formatCurrency(totalIncome)}</td>
+                    <td>${formatCurrency(totalExpense)}</td>
+                    <td>${formatCurrency(yearlyNet)}</td>
+                    <td>${formatCurrency(runningOverallNet)}</td>
+                </tr>
+            `;
+        }
+
+        tableHTML += `</tbody></table>`;
+        tableContainer.innerHTML = tableHTML;
+        
+        // Hide the config UI
+        document.getElementById('yearly-forecast-years').style.display = 'none';
+        document.getElementById('btn-generate-yearly-summary').style.display = 'none';
+    }
     // === EVENT LISTENERS ===
     gridContentArea.addEventListener('click', (event) => {
         const button = event.target.closest('[data-action="add-grid-item"]');
@@ -1418,6 +1644,52 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (activeDashboardTab === 'charts') {
                 setActiveChartView(viewId);
             }
+        }
+    });
+    gridContentArea.addEventListener('click', (event) => {
+        const target = event.target;
+
+        // 1. Handle "Generate Summary" click
+        if (target.id === 'btn-generate-yearly-summary') {
+            renderYearlySummaryTable();
+            return; 
+        }
+        
+        // 2. Handle "Reset" click
+        if (target.id === 'btn-reset-yearly-summary') {
+            renderYearlyConfigUI(); // Re-render the initial config UI
+            return; 
+        }
+        
+        // 3. Handle click on a "Year" button (btn-link)
+        if (target.classList.contains('btn-link') && target.dataset.year) {
+            const year = parseInt(target.dataset.year, 10);
+            if (isNaN(year)) return;
+            
+            // Create a start date for Jan 1 of that year
+            const startDate = new Date(Date.UTC(year, 0, 1));
+            
+            // Clear the detail panel and render the 12-month grid
+            gridDetailContent.innerHTML = renderGridView(12, startDate); // Pass 12 months and the start date
+            
+            return; 
+        }
+        
+        // 4. Handle "Add Item" click (from monthly grid)
+        const addButton = target.closest('[data-action="add-grid-item"]');
+        if (addButton) {
+            const prefillData = {
+                startDate: addButton.dataset.date,
+                interval: addButton.dataset.interval || null 
+            };
+            const type = addButton.dataset.type;
+
+            if (type === 'income') {
+                showIncomeModal(undefined, prefillData);
+            } else if (type === 'expense') {
+                showExpenseModal(undefined, prefillData);
+            }
+            return; 
         }
     });
     authModalCloseBtn.addEventListener('click', closeAuthModal);
