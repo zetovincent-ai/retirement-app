@@ -1536,25 +1536,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-generate-yearly-summary').style.display = 'none';
     }
     // === EVENT LISTENERS ===
-    gridContentArea.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-action="add-grid-item"]');
-        if (!button) return; // Not our button
-
-        // Construct the prefill data from the button's attributes
-        const prefillData = {
-            startDate: button.dataset.date,
-            interval: button.dataset.interval || null // Will be null or 'one-time'
-        };
-
-        const type = button.dataset.type;
-
-        // Call the correct modal
-        if (type === 'income') {
-            showIncomeModal(undefined, prefillData);
-        } else if (type === 'expense') {
-            showExpenseModal(undefined, prefillData);
-        }
-    });
     gridContentArea.addEventListener('contextmenu', (event) => {
         event.preventDefault(); // Stop the default right-click menu
         
