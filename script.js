@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const amount = formatCurrency(item.amount);
 
                         // --- NEW: Add (X of Y) for loans ---
-                        letitemName = item.name;
+                        let itemName = item.name; // <-- FIXED TYPO HERE
                         const totalPayments = item.advanced_data?.total_payments;
                         if (totalPayments && (item.advanced_data?.item_type === 'Mortgage/Loan' || item.advanced_data?.item_type === 'Car Loan')) {
                             const currentPaymentNum = calculatePaymentNumber(item.start_date, date, item.interval);
