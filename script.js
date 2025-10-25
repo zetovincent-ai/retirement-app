@@ -159,11 +159,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const allOccurrences = [];
 
                 items.forEach(item => {
-                    // This function is now payoff-aware and will only return valid occurrences
                     const occurrences = getOccurrencesInMonth(item, monthDate); 
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ });
-                        sectionTotal += item.amount; 
+                        
+                        // --- NEW: Totaling Logic ---
+                        // Check for an edit first
+                        const statusRecord = findTransactionStatus(item.id, type, occ);
+                        if (statusRecord && statusRecord.edited_amount !== null) {
+                            sectionTotal += statusRecord.edited_amount; // Use edited amount
+                        } else {
+                            sectionTotal += item.amount; // Use default amount
+                        }
                     });
                 });
                 
@@ -178,12 +185,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (statusRecord?.status === 'paid') statusClass = 'row-paid';
                         if (statusRecord?.status === 'overdue') statusClass = 'row-overdue';
                         if (statusRecord?.status === 'highlighted') statusClass = 'row-highlighted';
+                        
+                        // --- NEW: Display Logic ---
+                        let displayAmount = item.amount;
+                        if (statusRecord && statusRecord.edited_amount !== null) {
+                            displayAmount = statusRecord.edited_amount;
+                            statusClass += ' row-edited'; // Add class for styling
+                        }
+                        
                         const dateString = date.toISOString().split('T')[0];
                         const dueDay = formatDay(date);
-                        const amount = formatCurrency(item.amount);
+                        const amount = formatCurrency(displayAmount); // Format the correct amount
 
-                        // --- NEW: Add (X of Y) for loans ---
-                        let itemName = item.name; // <-- FIXED TYPO HERE
+                        let itemName = item.name;
                         const totalPayments = item.advanced_data?.total_payments;
                         if (totalPayments && (item.advanced_data?.item_type === 'Mortgage/Loan' || item.advanced_data?.item_type === 'Car Loan')) {
                             const currentPaymentNum = calculatePaymentNumber(item.start_date, date, item.interval);
@@ -197,6 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 data-item-id="${item.id}" 
                                 data-item-type="${type}" 
                                 data-date="${dateString}"
+                                data-amount="${item.amount}" 
                                 title="Right-click to change status">
                                 <td>${itemName}</td>
                                 <td>${dueDay}</td>
@@ -223,14 +238,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     const occurrences = getOccurrencesInMonth(item, monthDate);
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ, type: 'income' });
-                        totalIncome += item.amount; 
+                        const statusRecord = findTransactionStatus(item.id, 'income', occ);
+                        if (statusRecord && statusRecord.edited_amount !== null) {
+                            totalIncome += statusRecord.edited_amount;
+                        } else {
+                            totalIncome += item.amount;
+                        }
                     });
                 });
                 oneTimeExpenses.forEach(item => {
                     const occurrences = getOccurrencesInMonth(item, monthDate);
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ, type: 'expense' });
-                        totalExpense += item.amount; 
+                        const statusRecord = findTransactionStatus(item.id, 'expense', occ);
+                         if (statusRecord && statusRecord.edited_amount !== null) {
+                            totalExpense += statusRecord.edited_amount;
+                        } else {
+                            totalExpense += item.amount;
+                        }
                     });
                 });
                 
@@ -245,12 +270,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (statusRecord?.status === 'paid') statusClass = 'row-paid';
                         if (statusRecord?.status === 'overdue') statusClass = 'row-overdue';
                         if (statusRecord?.status === 'highlighted') statusClass = 'row-highlighted';
+                        
+                        let displayAmount = item.amount;
+                        if (statusRecord && statusRecord.edited_amount !== null) {
+                            displayAmount = statusRecord.edited_amount;
+                            statusClass += ' row-edited'; // Add class for styling
+                        }
+
                         const typeClass = (type === 'income') ? 'row-income-text' : 'row-expense-text';
                         const dateString = date.toISOString().split('T')[0];
                         const dueDay = formatDay(date);
-                        const amount = formatCurrency(item.amount);
+                        const amount = formatCurrency(displayAmount);
 
-                        // --- NEW: Add (X of Y) for one-time loans (if any) ---
                         let itemName = item.name;
                         const totalPayments = item.advanced_data?.total_payments;
                          if (totalPayments && (item.advanced_data?.item_type === 'Mortgage/Loan' || item.advanced_data?.item_type === 'Car Loan')) {
@@ -265,6 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 data-item-id="${item.id}" 
                                 data-item-type="${type}" 
                                 data-date="${dateString}"
+                                data-amount="${item.amount}"
                                 title="Right-click to change status">
                                 <td>${itemName}</td>
                                 <td>${dueDay}</td>
@@ -289,6 +321,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // --- Calculate totals ---
             const monthlyNetTotal = (incomeData.total - expenseData.total) + oneTimeData.net;
             runningOverallNet += monthlyNetTotal;
+            
+            // ... (rest of the HTML generation is identical) ...
             
             // --- Format totals for display ---
             const incomeTotalFormatted = formatCurrency(incomeData.total);
@@ -1668,6 +1702,192 @@ document.addEventListener('DOMContentLoaded', () => {
             return null;
         }
     }
+    /**
+     * The "Brain": Calculates a fully dynamic amortization schedule.
+     * Scans the transaction_log for any edited payments.
+     * @param {object} item - The parent expense item (must be a loan).
+     * @returns {object} An object containing the new { schedule, trueTotalMonths }.
+     */
+    function getDynamicAmortization(item) {
+        // Find all edited transactions for *this specific loan*
+        const edits = appState.transactions.filter(t => 
+            t.item_id === item.id && 
+            t.item_type === 'expense' && 
+            t.edited_amount !== null
+        ).reduce((acc, t) => {
+            // Create a map for fast lookup: 'YYYY-MM-DD' -> amount
+            acc[t.occurrence_date] = t.edited_amount;
+            return acc;
+        }, {});
+
+        const principal = item.advanced_data.original_principal;
+        const annualRate = item.advanced_data.interest_rate;
+        const defaultPayment = item.amount;
+        const termMonths = item.advanced_data.total_payments || 360; // Fallback
+        
+        if (principal <= 0 || annualRate < 0) return null;
+
+        const monthlyRate = annualRate / 12;
+        let remainingBalance = principal;
+        const schedule = [];
+        let month = 1;
+
+        while (remainingBalance > 0.01) {
+            // 1. Determine the payment for *this* month
+            const currentDate = new Date(parseUTCDate(item.start_date).getTime());
+            currentDate.setUTCMonth(currentDate.getUTCMonth() + (month - 1));
+            const dateString = currentDate.toISOString().split('T')[0];
+            
+            const paymentAmount = edits[dateString] || defaultPayment;
+            
+            // 2. Run the calculation
+            const interestPayment = remainingBalance * monthlyRate;
+            let principalPayment = paymentAmount - interestPayment;
+            
+            // 3. Handle the final payment
+            if (remainingBalance + interestPayment <= paymentAmount) {
+                principalPayment = remainingBalance;
+                remainingBalance = 0;
+            } else {
+                remainingBalance -= principalPayment;
+            }
+
+            schedule.push({
+                month: month,
+                payment: principalPayment + interestPayment,
+                principalPayment: principalPayment,
+                interestPayment: interestPayment,
+                remainingBalance: remainingBalance
+            });
+            
+            // Safety break after 1000 payments (83 years)
+            if (month > 1000) break; 
+            month++;
+        }
+
+        return {
+            schedule: schedule,
+            trueTotalMonths: schedule.length
+        };
+    }
+    /**
+     * The "Trigger": Saves a new amount, stores the original, and recalculates loans.
+     */
+    async function saveTransactionAmount(itemId, itemType, dateString, originalAmount, newAmount) {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) {
+            showNotification("You must be logged in.", "error");
+            return;
+        }
+
+        const existingRecord = findTransactionStatus(itemId, itemType, parseUTCDate(dateString));
+        let error;
+
+        let updateData = {
+            edited_amount: newAmount,
+            user_id: user.id,
+            item_id: itemId,
+            item_type: itemType,
+            occurrence_date: dateString
+        };
+
+        if (existingRecord) {
+            // Record exists, just update it
+            if (existingRecord.original_amount === null) {
+                // This is the first edit, so store the original amount
+                updateData.original_amount = originalAmount;
+            }
+            const { error: updateError } = await supabaseClient
+                .from('transaction_log')
+                .update(updateData)
+                .eq('id', existingRecord.id);
+            error = updateError;
+        } else {
+            // New record, set original amount and new amount
+            updateData.original_amount = originalAmount;
+            const { error: insertError } = await supabaseClient
+                .from('transaction_log')
+                .insert(updateData);
+            error = insertError;
+        }
+        
+        if (error) {
+            console.error("Error saving transaction amount:", error);
+            showNotification(`Error saving amount: ${error.message}`, "error");
+            return;
+        }
+
+        // --- RECALCULATION STEP ---
+        const parentItem = (itemType === 'expense' ? appState.expenses : appState.incomes).find(i => i.id === itemId);
+        
+        // If this is a loan, trigger the "Brain" and update the parent item
+        if (parentItem && parentItem.advanced_data && (parentItem.advanced_data.item_type === 'Mortgage/Loan' || parentItem.advanced_data.item_type === 'Car Loan')) {
+            showNotification("Recalculating loan forecast...", "success");
+            
+            // 1. Get the latest transaction data first
+            const { data: transactions, error: transactionsError } = await supabaseClient
+                .from('transaction_log').select('*').eq('user_id', user.id).eq('item_id', itemId);
+
+            if (transactionsError) {
+                 console.error("Error fetching transactions for recalc:", transactionsError);
+            } else {
+                // Temporarily update appState to ensure "Brain" has the latest data
+                appState.transactions = [
+                    ...appState.transactions.filter(t => t.item_id !== itemId),
+                    ...transactions
+                ];
+            }
+            
+            // 2. Run the "Brain"
+            const dynamicSchedule = getDynamicAmortization(parentItem);
+            
+            if (dynamicSchedule) {
+                // 3. Update the parent item in Supabase
+                const newTotalPayments = dynamicSchedule.trueTotalMonths;
+                const newAdvancedData = { ...parentItem.advanced_data, total_payments: newTotalPayments };
+                
+                const { error: parentUpdateError } = await supabaseClient
+                    .from('expenses')
+                    .update({ advanced_data: newAdvancedData })
+                    .eq('id', parentItem.id);
+                
+                if (parentUpdateError) {
+                    console.error("Error updating parent loan item:", parentUpdateError);
+                    showNotification("Error updating loan term.", "error");
+                } else {
+                    showNotification(`Loan term updated to ${newTotalPayments} months!`, "success");
+                }
+            }
+        }
+        
+        await fetchData(); // Full refresh
+    }
+    /**
+     * Reverts an edited amount back to its original value.
+     */
+    async function revertTransactionAmount(itemId, itemType, dateString) {
+        const existingRecord = findTransactionStatus(itemId, itemType, parseUTCDate(dateString));
+        
+        if (!existingRecord || existingRecord.edited_amount === null) {
+            showNotification("Amount is already set to original.", "success");
+            return;
+        }
+
+        // Simply set edited_amount to null. The original_amount stays as a historical record.
+        const { error } = await supabaseClient
+            .from('transaction_log')
+            .update({ edited_amount: null })
+            .eq('id', existingRecord.id);
+
+        if (error) {
+            console.error("Error reverting amount:", error);
+            showNotification(`Error reverting amount: ${error.message}`, "error");
+        } else {
+            // Trigger the same save logic to force a recalc
+            // We pass 0 as newAmount, but it doesn't matter, as it's being set to null.
+            await saveTransactionAmount(itemId, itemType, dateString, 0, null);
+        }
+    }
     // === EVENT LISTENERS ===
     gridContentArea.addEventListener('contextmenu', (event) => {
         event.preventDefault(); // Stop the default right-click menu
@@ -1682,7 +1902,8 @@ document.addEventListener('DOMContentLoaded', () => {
         currentContextItem = {
             itemId: parseInt(row.dataset.itemId),
             itemType: row.dataset.itemType,
-            dateString: row.dataset.date
+            dateString: row.dataset.date,
+            originalAmount: parseFloat(row.dataset.amount) // <-- NEW: Store default amount
         };
 
         // Position and show the menu
@@ -1691,16 +1912,48 @@ document.addEventListener('DOMContentLoaded', () => {
         gridContextMenu.classList.remove('modal-hidden');
     });
     gridContextMenu.addEventListener('click', (event) => {
-        const newStatus = event.target.dataset.status;
-        if (newStatus && currentContextItem) {
-            // Call our save function
-            saveTransactionStatus(
-                currentContextItem.itemId,
-                currentContextItem.itemType,
-                currentContextItem.dateString,
-                newStatus
-            );
+        const target = event.target.closest('li');
+        if (!target) return;
+
+        const status = target.dataset.status;
+        const action = target.dataset.action;
+
+        if (currentContextItem) {
+            if (status) {
+                // Handle status clicks
+                saveTransactionStatus(
+                    currentContextItem.itemId,
+                    currentContextItem.itemType,
+                    currentContextItem.dateString,
+                    status
+                );
+            } else if (action === 'edit-amount') {
+                // Handle "Edit Amount"
+                const newAmountString = prompt("Enter the new amount for this month:", currentContextItem.originalAmount);
+                if (newAmountString !== null) { // Handle cancel
+                    const newAmount = parseFloat(newAmountString);
+                    if (!isNaN(newAmount) && newAmount >= 0) {
+                        saveTransactionAmount(
+                            currentContextItem.itemId,
+                            currentContextItem.itemType,
+                            currentContextItem.dateString,
+                            currentContextItem.originalAmount,
+                            newAmount
+                        );
+                    } else {
+                        alert("Please enter a valid, non-negative number.");
+                    }
+                }
+            } else if (action === 'revert-amount') {
+                // Handle "Revert"
+                revertTransactionAmount(
+                    currentContextItem.itemId,
+                    currentContextItem.itemType,
+                    currentContextItem.dateString
+                );
+            }
         }
+        
         // Hide the menu and clear the temp data
         gridContextMenu.classList.add('modal-hidden');
         currentContextItem = null;

@@ -766,6 +766,23 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     font-weight: normal;
     margin-left: 0.25rem;
 }
+.context-menu li[data-action="edit-amount"]:hover {
+    color: var(--net-total-color);
+}
+.context-menu li[data-action="revert-amount"]:hover {
+    color: var(--edit-btn-bg);
+}
+.context-menu li.menu-divider {
+    border-top: 1px solid var(--border-color);
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+}
+/* === Grid Row Status Styles === */
+.month-grid-table tr.row-edited td:nth-child(3) {
+    font-weight: bold;
+    font-style: italic;
+    color: var(--net-total-color);
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
