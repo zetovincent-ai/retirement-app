@@ -1439,27 +1439,37 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 1. Check if a record already exists
-        const existingRecord = appState.transactions.find(t =>
+        // 1. Find existing record in local state first
+        const existingRecordIndex = appState.transactions.findIndex(t =>
             t.item_id === itemId &&
             t.item_type === itemType &&
             t.occurrence_date === dateString
         );
+        const existingRecord = existingRecordIndex !== -1 ? appState.transactions[existingRecordIndex] : null;
         
         let error;
+        let updatedRecordData = { // Prepare data for local update
+             user_id: user.id,
+             item_id: itemId,
+             item_type: itemType,
+             occurrence_date: dateString,
+             status: newStatus 
+        };
 
         if (existingRecord) {
-            // 2. Update existing record
+            // 2. Update existing record in Supabase
             console.log(`Updating status to ${newStatus} for record ${existingRecord.id}`);
+            updatedRecordData.id = existingRecord.id; // Include ID for local update
             const { error: updateError } = await supabaseClient
                 .from('transaction_log')
                 .update({ status: newStatus })
                 .eq('id', existingRecord.id);
             error = updateError;
         } else {
-            // 3. Insert new record
+            // 3. Insert new record in Supabase
             console.log(`Inserting new ${newStatus} record for item ${itemId} on ${dateString}`);
-            const { error: insertError } = await supabaseClient
+             // We need the ID back for local state if inserting
+            const { data: insertedData, error: insertError } = await supabaseClient
                 .from('transaction_log')
                 .insert({
                     user_id: user.id,
@@ -1467,7 +1477,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     item_type: itemType,
                     occurrence_date: dateString,
                     status: newStatus
-                });
+                })
+                .select('id') // Get the new ID back
+                .single(); // Expecting only one row
+            
+            if (insertedData) {
+                updatedRecordData.id = insertedData.id; // Add new ID for local update
+            }
             error = insertError;
         }
 
@@ -1475,9 +1491,46 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error saving transaction status:", error);
             showNotification(`Error saving status: ${error.message}`, "error");
         } else {
-            // 4. Refresh data to show the change
-            await fetchData();
+            // 4. Update local appState
+            if (existingRecordIndex !== -1) {
+                // Update existing entry
+                appState.transactions[existingRecordIndex] = { ...existingRecord, status: newStatus };
+            } else {
+                 // Add new entry (make sure all fields needed by findTransactionStatus are present)
+                 // We might be missing original_amount/edited_amount here, but they aren't needed for status logic
+                 appState.transactions.push({ 
+                      ...updatedRecordData, 
+                      original_amount: null, // Add default nulls
+                      edited_amount: null 
+                 }); 
+            }
+
+            // 5. Update the specific row in the DOM directly
+            try {
+                 // Find the row using data attributes (ensure it's currently rendered)
+                 // We search within the specific content area that might hold the grid
+                 const gridContainer = gridMonthlyContent.style.display !== 'none' ? gridMonthlyContent : gridDetailContent;
+                 const rowSelector = `tr[data-item-id="${itemId}"][data-item-type="${itemType}"][data-date="${dateString}"]`;
+                 const rowElement = gridContainer.querySelector(rowSelector);
+
+                 if (rowElement) {
+                     // Remove old status classes, add new one
+                     rowElement.classList.remove('row-paid', 'row-overdue', 'row-highlighted', 'row-pending');
+                     if (newStatus !== 'pending') { // 'pending' has no specific class, it's the default
+                          rowElement.classList.add(`row-${newStatus}`);
+                     }
+                     console.log(`Updated DOM row class for ${itemId} on ${dateString} to ${newStatus}`);
+                 } else {
+                      console.warn(`Could not find DOM row element to update for ${itemId} on ${dateString}. It might not be currently rendered.`);
+                 }
+            } catch(domError) {
+                 console.error("Error updating DOM directly:", domError);
+                 // Fallback to fetch if direct DOM update fails? Or just notify?
+                 // For now, just log it. The state is updated, next render will fix it.
+            }
+            
             showNotification("Status updated!", "success");
+            // DO NOT CALL fetchData() here for status changes.
         }
     }
     /**
