@@ -902,15 +902,22 @@ document.addEventListener('DOMContentLoaded', () => {
         renderExpenses();
         renderDashboard();
 
-        // --- NEW: Auto-restore Yearly Summary View ---
+        // --- UPDATED: Auto-restore Yearly Summary View ---
         if (lastNumYears !== null) {
             console.log(`Restoring state: ${lastNumYears} years, open year: ${lastOpenYear}`);
-            // Ensure the correct tab and view are active
-            setActiveDashboardTab('grids');
-            setActiveGridView('yearly'); // This calls renderActiveDashboardContent internally
+            // Ensure the correct tab and view are active *without* triggering extra renders yet
+            activeDashboardTab = 'grids'; // Directly set state
+            activeGridView = 'yearly';   // Directly set state
+            tabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === 'grids'));
+            viewButtonGroups.forEach(group => group.style.display = (group.dataset.tabGroup === 'grids') ? 'flex' : 'none');
+            gridViewButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.view === 'yearly'));
+            tabContents.forEach(content => content.classList.toggle('active', content.id === 'grid-content'));
+            gridMonthlyContent.style.display = 'none';
+            gridYearlyContent.style.display = 'flex';
 
-            // Manually render the summary table with the saved number of years
-            renderYearlySummaryTable(lastNumYears);
+
+            // Manually render the summary table, passing the restore flag
+            renderYearlySummaryTable(lastNumYears, true); // <-- PASS isRestoring = true
 
             // If a specific year was open, render its detail view
             if (lastOpenYear !== null) {
@@ -924,16 +931,23 @@ document.addEventListener('DOMContentLoaded', () => {
                  }
                 const startDate = new Date(Date.UTC(lastOpenYear, 0, 1));
                 gridDetailContent.innerHTML = renderGridView(12, startDate, startingNetTotal);
+            } else {
+                 // Ensure detail content is cleared if no specific year was open
+                 gridDetailContent.innerHTML = '<p>Click a year in the summary to see details.</p>';
             }
 
-            // Reset the state variables
-            lastNumYears = null;
-            lastOpenYear = null;
-        }
-        // --- END Auto-restore ---
-        else if (mainContainer.classList.contains('dashboard-expanded')) {
+            // State is now restored, don't clear it here. It gets cleared when user navigates away.
+
+        } else if (mainContainer.classList.contains('dashboard-expanded')) {
             // Default render logic if not restoring
             renderActiveDashboardContent();
+             // --- Reset state only if not restoring ---
+             lastNumYears = null;
+             lastOpenYear = null;
+        } else {
+             // Reset state if dashboard is collapsed
+             lastNumYears = null;
+             lastOpenYear = null;
         }
     }
     function renderDashboard(){
@@ -1646,23 +1660,18 @@ document.addEventListener('DOMContentLoaded', () => {
      * Calculates and renders the N-year summary table into the left panel.
      * @param {number} numYears - The number of years to render.
      */
-    function renderYearlySummaryTable(numYears) {
+    function renderYearlySummaryTable(numYears, isRestoring = false) { // <-- ACCEPTS FLAG
         if (isNaN(numYears) || numYears < 1 || numYears > 30) {
              const numYearsInput = document.getElementById('yearly-forecast-years');
              numYears = numYearsInput ? parseInt(numYearsInput.value, 10) : NaN;
              if (isNaN(numYears) || numYears < 1 || numYears > 30) {
                   showNotification("Please enter a number of years between 1 and 30.", "error");
-                  return; // Stop if invalid
+                  return;
              }
         }
-
+        // ... (rest of the rendering logic remains the same) ...
         const tableContainer = document.getElementById('yearly-summary-table-container');
-        if (!tableContainer) {
-            console.error("Could not find #yearly-summary-table-container");
-            return; // Stop if container not found
-        }
-
-        // --- Render the table (existing logic) ---
+        if (!tableContainer) { /* ... error handling ... */ return; }
         const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         const startYear = new Date().getFullYear();
         let runningOverallNet = 0;
@@ -1673,13 +1682,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <table class="yearly-summary-table">
                 <thead>
-                    <tr>
-                        <th>Year</th>
-                        <th>Income</th>
-                        <th>Expenses</th>
-                        <th>Yearly Net</th>
-                        <th>Overall Net</th>
-                    </tr>
+                    <tr><th>Year</th><th>Income</th><th>Expenses</th><th>Yearly Net</th><th>Overall Net</th></tr>
                 </thead>
                 <tbody>
         `;
@@ -1692,10 +1695,8 @@ document.addEventListener('DOMContentLoaded', () => {
             tableHTML += `
                 <tr class="year-summary-row" data-year="${currentYear}">
                     <td><button class="btn-link" data-year="${currentYear}">${currentYear}</button></td>
-                    <td>${formatCurrency(totalIncome)}</td>
-                    <td>${formatCurrency(totalExpense)}</td>
-                    <td>${formatCurrency(yearlyNet)}</td>
-                    <td>${formatCurrency(runningOverallNet)}</td>
+                    <td>${formatCurrency(totalIncome)}</td><td>${formatCurrency(totalExpense)}</td>
+                    <td>${formatCurrency(yearlyNet)}</td><td>${formatCurrency(runningOverallNet)}</td>
                 </tr>
             `;
         }
@@ -1711,10 +1712,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Render edits log ---
         renderEditsLog();
 
-        // --- NEW: Update state ---
-        lastNumYears = numYears; // Remember how many years were rendered
-        lastOpenYear = null;     // Clear the open year detail view
-        console.log(`State updated: lastNumYears=${lastNumYears}, lastOpenYear=${lastOpenYear}`);
+        // --- NEW: Conditionally Update state ---
+        if (!isRestoring) {
+            lastNumYears = numYears;
+            lastOpenYear = null; // Only clear open year if *not* restoring
+            console.log(`State updated (not restoring): lastNumYears=${lastNumYears}, lastOpenYear=${lastOpenYear}`);
+        } else {
+             // If restoring, just ensure lastNumYears is set correctly
+             lastNumYears = numYears;
+             console.log(`State maintained (restoring): lastNumYears=${lastNumYears}, lastOpenYear=${lastOpenYear}`);
+        }
     }
     /**
      * Calculates the payment number for a loan based on its occurrence date.
