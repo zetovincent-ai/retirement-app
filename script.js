@@ -2018,13 +2018,9 @@ document.addEventListener('DOMContentLoaded', () => {
             dashboardSummary.style.display = 'block';
             summaryChartContainer.style.display = 'none'; // Keep summary chart hidden
             expandedDashboardContent.style.display = 'none';
-            
-            // --- NEW: Explicitly hide the tab content areas ---
-            tabContents.forEach(content => {
-                content.style.display = 'none'; 
-                content.classList.remove('active'); // Also remove active class for consistency
-            });
-            // --- END NEW ---
+
+            // --- REMOVED the explicit hide loop ---
+            // We let setActiveDashboardTab and CSS manage visibility via the .active class
         }
     });
     darkModeToggle.addEventListener('change', () => {
