@@ -57,6 +57,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // === FUNCTIONS ===
     // --- Dashboard Tab/View Management ---
     function setActiveDashboardTab(tabId) {
+         // --- NEW: Clear state if leaving grids tab ---
+         if (activeDashboardTab === 'grids' && tabId !== 'grids') {
+             lastNumYears = null;
+             lastOpenYear = null;
+             console.log("State cleared: Switched away from grids tab");
+         }
+
         activeDashboardTab = tabId;
         // Update tab button active states
         tabButtons.forEach(btn => {
@@ -66,12 +73,10 @@ document.addEventListener('DOMContentLoaded', () => {
         viewButtonGroups.forEach(group => {
             group.style.display = (group.dataset.tabGroup === tabId) ? 'flex' : 'none';
         });
-        
+
         // Show/Hide corresponding content areas
         tabContents.forEach(content => {
-            // *** CORRECTED LINE ***
-            // Match 'grids' -> 'grid-content' and 'charts' -> 'chart-content'
-            const contentId = (tabId === 'grids' || tabId === 'charts') 
+            const contentId = (tabId === 'grids' || tabId === 'charts')
                 ? `${tabId.slice(0, -1)}-content` // "grids" -> "grid"
                 : `${tabId}-content`;
 
@@ -82,20 +87,26 @@ document.addEventListener('DOMContentLoaded', () => {
         renderActiveDashboardContent();
     }
     function setActiveGridView(viewId) {
+        // --- NEW: Clear state if leaving yearly view ---
+        if (activeGridView === 'yearly' && viewId !== 'yearly') {
+            lastNumYears = null;
+            lastOpenYear = null;
+            console.log("State cleared: Switched away from yearly view");
+        }
+        
         activeGridView = viewId;
         gridViewButtons.forEach(btn => {
             btn.classList.toggle('active', btn.dataset.view === viewId);
         });
 
-        // --- NEW: Show/Hide the correct grid layout container ---
         if (viewId === 'yearly') {
             gridMonthlyContent.style.display = 'none';
-            gridYearlyContent.style.display = 'flex'; // Use 'flex' for the left/right layout
+            gridYearlyContent.style.display = 'flex';
         } else {
-            gridMonthlyContent.style.display = 'flex'; // Use 'flex' for the 2m/6m layout
+            gridMonthlyContent.style.display = 'flex';
             gridYearlyContent.style.display = 'none';
         }
-        
+
         renderActiveDashboardContent();
     }
     function setActiveChartView(viewId) {
@@ -1637,25 +1648,24 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function renderYearlySummaryTable(numYears) {
         if (isNaN(numYears) || numYears < 1 || numYears > 30) {
-            // Attempt to get from input as fallback if called without param (e.g., direct button click)
              const numYearsInput = document.getElementById('yearly-forecast-years');
              numYears = numYearsInput ? parseInt(numYearsInput.value, 10) : NaN;
              if (isNaN(numYears) || numYears < 1 || numYears > 30) {
                   showNotification("Please enter a number of years between 1 and 30.", "error");
-                  return;
+                  return; // Stop if invalid
              }
         }
 
         const tableContainer = document.getElementById('yearly-summary-table-container');
         if (!tableContainer) {
             console.error("Could not find #yearly-summary-table-container");
-            return;
+            return; // Stop if container not found
         }
 
+        // --- Render the table (existing logic) ---
         const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         const startYear = new Date().getFullYear();
         let runningOverallNet = 0;
-
         let tableHTML = `
             <div class="yearly-summary-header">
                 <h4>${numYears}-Year Summary</h4>
@@ -1673,17 +1683,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 </thead>
                 <tbody>
         `;
-
         for (let i = 0; i < numYears; i++) {
             const currentYear = startYear + i;
-
-            // Calculate totals for the current year
             const totalIncome = calculateYearlyTotals(appState.incomes, currentYear);
             const totalExpense = calculateYearlyTotals(appState.expenses, currentYear);
             const yearlyNet = totalIncome - totalExpense;
             runningOverallNet += yearlyNet;
-
-            // Add the row
             tableHTML += `
                 <tr class="year-summary-row" data-year="${currentYear}">
                     <td><button class="btn-link" data-year="${currentYear}">${currentYear}</button></td>
@@ -1694,18 +1699,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>
             `;
         }
-
         tableHTML += `</tbody></table>`;
         tableContainer.innerHTML = tableHTML;
 
-        // Ensure the config UI elements exist before trying to hide them
+        // --- Hide config UI ---
         const numYearsInputEl = document.getElementById('yearly-forecast-years');
         const generateBtnEl = document.getElementById('btn-generate-yearly-summary');
         if (numYearsInputEl) numYearsInputEl.style.display = 'none';
         if (generateBtnEl) generateBtnEl.style.display = 'none';
 
-        // --- Render the edits log ---
+        // --- Render edits log ---
         renderEditsLog();
+
+        // --- NEW: Update state ---
+        lastNumYears = numYears; // Remember how many years were rendered
+        lastOpenYear = null;     // Clear the open year detail view
+        console.log(`State updated: lastNumYears=${lastNumYears}, lastOpenYear=${lastOpenYear}`);
     }
     /**
      * Calculates the payment number for a loan based on its occurrence date.
@@ -2147,23 +2156,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (target.id === 'btn-generate-yearly-summary') {
             const numYearsInput = document.getElementById('yearly-forecast-years');
             const numYears = numYearsInput ? parseInt(numYearsInput.value, 10) : NaN;
-            renderYearlySummaryTable(numYears); // <-- PASS VALUE TO FUNCTION
+            renderYearlySummaryTable(numYears); // This function now updates state
             return;
         }
 
         // 2. Handle "Reset" click
         if (target.id === 'btn-reset-yearly-summary') {
             renderYearlyConfigUI(); // Re-render the initial config UI
+            // --- NEW: Clear state on Reset ---
+            lastNumYears = null;
+            lastOpenYear = null;
+            console.log("State cleared on Reset");
             return;
         }
 
         // 3. Handle click on a "Year" button (btn-link)
-        const yearButton = target.closest('.btn-link[data-year]'); // More specific selector
+        const yearButton = target.closest('.btn-link[data-year]');
         if (yearButton) {
             const clickedYear = parseInt(yearButton.dataset.year, 10);
             if (isNaN(clickedYear)) return;
 
-            // Calculate the starting net total from all *previous* years
+            // Calculate starting net total
             let startingNetTotal = 0;
             const startYear = new Date().getFullYear();
             for (let y = startYear; y < clickedYear; y++) {
@@ -2172,11 +2185,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 startingNetTotal += (yearIncome - yearExpense);
             }
 
-            // Create a start date for Jan 1 of the *clicked* year
+            // Render detail view
             const startDate = new Date(Date.UTC(clickedYear, 0, 1));
-
-            // Clear the detail panel and render the 12-month grid
             gridDetailContent.innerHTML = renderGridView(12, startDate, startingNetTotal);
+
+            // --- NEW: Update state ---
+            lastOpenYear = clickedYear; // Remember which year detail is open
+            console.log(`State updated: lastOpenYear=${lastOpenYear}`);
 
             return;
         }
