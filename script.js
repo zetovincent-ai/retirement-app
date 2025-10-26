@@ -2012,15 +2012,16 @@ document.addEventListener('DOMContentLoaded', () => {
             dashboardSummary.style.display = 'none';
             summaryChartContainer.style.display = 'none'; // Keep summary chart hidden
             expandedDashboardContent.style.display = 'flex'; // Use flex display
-            setActiveDashboardTab(activeDashboardTab); // Ensure correct initial tab/view renders
+            setActiveDashboardTab(activeDashboardTab); // Renders the correct content via .active class
         } else {
             // --- Collapsing ---
             dashboardSummary.style.display = 'block';
             summaryChartContainer.style.display = 'none'; // Keep summary chart hidden
             expandedDashboardContent.style.display = 'none';
 
-            // --- REMOVED the explicit hide loop ---
-            // We let setActiveDashboardTab and CSS manage visibility via the .active class
+            // --- NEW: Remove active class from tab content ---
+            // This allows the default '.tab-content { display: none; }' rule to take effect
+            tabContents.forEach(content => content.classList.remove('active')); 
         }
     });
     darkModeToggle.addEventListener('change', () => {
