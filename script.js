@@ -1495,6 +1495,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <button id="btn-generate-yearly-summary" class="btn-primary">Generate Summary</button>
             <div id="yearly-summary-table-container">
                 </div>
+
+            <details id="edits-log-details" class="edits-log-container">
+                <summary class="edits-log-summary">Edits Log</summary>
+                <div id="edits-log-content">
+                    <p>No edits found.</p> 
+                </div>
+            </details>
         `;
         
         // Clear the right (detail) panel
@@ -1688,6 +1695,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Hide the config UI
         document.getElementById('yearly-forecast-years').style.display = 'none';
         document.getElementById('btn-generate-yearly-summary').style.display = 'none';
+
+        renderEditsLog();
     }
     /**
      * Calculates the payment number for a loan based on its occurrence date.
@@ -1914,6 +1923,49 @@ document.addEventListener('DOMContentLoaded', () => {
             // We pass 0 as newAmount, but it doesn't matter, as it's being set to null.
             await saveTransactionAmount(itemId, itemType, dateString, 0, null);
         }
+    }
+    /**
+     * Renders the list of edited transactions into the Edits Log section.
+     */
+    function renderEditsLog() {
+        const logContent = document.getElementById('edits-log-content');
+        if (!logContent) return;
+
+        const editedTransactions = appState.transactions.filter(t => t.edited_amount !== null);
+
+        if (editedTransactions.length === 0) {
+            logContent.innerHTML = '<p>No edits found.</p>';
+            return;
+        }
+
+        // Sort edits chronologically
+        editedTransactions.sort((a, b) => new Date(a.occurrence_date) - new Date(b.occurrence_date));
+
+        let logHTML = '<ul class="edits-log-list">';
+        const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+        editedTransactions.forEach(edit => {
+            // Find the parent item to get its name
+            const parentItem = (edit.item_type === 'income' ? appState.incomes : appState.expenses)
+                               .find(item => item.id === edit.item_id);
+            const itemName = parentItem ? parentItem.name : 'Unknown Item';
+            
+            // Format the date
+            const date = parseUTCDate(edit.occurrence_date);
+            const dateString = date ? date.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'Invalid Date';
+            const year = date ? date.getUTCFullYear() : null;
+
+            logHTML += `
+                <li class="edits-log-entry">
+                    <span class="edit-item-name">${itemName}</span> - 
+                    <button class="btn-link edit-log-date" data-year="${year}">${dateString}</button>: 
+                    <span class="edit-amount">${formatCurrency(edit.edited_amount)}</span>
+                </li>
+            `;
+        });
+
+        logHTML += '</ul>';
+        logContent.innerHTML = logHTML;
     }
     // === EVENT LISTENERS ===
     gridContentArea.addEventListener('contextmenu', (event) => {

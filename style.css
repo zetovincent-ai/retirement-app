@@ -795,6 +795,54 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
 body.dark-mode .amortization-table tbody tr.edited-payment-row td {
      color: var(--income-total-color); /* Use a brighter color in dark mode */
 }
+/* === Edits Log Styles === */
+.edits-log-container {
+    margin-top: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--section-bg-color); /* Match modal/section bg */
+}
+.edits-log-summary {
+    padding: 0.75rem 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    background-color: var(--list-item-bg); /* Slightly different bg for header */
+    border-bottom: 1px solid var(--border-color);
+}
+.edits-log-container[open] .edits-log-summary {
+     border-bottom: 1px solid var(--border-color); /* Keep border when open */
+}
+#edits-log-content {
+    padding: 1rem;
+    max-height: 300px; /* Limit height and make scrollable */
+    overflow-y: auto;
+}
+.edits-log-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.9rem;
+}
+.edits-log-entry {
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dashed var(--border-color);
+}
+.edits-log-entry:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+.edit-item-name {
+    font-weight: 500;
+}
+.edit-log-date {
+    /* Uses existing btn-link style */
+    font-weight: normal; /* Override btn-link bold */
+}
+.edit-amount {
+    font-weight: bold;
+    color: var(--net-total-color);
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
