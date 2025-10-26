@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeGridView = '2m'; 
     let activeChartView = 'expensePie'; 
     let currentContextItem = null;
+    let lastNumYears = null; 
+    let lastOpenYear = null; 
     // === DOM SELECTORS ===
     const currentYearSpan = document.getElementById('current-year'); // New selector
     const mainContainer = document.querySelector('main');
@@ -887,9 +889,40 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderAll() {
         renderIncomes();
         renderExpenses();
-        renderDashboard(); 
-        if (mainContainer.classList.contains('dashboard-expanded')) {
-             renderActiveDashboardContent();
+        renderDashboard();
+
+        // --- NEW: Auto-restore Yearly Summary View ---
+        if (lastNumYears !== null) {
+            console.log(`Restoring state: ${lastNumYears} years, open year: ${lastOpenYear}`);
+            // Ensure the correct tab and view are active
+            setActiveDashboardTab('grids');
+            setActiveGridView('yearly'); // This calls renderActiveDashboardContent internally
+
+            // Manually render the summary table with the saved number of years
+            renderYearlySummaryTable(lastNumYears);
+
+            // If a specific year was open, render its detail view
+            if (lastOpenYear !== null) {
+                 // Calculate starting net total for the restored year
+                 let startingNetTotal = 0;
+                 const startYear = new Date().getFullYear();
+                 for (let y = startYear; y < lastOpenYear; y++) {
+                     const yearIncome = calculateYearlyTotals(appState.incomes, y);
+                     const yearExpense = calculateYearlyTotals(appState.expenses, y);
+                     startingNetTotal += (yearIncome - yearExpense);
+                 }
+                const startDate = new Date(Date.UTC(lastOpenYear, 0, 1));
+                gridDetailContent.innerHTML = renderGridView(12, startDate, startingNetTotal);
+            }
+
+            // Reset the state variables
+            lastNumYears = null;
+            lastOpenYear = null;
+        }
+        // --- END Auto-restore ---
+        else if (mainContainer.classList.contains('dashboard-expanded')) {
+            // Default render logic if not restoring
+            renderActiveDashboardContent();
         }
     }
     function renderDashboard(){
@@ -1683,14 +1716,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     /**
      * Calculates and renders the N-year summary table into the left panel.
+     * @param {number} numYears - The number of years to render.
      */
-    function renderYearlySummaryTable() {
-        const numYearsInput = document.getElementById('yearly-forecast-years');
-        const numYears = parseInt(numYearsInput.value, 10);
-
+    function renderYearlySummaryTable(numYears) {
         if (isNaN(numYears) || numYears < 1 || numYears > 30) {
-            showNotification("Please enter a number of years between 1 and 30.", "error");
-            return;
+            // Attempt to get from input as fallback if called without param (e.g., direct button click)
+             const numYearsInput = document.getElementById('yearly-forecast-years');
+             numYears = numYearsInput ? parseInt(numYearsInput.value, 10) : NaN;
+             if (isNaN(numYears) || numYears < 1 || numYears > 30) {
+                  showNotification("Please enter a number of years between 1 and 30.", "error");
+                  return;
+             }
         }
 
         const tableContainer = document.getElementById('yearly-summary-table-container');
@@ -1702,7 +1738,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         const startYear = new Date().getFullYear();
         let runningOverallNet = 0;
-        
+
         let tableHTML = `
             <div class="yearly-summary-header">
                 <h4>${numYears}-Year Summary</h4>
@@ -1723,7 +1759,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         for (let i = 0; i < numYears; i++) {
             const currentYear = startYear + i;
-            
+
             // Calculate totals for the current year
             const totalIncome = calculateYearlyTotals(appState.incomes, currentYear);
             const totalExpense = calculateYearlyTotals(appState.expenses, currentYear);
@@ -1744,11 +1780,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tableHTML += `</tbody></table>`;
         tableContainer.innerHTML = tableHTML;
-        
-        // Hide the config UI
-        document.getElementById('yearly-forecast-years').style.display = 'none';
-        document.getElementById('btn-generate-yearly-summary').style.display = 'none';
 
+        // Ensure the config UI elements exist before trying to hide them
+        const numYearsInputEl = document.getElementById('yearly-forecast-years');
+        const generateBtnEl = document.getElementById('btn-generate-yearly-summary');
+        if (numYearsInputEl) numYearsInputEl.style.display = 'none';
+        if (generateBtnEl) generateBtnEl.style.display = 'none';
+
+        // --- Render the edits log ---
         renderEditsLog();
     }
     /**
@@ -1869,6 +1908,40 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // --- NEW: Remember state before potential refresh ---
+        if (activeDashboardTab === 'grids' && activeGridView === 'yearly') {
+            const numYearsInput = document.getElementById('yearly-forecast-years');
+            const summaryHeader = gridYearlySummaryPanel.querySelector('.yearly-summary-header h4');
+
+            if (numYearsInput && numYearsInput.style.display !== 'none') {
+                // Config UI is visible
+                lastNumYears = parseInt(numYearsInput.value, 10);
+            } else if (summaryHeader) {
+                // Summary table is visible, extract years from header (e.g., "10-Year Summary")
+                const match = summaryHeader.textContent.match(/^(\d+)-Year Summary$/);
+                if (match) {
+                    lastNumYears = parseInt(match[1], 10);
+                }
+            }
+
+            // Check if a detail year is currently displayed
+            const detailGridHeader = gridDetailContent.querySelector('.month-grid-header');
+            if (detailGridHeader) {
+                // Extract year from header (e.g., "January 2027")
+                const yearMatch = detailGridHeader.textContent.match(/\b(\d{4})\b$/);
+                if (yearMatch) {
+                    lastOpenYear = parseInt(yearMatch[1], 10);
+                }
+            }
+            console.log(`Remembering state: ${lastNumYears} years, open year: ${lastOpenYear}`);
+        } else {
+             // Clear remembered state if not in yearly view
+             lastNumYears = null;
+             lastOpenYear = null;
+        }
+        // --- END Remember state ---
+
+
         const existingRecord = findTransactionStatus(itemId, itemType, parseUTCDate(dateString));
         let error;
 
@@ -1881,9 +1954,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         if (existingRecord) {
-            // Record exists, just update it
             if (existingRecord.original_amount === null) {
-                // This is the first edit, so store the original amount
                 updateData.original_amount = originalAmount;
             }
             const { error: updateError } = await supabaseClient
@@ -1892,64 +1963,65 @@ document.addEventListener('DOMContentLoaded', () => {
                 .eq('id', existingRecord.id);
             error = updateError;
         } else {
-            // New record, set original amount and new amount
             updateData.original_amount = originalAmount;
             const { error: insertError } = await supabaseClient
                 .from('transaction_log')
                 .insert(updateData);
             error = insertError;
         }
-        
+
         if (error) {
             console.error("Error saving transaction amount:", error);
             showNotification(`Error saving amount: ${error.message}`, "error");
+            lastNumYears = null; // Clear state on error
+            lastOpenYear = null;
             return;
         }
 
         // --- RECALCULATION STEP ---
         const parentItem = (itemType === 'expense' ? appState.expenses : appState.incomes).find(i => i.id === itemId);
-        
-        // If this is a loan, trigger the "Brain" and update the parent item
+
         if (parentItem && parentItem.advanced_data && (parentItem.advanced_data.item_type === 'Mortgage/Loan' || parentItem.advanced_data.item_type === 'Car Loan')) {
             showNotification("Recalculating loan forecast...", "success");
-            
-            // 1. Get the latest transaction data first
+
             const { data: transactions, error: transactionsError } = await supabaseClient
                 .from('transaction_log').select('*').eq('user_id', user.id).eq('item_id', itemId);
 
             if (transactionsError) {
                  console.error("Error fetching transactions for recalc:", transactionsError);
             } else {
-                // Temporarily update appState to ensure "Brain" has the latest data
                 appState.transactions = [
                     ...appState.transactions.filter(t => t.item_id !== itemId),
                     ...transactions
                 ];
             }
-            
-            // 2. Run the "Brain"
+
             const dynamicSchedule = getDynamicAmortization(parentItem);
-            
+
             if (dynamicSchedule) {
-                // 3. Update the parent item in Supabase
                 const newTotalPayments = dynamicSchedule.trueTotalMonths;
                 const newAdvancedData = { ...parentItem.advanced_data, total_payments: newTotalPayments };
-                
+
                 const { error: parentUpdateError } = await supabaseClient
                     .from('expenses')
                     .update({ advanced_data: newAdvancedData })
                     .eq('id', parentItem.id);
-                
+
                 if (parentUpdateError) {
                     console.error("Error updating parent loan item:", parentUpdateError);
                     showNotification("Error updating loan term.", "error");
+                    lastNumYears = null; // Clear state on error
+                    lastOpenYear = null;
                 } else {
                     showNotification(`Loan term updated to ${newTotalPayments} months!`, "success");
                 }
+            } else {
+                 lastNumYears = null; // Clear state if recalc fails
+                 lastOpenYear = null;
             }
         }
-        
-        await fetchData(); // Full refresh
+
+        await fetchData(); // Full refresh will trigger renderAll, which now handles restore
     }
     /**
      * Reverts an edited amount back to its original value.
@@ -2156,47 +2228,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 1. Handle "Generate Summary" click
         if (target.id === 'btn-generate-yearly-summary') {
-            renderYearlySummaryTable();
-            return; 
+            const numYearsInput = document.getElementById('yearly-forecast-years');
+            const numYears = numYearsInput ? parseInt(numYearsInput.value, 10) : NaN;
+            renderYearlySummaryTable(numYears); // <-- PASS VALUE TO FUNCTION
+            return;
         }
-        
+
         // 2. Handle "Reset" click
         if (target.id === 'btn-reset-yearly-summary') {
             renderYearlyConfigUI(); // Re-render the initial config UI
-            return; 
+            return;
         }
-        
+
         // 3. Handle click on a "Year" button (btn-link)
-        if (target.classList.contains('btn-link') && target.dataset.year) {
-            const clickedYear = parseInt(target.dataset.year, 10);
+        const yearButton = target.closest('.btn-link[data-year]'); // More specific selector
+        if (yearButton) {
+            const clickedYear = parseInt(yearButton.dataset.year, 10);
             if (isNaN(clickedYear)) return;
-            
-            // --- NEW: Calculate the starting net total from all *previous* years ---
+
+            // Calculate the starting net total from all *previous* years
             let startingNetTotal = 0;
             const startYear = new Date().getFullYear();
-            
             for (let y = startYear; y < clickedYear; y++) {
                 const yearIncome = calculateYearlyTotals(appState.incomes, y);
                 const yearExpense = calculateYearlyTotals(appState.expenses, y);
                 startingNetTotal += (yearIncome - yearExpense);
             }
-            // --- END NEW CALCULATION ---
-            
+
             // Create a start date for Jan 1 of the *clicked* year
             const startDate = new Date(Date.UTC(clickedYear, 0, 1));
-            
-            // Clear the detail panel and render the 12-month grid, passing the starting total
-            gridDetailContent.innerHTML = renderGridView(12, startDate, startingNetTotal); 
-            
-            return; 
+
+            // Clear the detail panel and render the 12-month grid
+            gridDetailContent.innerHTML = renderGridView(12, startDate, startingNetTotal);
+
+            return;
         }
-        
+
         // 4. Handle "Add Item" click (from monthly grid)
         const addButton = target.closest('[data-action="add-grid-item"]');
         if (addButton) {
             const prefillData = {
                 startDate: addButton.dataset.date,
-                interval: addButton.dataset.interval || null 
+                interval: addButton.dataset.interval || null
             };
             const type = addButton.dataset.type;
 
@@ -2205,7 +2278,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (type === 'expense') {
                 showExpenseModal(undefined, prefillData);
             }
-            return; 
+            return;
         }
     });
     authModalCloseBtn.addEventListener('click', closeAuthModal);
