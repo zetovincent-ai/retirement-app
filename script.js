@@ -2008,14 +2008,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Show/Hide default vs expanded content
         if (isExpanding) {
+            // --- Expanding ---
             dashboardSummary.style.display = 'none';
-            summaryChartContainer.style.display = 'none';
+            summaryChartContainer.style.display = 'none'; // Keep summary chart hidden
             expandedDashboardContent.style.display = 'flex'; // Use flex display
             setActiveDashboardTab(activeDashboardTab); // Ensure correct initial tab/view renders
         } else {
+            // --- Collapsing ---
             dashboardSummary.style.display = 'block';
-            summaryChartContainer.style.display = 'block';
+            summaryChartContainer.style.display = 'none'; // Keep summary chart hidden
             expandedDashboardContent.style.display = 'none';
+            
+            // --- NEW: Explicitly hide the tab content areas ---
+            tabContents.forEach(content => {
+                content.style.display = 'none'; 
+                content.classList.remove('active'); // Also remove active class for consistency
+            });
+            // --- END NEW ---
         }
     });
     darkModeToggle.addEventListener('change', () => {
