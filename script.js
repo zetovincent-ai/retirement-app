@@ -1190,7 +1190,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`Showing amortization for expense ID: ${expenseId}`);
         const expenseItem = appState.expenses.find(e => e.id === expenseId);
 
-        // *** CORRECTED CHECK: Allow both Mortgage/Loan and Car Loan ***
+        // Check if it's a valid loan type
         if (!expenseItem || !expenseItem.advanced_data ||
             (expenseItem.advanced_data.item_type !== 'Mortgage/Loan' && expenseItem.advanced_data.item_type !== 'Car Loan') ) {
             console.error("Could not find valid loan data (Mortgage/Loan or Car Loan) for this item:", expenseItem);
@@ -1198,29 +1198,56 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Check if required fields exist within advanced_data
-        const principal = expenseItem.advanced_data.original_principal;
-        const annualRate = expenseItem.advanced_data.interest_rate;
-        const termMonths = expenseItem.advanced_data.total_payments;
-
-        if (principal === undefined || annualRate === undefined || termMonths === undefined) {
-             console.error("Missing required loan details (principal, rate, or term). Item data:", expenseItem.advanced_data);
-             showNotification("Missing principal, rate, or term for calculation.", "error");
+        // --- THE CORE CHANGE ---
+        // Call the "Brain" function to get the *actual* schedule, including edits
+        const dynamicAmortization = getDynamicAmortization(expenseItem); 
+        
+        if (!dynamicAmortization || !dynamicAmortization.schedule || dynamicAmortization.schedule.length === 0) {
+             showNotification("Could not calculate dynamic amortization schedule.", "error");
+             console.error("Dynamic amortization calculation failed for item:", expenseItem);
              return;
         }
 
-        const amortization = calculateAmortization(principal, annualRate, termMonths);
-        if (!amortization) {
-             showNotification("Could not calculate amortization schedule.", "error");
-             return;
-        }
+        // --- Use the results from the "Brain" function ---
+        const schedule = dynamicAmortization.schedule;
+        const trueTotalMonths = dynamicAmortization.trueTotalMonths; 
+        // We can get the *first* calculated payment to display, but note it might vary
+        const firstPayment = schedule.length > 0 ? schedule[0].payment : expenseItem.amount; 
 
         modalTitle.textContent = `Amortization: ${expenseItem.name}`;
-        let tableHTML = `<p><strong>Monthly Payment:</strong> ${amortization.monthlyPayment.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p><div class="amortization-table-container"><table class="amortization-table"><thead><tr><th>Month</th><th>Payment</th><th>Principal</th><th>Interest</th><th>Balance</th></tr></thead><tbody>`;
+        
+        // Add the *true* term length to the description
+        let tableHTML = `
+            <p><strong>Original Principal:</strong> ${expenseItem.advanced_data.original_principal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+            <p><strong>Interest Rate:</strong> ${(expenseItem.advanced_data.interest_rate * 100).toFixed(3)}%</p>
+            <p><strong>Actual Term:</strong> ${trueTotalMonths} months</p> 
+            <p><strong>First Calculated Payment:</strong> ${firstPayment.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} (Note: Payments may vary due to edits)</p>
+            <div class="amortization-table-container">
+                <table class="amortization-table">
+                    <thead>
+                        <tr><th>Month</th><th>Payment</th><th>Principal</th><th>Interest</th><th>Balance</th></tr>
+                    </thead>
+                <tbody>
+        `;
+        
         const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-        amortization.schedule.forEach(row => {
-            tableHTML += `<tr><td>${row.month}</td><td>${formatCurrency(row.payment)}</td><td>${formatCurrency(row.principalPayment)}</td><td>${formatCurrency(row.interestPayment)}</td><td>${formatCurrency(row.remainingBalance)}</td></tr>`;
+        
+        schedule.forEach(row => {
+            // Highlight rows where the payment amount differs significantly from the first payment
+            const isEdited = Math.abs(row.payment - firstPayment) > 0.01; 
+            const rowClass = isEdited ? 'edited-payment-row' : '';
+            
+            tableHTML += `
+                <tr class="${rowClass}">
+                    <td>${row.month}</td>
+                    <td>${formatCurrency(row.payment)}</td>
+                    <td>${formatCurrency(row.principalPayment)}</td>
+                    <td>${formatCurrency(row.interestPayment)}</td>
+                    <td>${formatCurrency(row.remainingBalance)}</td>
+                </tr>
+            `;
         });
+        
         tableHTML += `</tbody></table></div>`;
         modalBody.innerHTML = tableHTML;
 

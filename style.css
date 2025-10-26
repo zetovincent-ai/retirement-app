@@ -783,6 +783,18 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     font-style: italic;
     color: var(--net-total-color);
 }
+/* === Amortization Table Edit Highlight === */
+.amortization-table tbody tr.edited-payment-row td {
+    font-weight: bold;
+    color: var(--net-total-color); /* Use a distinct color */
+}
+.amortization-table tbody tr.edited-payment-row:nth-child(even) {
+     /* Ensure background doesn't clash with default zebra stripe */
+    background-color: var(--list-item-bg); 
+}
+body.dark-mode .amortization-table tbody tr.edited-payment-row td {
+     color: var(--income-total-color); /* Use a brighter color in dark mode */
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
