@@ -209,15 +209,16 @@ select {
 .chart-container { margin-top: 2rem; position: relative; height: 300px; }
 .divider { margin-top: 1.5rem; margin-bottom: 1.5rem; border: 0; border-top: 1px solid var(--border-color); }
 main.dashboard-expanded #dashboard-section { flex-grow: 20; }
-main.dashboard-expanded #income-section, main.dashboard-expanded #expenses-section { flex-grow: 1; overflow: hidden; cursor: pointer; min-width: 60px; }
-main.dashboard-expanded #income-section > :not(.section-header), main.dashboard-expanded #expenses-section > :not(.section-header) { display: none; opacity: 0; }
-main.dashboard-expanded #income-section .section-header h2,
-main.dashboard-expanded #expenses-section .section-header h2 {
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    transform: rotate(180deg) translateY(0); /* Ensure transform starts from a neutral Y position */
-    margin: auto;
-    opacity: 1; /* Fade back in for vertical view */
+main.dashboard-expanded #income-section, 
+main.dashboard-expanded #expenses-section { 
+    display: none; /* Hide the sections completely */
+}
+
+/* Ensure the dashboard section takes up all the space */
+main.dashboard-expanded #dashboard-section {
+    flex-grow: 1; /* Allow dashboard to expand fully */
+    width: 100%; /* Explicitly set width */
+    min-width: 0; /* Override any potential minimum width */
 }
 /* Styles for the Dark/Light Mode Toggle Switch */
 .theme-switch-wrapper {
