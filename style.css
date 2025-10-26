@@ -843,6 +843,19 @@ body.dark-mode .amortization-table tbody tr.edited-payment-row td {
     font-weight: bold;
     color: var(--net-total-color);
 }
+/* === Yearly Summary Panel Spacing === */
+#grid-yearly-summary-panel h3 {
+    margin-bottom: 0.5rem; /* Add space below the main "Yearly Forecast" header */
+}
+
+#grid-yearly-summary-panel p {
+    margin-bottom: 0.5rem; /* Add space below the paragraph description */
+}
+
+/* Override default small margin for form-group specifically within this panel */
+#grid-yearly-summary-panel .form-group {
+    margin-bottom: 0.5rem; 
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
