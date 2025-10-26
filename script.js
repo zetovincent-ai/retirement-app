@@ -1600,119 +1600,36 @@ document.addEventListener('DOMContentLoaded', () => {
      * @returns {number} The total value of all items for that year.
      */
     function calculateYearlyTotals(items, year) {
-        let total = 0;
+        let yearTotal = 0;
+        const itemType = items === appState.incomes ? 'income' : 'expense'; // Determine type for lookup
 
         items.forEach(item => {
+            let itemYearTotal = 0;
             const itemStartDate = parseUTCDate(item.start_date);
             if (!itemStartDate) return; // Skip items without a start date
             
-            const itemStartYear = itemStartDate.getUTCFullYear();
-            const itemStartMonth = itemStartDate.getUTCMonth(); // 0-11
-
-            // Item hasn't started yet, so it contributes 0
-            if (year < itemStartYear) {
-                return; 
-            }
-
-            let amountPerYear = 0;
-
-            switch (item.interval) {
-                case 'monthly':
-                    amountPerYear = item.amount * 12;
-                    break;
-                case 'annually':
-                    amountPerYear = item.amount;
-                    break;
-                case 'quarterly':
-                    amountPerYear = item.amount * 4;
-                    break;
-                case 'bi-weekly':
-                    amountPerYear = item.amount * 26;
-                    break;
-                case 'weekly':
-                    amountPerYear = item.amount * 52;
-                    break;
-                case 'one-time':
-                    // Only add if the item's start year is this year
-                    if (itemStartYear === year) {
-                        amountPerYear = item.amount;
-                    }
-                    break;
-                default:
-                    amountPerYear = 0;
-            }
-
-            // Special handling for the item's first year
-            if (year === itemStartYear) {
-                // Prorate the first year based on the start month
-                const monthsRemaining = 12 - itemStartMonth;
+            // Loop through each month of the target year
+            for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
+                const monthDate = new Date(Date.UTC(year, monthIndex, 1)); // Jan 1, Feb 1, etc.
                 
-                switch (item.interval) {
-                    case 'monthly':
-                        amountPerYear = item.amount * monthsRemaining;
-                        break;
-                    case 'annually':
-                        amountPerYear = item.amount; // Already counted
-                        break;
-                    case 'quarterly':
-                        // Count how many quarters are left
-                        let quarters = 0;
-                        for (let m = itemStartMonth; m < 12; m += 3) {
-                            quarters++;
-                        }
-                        amountPerYear = item.amount * quarters;
-                        break;
-                    // For weekly/bi-weekly, a simple proration is close enough for a high-level summary
-                    case 'bi-weekly':
-                        amountPerYear = (item.amount * 26) * (monthsRemaining / 12);
-                        break;
-                    case 'weekly':
-                        amountPerYear = (item.amount * 52) * (monthsRemaining / 12);
-                        break;
-                    case 'one-time':
-                        amountPerYear = item.amount; // Already counted
-                        break;
-                }
-            }
-            
-            // --- CORRECTED LOAN PAYOFF LOGIC ---
-            if (item.advanced_data && (item.advanced_data.item_type === 'Mortgage/Loan' || item.advanced_data.item_type === 'Car Loan')) {
-                const totalPayments = item.advanced_data.total_payments; // in months
-                if (totalPayments) {
-                    // Calculate the exact payoff date
-                    const payoffDate = new Date(itemStartDate.getTime());
-                    payoffDate.setUTCMonth(itemStartDate.getUTCMonth() + totalPayments);
+                // Get occurrences for this item *in this specific month*
+                const occurrences = getOccurrencesInMonth(item, monthDate); 
 
-                    const payoffYear = payoffDate.getUTCFullYear();
-                    const payoffMonth = payoffDate.getUTCMonth(); // 0-11
+                occurrences.forEach(occurrenceDate => {
+                    // For each occurrence, check the transaction log
+                    const statusRecord = findTransactionStatus(item.id, itemType, occurrenceDate);
                     
-                    if (year > payoffYear) {
-                        amountPerYear = 0; // Loan is paid off
-                    } else if (year === payoffYear) {
-                        // Prorate the final year
-                        // payoffMonth is 0-indexed, so 0 (Jan) means 1 month of payment.
-                        const monthsInLastYear = payoffMonth + 1; 
-
-                         switch (item.interval) {
-                            case 'monthly':
-                                // If it also started this year, don't double-dip proration
-                                // Use the smaller of the two partial year values
-                                const firstYearMonths = 12 - itemStartMonth;
-                                amountPerYear = item.amount * (year === itemStartYear ? Math.min(monthsInLastYear, firstYearMonths) : monthsInLastYear);
-                                break;
-                            // Add other intervals if loans can be non-monthly
-                            default:
-                                // Fallback for safety
-                                amountPerYear = item.amount * (year === itemStartYear ? Math.min(monthsInLastYear, 12 - itemStartMonth) : monthsInLastYear);
-                         }
+                    if (statusRecord && statusRecord.edited_amount !== null) {
+                        itemYearTotal += statusRecord.edited_amount; // Use edited amount
+                    } else {
+                        itemYearTotal += item.amount; // Use default amount
                     }
-                }
+                });
             }
-            
-            total += amountPerYear;
+            yearTotal += itemYearTotal;
         });
 
-        return total;
+        return yearTotal;
     }
     /**
      * Calculates and renders the N-year summary table into the left panel.
