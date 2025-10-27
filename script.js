@@ -608,62 +608,71 @@ document.addEventListener('DOMContentLoaded', () => {
         const isEditMode = incomeId !== undefined;
         const incomeToEdit = isEditMode && Array.isArray(appState.incomes) ? appState.incomes.find(i => i.id === incomeId) : null;
         modalTitle.textContent = isEditMode ? 'Edit Income' : 'Add New Income';
-        
-        // Change "Due Day" to "Start Date"
+
+        // Filter accounts for the dropdown
+        const bankAccounts = appState.accounts.filter(acc => acc.type === 'checking' || acc.type === 'savings');
+        let accountOptions = '<option value="">-- None --</option>'; // Default 'None' option
+        if (bankAccounts.length > 0) {
+            accountOptions += bankAccounts.map(acc => `<option value="${acc.id}">${acc.name}</option>`).join('');
+        } else {
+            accountOptions = '<option value="" disabled>-- No bank accounts defined --</option>'; // Disable if none exist
+        }
+
         modalBody.innerHTML = `
             <div class="form-group"><label for="modal-income-type">Type:</label><select id="modal-income-type" required>...</select></div>
             <div class="form-group"><label for="modal-income-name">Description / Name:</label><input type="text" id="modal-income-name" placeholder="e.g., Vincent's TSP" required></div>
             <div class="form-group"><label for="modal-income-interval">Payment Interval:</label><select id="modal-income-interval" required>...</select></div>
             <div class="form-group"><label for="modal-income-amount">Payment Amount:</label><input type="number" id="modal-income-amount" placeholder="1500" min="0" step="0.01" required></div>
             <div class="form-group"><label for="modal-income-date">Payment Start Date:</label><input type="date" id="modal-income-date" required></div>
-        `; // Simplified dropdowns above for brevity
-        
-        // Re-add full dropdown options here...
+            <div class="form-group"><label for="modal-income-deposit-account">Deposit To Account:</label><select id="modal-income-deposit-account">${accountOptions}</select></div> `;
+
+        // Re-add other dropdown options
         document.getElementById('modal-income-interval').innerHTML = `<option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option><option value="one-time">One-time</option>`;
         document.getElementById('modal-income-type').innerHTML = `<option value="">-- Select a Type --</option><option value="Pension">Pension</option><option value="TSP">TSP</option><option value="TSP Supplement">TSP Supplement</option><option value="Social Security">Social Security</option><option value="Investment">Investment Dividend</option><option value="Other">Other</option>`;
 
+        // Populate fields
         if (isEditMode && incomeToEdit) {
-            // --- EDIT MODE ---
             document.getElementById('modal-income-type').value = incomeToEdit.type || '';
             document.getElementById('modal-income-name').value = incomeToEdit.name || '';
             document.getElementById('modal-income-interval').value = incomeToEdit.interval || 'monthly';
             document.getElementById('modal-income-amount').value = incomeToEdit.amount || '';
-            document.getElementById('modal-income-date').value = incomeToEdit.start_date || ''; 
+            document.getElementById('modal-income-date').value = incomeToEdit.start_date || '';
+            document.getElementById('modal-income-deposit-account').value = incomeToEdit.deposit_account_id || ''; // Populate account
         } else if (prefillData) {
-            // --- NEW: PRE-FILL MODE (from grid) ---
             document.getElementById('modal-income-date').value = prefillData.startDate;
             if (prefillData.interval) {
                 document.getElementById('modal-income-interval').value = prefillData.interval;
             }
         } else if (!isEditMode) {
-            // --- DEFAULT ADD MODE (from main button) ---
             document.getElementById('modal-income-date').value = new Date().toISOString().split('T')[0];
         }
 
         onSave = async () => {
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) { /* ... error handling ... */ return; }
-            
+
             const startDateValue = document.getElementById('modal-income-date').value;
-            
+            const depositAccountId = document.getElementById('modal-income-deposit-account').value;
+
             const formItem = {
                 user_id: user.id,
                 type: document.getElementById('modal-income-type').value,
                 name: document.getElementById('modal-income-name').value.trim(),
                 interval: document.getElementById('modal-income-interval').value,
                 amount: parseFloat(document.getElementById('modal-income-amount').value),
-                start_date: startDateValue ? startDateValue : null
+                start_date: startDateValue ? startDateValue : null,
+                deposit_account_id: depositAccountId ? parseInt(depositAccountId) : null // Get and save account ID
             };
-            
+
             if (!formItem.type || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0 || !formItem.start_date) {
                 alert("Please fill out all fields correctly, including a valid start date.");
                 return;
             }
-            
+
             let { error } = isEditMode
                 ? await supabaseClient.from('incomes').update(formItem).eq('id', incomeId)
                 : await supabaseClient.from('incomes').insert([formItem]).select();
-            
+
             if (error) { console.error("Error saving income:", error); alert(`Error: ${error.message}`); }
             else { await fetchData(); }
             closeModal();
@@ -674,6 +683,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const isEditMode = expenseId !== undefined;
         const expenseToEdit = isEditMode && Array.isArray(appState.expenses) ? appState.expenses.find(e => e.id === expenseId) : null;
         modalTitle.textContent = isEditMode ? 'Edit Expense' : 'Add New Expense';
+
+        // Filter accounts for the dropdown
+        const bankAccounts = appState.accounts.filter(acc => acc.type === 'checking' || acc.type === 'savings');
+        let accountOptions = '<option value="">-- None --</option>'; // Default 'None' option
+        if (bankAccounts.length > 0) {
+            accountOptions += bankAccounts.map(acc => `<option value="${acc.id}">${acc.name}</option>`).join('');
+        } else {
+            accountOptions = '<option value="" disabled>-- No bank accounts defined --</option>'; // Disable if none exist
+        }
 
         modalBody.innerHTML = `
             <div class="form-group">
@@ -718,7 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <label for="modal-expense-date">Payment Start Date:</label>
                 <input type="date" id="modal-expense-date" required>
             </div>
-            <div id="advanced-loan-fields" style="display: none;">
+            <div class="form-group"><label for="modal-expense-payment-account">Pay From Account:</label><select id="modal-expense-payment-account">${accountOptions}</select></div> <div id="advanced-loan-fields" style="display: none;">
                 <hr class="divider">
                 <h4>Loan Details (Optional)</h4>
                  <div class="form-group"><label for="modal-loan-interest-rate">Interest Rate (%):</label><input type="number" id="modal-loan-interest-rate" placeholder="e.g., 6.5" min="0" step="0.001"></div>
@@ -739,25 +757,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const subTypeSelect = document.getElementById('modal-expense-sub-type');
         const advancedLoanFields = document.getElementById('advanced-loan-fields');
         const advancedCCFields = document.getElementById('advanced-cc-fields');
-        
-        // --- NEW: Get refs for auto-calculation ---
         const paymentAmountInput = document.getElementById('modal-expense-amount');
         const loanInterestInput = document.getElementById('modal-loan-interest-rate');
         const loanTermInput = document.getElementById('modal-loan-total-payments');
         const loanPrincipalInput = document.getElementById('modal-loan-original-principal');
 
-
-        // --- Define Sub-Type Options ---
         const housingSubTypes = `<option value="">-- Select Sub-Type --</option><option value="Rent">Rent</option><option value="Mortgage/Loan">Mortgage/Loan</option><option value="HOA">HOA Dues</option><option value="Other">Other Housing</option>`;
         const transportSubTypes = `<option value="">-- Select Sub-Type --</option><option value="Car Loan">Car Loan</option><option value="Fuel">Fuel</option><option value="Insurance">Insurance</option><option value="Maintenance">Maintenance</option><option value="Other">Other Transport</option>`;
 
-        // --- NEW: Helper to calculate payment ---
         function calculateAndSetPayment() {
             const principal = parseFloat(loanPrincipalInput.value);
-            const rate = parseFloat(loanInterestInput.value) / 100.0; // Convert % to decimal
+            const rate = parseFloat(loanInterestInput.value) / 100.0;
             const term = parseInt(loanTermInput.value);
-
-            // Only calculate if all fields are valid
             if (principal > 0 && rate >= 0 && term > 0) {
                 const amortization = calculateAmortization(principal, rate, term);
                 if (amortization) {
@@ -765,7 +776,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     paymentAmountInput.readOnly = true;
                 }
             } else {
-                // If fields are invalid or empty, unlock the payment field
                 paymentAmountInput.readOnly = false;
             }
         }
@@ -800,30 +810,25 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                  subTypeSelect.value = '';
             }
-            
-            // Re-run calculation in case fields were hidden/shown
-            calculateAndSetPayment(); 
+            calculateAndSetPayment();
         }
 
-        // --- Add event listeners ---
         categorySelect.addEventListener('change', toggleAdvancedFields);
         subTypeSelect.addEventListener('change', toggleAdvancedFields);
-        
-        // --- NEW: Add listeners to loan fields ---
         loanInterestInput.addEventListener('input', calculateAndSetPayment);
         loanTermInput.addEventListener('input', calculateAndSetPayment);
         loanPrincipalInput.addEventListener('input', calculateAndSetPayment);
 
-
+        // Populate fields
         if (isEditMode && expenseToEdit) {
-            // --- EDIT MODE ---
             categorySelect.value = expenseToEdit.category || '';
             if (expenseToEdit.category === 'Housing') subTypeSelect.innerHTML = housingSubTypes;
             else if (expenseToEdit.category === 'Transport') subTypeSelect.innerHTML = transportSubTypes;
             document.getElementById('modal-expense-name').value = expenseToEdit.name || '';
             document.getElementById('modal-expense-interval').value = expenseToEdit.interval || 'monthly';
             document.getElementById('modal-expense-amount').value = expenseToEdit.amount || '';
-            document.getElementById('modal-expense-date').value = expenseToEdit.start_date || ''; 
+            document.getElementById('modal-expense-date').value = expenseToEdit.start_date || '';
+            document.getElementById('modal-expense-payment-account').value = expenseToEdit.payment_account_id || ''; // Populate account
             if (expenseToEdit.advanced_data) {
                  const advData = expenseToEdit.advanced_data;
                  if ((expenseToEdit.category === 'Housing' || expenseToEdit.category === 'Transport') && advData.item_type) {
@@ -841,28 +846,26 @@ document.addEventListener('DOMContentLoaded', () => {
                  }
             }
              toggleAdvancedFields();
-             // calculateAndSetPayment(); // Already called by toggleAdvancedFields
         } else if (prefillData) {
-            // --- NEW: PRE-FILL MODE (from grid) ---
             document.getElementById('modal-expense-date').value = prefillData.startDate;
             if (prefillData.interval) {
                 document.getElementById('modal-expense-interval').value = prefillData.interval;
             }
             toggleAdvancedFields();
         } else if (!isEditMode) {
-             // --- DEFAULT ADD MODE (from main button) ---
              document.getElementById('modal-expense-date').value = new Date().toISOString().split('T')[0];
              toggleAdvancedFields();
          }
 
         onSave = async () => {
-            // ... (onSave function remains unchanged) ...
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) { alert("You must be logged in to save data."); return; }
             const category = categorySelect.value;
             const subType = subTypeSelect.value;
             const startDateValue = document.getElementById('modal-expense-date').value;
+            const paymentAccountId = document.getElementById('modal-expense-payment-account').value; // Get account ID
             let advancedData = null;
+            // ... (rest of advancedData construction is unchanged) ...
             if ((category === 'Housing' || category === 'Transport') && subType) {
                  advancedData = { item_type: subType };
                  if (subType === 'Mortgage/Loan' || subType === 'Car Loan') {
@@ -882,6 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  if (statementDayInput) advancedData.statement_day = parseInt(statementDayInput);
                  if (rateInput) advancedData.interest_rate = parseFloat(rateInput) / 100.0;
             }
+
             const formItem = {
                 user_id: user.id,
                 category: category,
@@ -889,9 +893,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 interval: document.getElementById('modal-expense-interval').value,
                 amount: parseFloat(document.getElementById('modal-expense-amount').value),
                 start_date: startDateValue ? startDateValue : null,
+                payment_account_id: paymentAccountId ? parseInt(paymentAccountId) : null, // Save account ID
                 advanced_data: advancedData
             };
-            if (!formItem.category || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0 || !formItem.start_date) {
+            // ... (rest of validation and save logic is unchanged) ...
+             if (!formItem.category || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0 || !formItem.start_date) {
                  alert("Please fill out required fields (Category, Name, Amount, Start Date).");
                  return;
             }
