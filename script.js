@@ -152,12 +152,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const startOfMonthUTC = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
         const months = getMonthsToRender(startOfMonthUTC, numberOfMonths);
 
-        const formatCurrency = (num, zeroSign = 'zero') => {
-             if (num === 0) return zeroSign === 'zero' ? formatCurrency.zero : formatCurrency.dash;
+        const formatCurrency = (num) => {
+             // Simplified zero handling for balances
              return num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         };
-        formatCurrency.zero = '$0.00';
-        formatCurrency.dash = '-';
 
         const formatDay = date => date.getUTCDate();
 
@@ -170,13 +168,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let finalHTML = '<div class="grid-view-container">';
         let runningOverallNet = startingNetTotal;
 
-        // --- NEW: Initialize running account balances ---
-        // Start with the 'current_balance' from the database
+        // Initialize running account balances
         let runningAccountBalances = appState.accounts.reduce((acc, account) => {
             acc[account.id] = account.current_balance;
             return acc;
         }, {});
-        // --- END NEW ---
 
         months.forEach(monthDateUTC => {
             const monthYear = monthDateUTC.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -292,29 +288,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const monthlyNetTotal = (incomeData.total - expenseData.total) + oneTimeData.net;
             runningOverallNet += monthlyNetTotal;
 
-            // --- NEW: Calculate Banking Section ---
+            // --- Calculate Banking Section ---
             const bankingMonthData = calculateAccountBalancesForMonth(monthDateUTC, runningAccountBalances);
             let bankingRowsHTML = '';
-            appState.accounts.forEach(acc => {
-                 const startBal = runningAccountBalances[acc.id] || 0;
-                 const endBal = bankingMonthData.endingBalances[acc.id] || 0;
-                 const delta = bankingMonthData.deltas[acc.id] || { deposits: 0, transfers: 0, payments: 0, growth: 0 };
-                 bankingRowsHTML += `
-                     <tr>
-                         <td>${acc.name} (${acc.type})</td>
-                         <td>${formatCurrency(startBal)}</td>
-                         <td>${formatCurrency(delta.deposits, 'dash')}</td>
-                         <td>${formatCurrency(delta.transfers, 'dash')}</td>
-                         <td>${formatCurrency(delta.payments, 'dash')}</td>
-                         <td>${formatCurrency(delta.growth, 'dash')}</td>
-                         <td>${formatCurrency(endBal)}</td>
-                     </tr>
-                 `;
-            });
-            // Update running balances for the *next* month
+            if (appState.accounts.length === 0) {
+                 bankingRowsHTML = `<tr><td colspan="3">No accounts defined.</td></tr>`;
+            } else {
+                 appState.accounts.forEach(acc => {
+                     const startBal = runningAccountBalances[acc.id] || 0;
+                     const endBal = bankingMonthData.endingBalances[acc.id] || 0;
+                     // --- SIMPLIFIED ROW ---
+                     bankingRowsHTML += `
+                         <tr>
+                             <td>${acc.name} (${acc.type})</td>
+                             <td>${formatCurrency(startBal)}</td>
+                             <td>${formatCurrency(endBal)}</td>
+                         </tr>
+                     `;
+                 });
+            }
+            // Update running balances for the next month
             runningAccountBalances = bankingMonthData.endingBalances;
-            // --- END NEW BANKING ---
-
 
             // --- Format totals ---
             const incomeTotalFormatted = formatCurrency(incomeData.total);
@@ -329,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <h3 class="month-grid-header">${monthYear}</h3>
                     <table class="month-grid-table">
                         <thead>
-                            <tr><th>Name</th><th>Due Day(s)</th><th>Amount</th></tr>
+                            <tr><th>Name</th><th>Due Day(s) / Start Bal</th><th>Amount / End Bal</th></tr>
                         </thead>
                         <tbody class="grid-grand-total">
                             <tr class="grid-monthly-net-total-row"><td colspan="2">MONTHLY NET TOTAL</td><td>${monthlyNetTotalFormatted}</td></tr>
@@ -351,10 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <tr class="grid-total-row"><td colspan="2">One-time Net</td><td>${oneTimeNetFormatted}</td></tr>
                         </tbody>
                         <tbody class="grid-group-banking">
-                            <tr class="grid-group-header"><td colspan="7"><div class="grid-header-content"><span>Banking</span></div></td></tr>
-                            <tr class="banking-sub-header">
-                                <th>Account</th><th>Start Bal.</th><th>Deposits</th><th>Transfers</th><th>Payments</th><th>Growth</th><th>End Bal.</th>
-                            </tr>
+                            <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><span>Banking</span></div></td></tr>
                             ${bankingRowsHTML}
                         </tbody>
                     </table>
