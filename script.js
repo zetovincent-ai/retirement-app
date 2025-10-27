@@ -147,53 +147,56 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function renderGridView(numberOfMonths, startDate, startingNetTotal = 0) {
         console.log(`Rendering grid view for ${numberOfMonths} months starting from ${startDate.toISOString()} with starting net: ${startingNetTotal}`);
-        
-        // Use UTC methods to read the date, avoiding local timezone conversion
-        const startOfMonth = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
-        
-        const months = getMonthsToRender(startOfMonth, numberOfMonths);
-        
-        const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+        // Use UTC methods to read the date
+        const startOfMonthUTC = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
+        const months = getMonthsToRender(startOfMonthUTC, numberOfMonths);
+
+        const formatCurrency = (num, zeroSign = 'zero') => {
+             if (num === 0) return zeroSign === 'zero' ? formatCurrency.zero : formatCurrency.dash;
+             return num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        };
+        formatCurrency.zero = '$0.00';
+        formatCurrency.dash = '-';
+
         const formatDay = date => date.getUTCDate();
 
-        // --- Filter items into recurring and one-time lists ---
+        // Filter items
         const recurringIncomes = appState.incomes.filter(i => i.interval !== 'one-time');
         const recurringExpenses = appState.expenses.filter(i => i.interval !== 'one-time');
         const oneTimeIncomes = appState.incomes.filter(i => i.interval === 'one-time');
         const oneTimeExpenses = appState.expenses.filter(i => i.interval === 'one-time');
 
-        let finalHTML = '<div class="grid-view-container">'; 
-        let runningOverallNet = startingNetTotal; 
+        let finalHTML = '<div class="grid-view-container">';
+        let runningOverallNet = startingNetTotal;
 
-        months.forEach(monthDate => {
-            const monthYear = monthDate.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-            const monthString = monthDate.toISOString().split('T')[0];
+        // --- NEW: Initialize running account balances ---
+        // Start with the 'current_balance' from the database
+        let runningAccountBalances = appState.accounts.reduce((acc, account) => {
+            acc[account.id] = account.current_balance;
+            return acc;
+        }, {});
+        // --- END NEW ---
 
-            // --- Generate Rows for RECURRING items ---
+        months.forEach(monthDateUTC => {
+            const monthYear = monthDateUTC.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+            const monthString = monthDateUTC.toISOString().split('T')[0];
+
+            // --- Generate Rows for RECURRING items (unchanged) ---
             const generateRows = (items, type) => {
                 let rowsHTML = '';
                 let hasItems = false;
-                let sectionTotal = 0; 
+                let sectionTotal = 0;
                 const allOccurrences = [];
-
                 items.forEach(item => {
-                    const occurrences = getOccurrencesInMonth(item, monthDate); 
+                    const occurrences = getOccurrencesInMonth(item, monthDateUTC);
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ });
-                        
-                        // --- NEW: Totaling Logic ---
-                        // Check for an edit first
                         const statusRecord = findTransactionStatus(item.id, type, occ);
-                        if (statusRecord && statusRecord.edited_amount !== null) {
-                            sectionTotal += statusRecord.edited_amount; // Use edited amount
-                        } else {
-                            sectionTotal += item.amount; // Use default amount
-                        }
+                        sectionTotal += (statusRecord && statusRecord.edited_amount !== null) ? statusRecord.edited_amount : item.amount;
                     });
                 });
-                
                 allOccurrences.sort((a, b) => a.date.getUTCDate() - b.date.getUTCDate());
-
                 if (allOccurrences.length > 0) {
                     hasItems = true;
                     allOccurrences.forEach(occurrence => {
@@ -203,82 +206,51 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (statusRecord?.status === 'paid') statusClass = 'row-paid';
                         if (statusRecord?.status === 'overdue') statusClass = 'row-overdue';
                         if (statusRecord?.status === 'highlighted') statusClass = 'row-highlighted';
-                        
-                        // --- NEW: Display Logic ---
                         let displayAmount = item.amount;
                         if (statusRecord && statusRecord.edited_amount !== null) {
                             displayAmount = statusRecord.edited_amount;
-                            statusClass += ' row-edited'; // Add class for styling
+                            statusClass += ' row-edited';
                         }
-                        
                         const dateString = date.toISOString().split('T')[0];
                         const dueDay = formatDay(date);
-                        const amount = formatCurrency(displayAmount); // Format the correct amount
-
+                        const amount = formatCurrency(displayAmount);
                         let itemName = item.name;
                         const totalPayments = item.advanced_data?.total_payments;
                         if (totalPayments && (item.advanced_data?.item_type === 'Mortgage/Loan' || item.advanced_data?.item_type === 'Car Loan')) {
                             const currentPaymentNum = calculatePaymentNumber(item.start_date, date, item.interval);
-                            if (currentPaymentNum) {
-                                itemName += ` <span class="payment-number">(${currentPaymentNum} of ${totalPayments})</span>`;
-                            }
+                            if (currentPaymentNum) itemName += ` <span class="payment-number">(${currentPaymentNum} of ${totalPayments})</span>`;
                         }
-                        
-                        rowsHTML += `
-                            <tr class="${statusClass}" 
-                                data-item-id="${item.id}" 
-                                data-item-type="${type}" 
-                                data-date="${dateString}"
-                                data-amount="${item.amount}" 
-                                title="Right-click to change status">
-                                <td>${itemName}</td>
-                                <td>${dueDay}</td>
-                                <td>${amount}</td>
-                            </tr>
-                        `;
+                        rowsHTML += `<tr class="${statusClass}" data-item-id="${item.id}" data-item-type="${type}" data-date="${dateString}" data-amount="${item.amount}" title="Right-click to change status"><td>${itemName}</td><td>${dueDay}</td><td>${amount}</td></tr>`;
                     });
                 }
-                if (!hasItems) {
-                    rowsHTML = `<tr><td colspan="3">No recurring ${type.toLowerCase()}s this month.</td></tr>`;
-                }
+                if (!hasItems) rowsHTML = `<tr><td colspan="3">No recurring ${type.toLowerCase()}s this month.</td></tr>`;
                 return { html: rowsHTML, total: sectionTotal };
             };
 
-            // --- Generate Rows for ONE-TIME items ---
+            // --- Generate Rows for ONE-TIME items (unchanged) ---
             const generateOneTimeRows = () => {
                 let rowsHTML = '';
                 let hasItems = false;
-                let totalIncome = 0; 
-                let totalExpense = 0; 
+                let totalIncome = 0;
+                let totalExpense = 0;
                 const allOccurrences = [];
-
                 oneTimeIncomes.forEach(item => {
-                    const occurrences = getOccurrencesInMonth(item, monthDate);
+                    const occurrences = getOccurrencesInMonth(item, monthDateUTC);
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ, type: 'income' });
                         const statusRecord = findTransactionStatus(item.id, 'income', occ);
-                        if (statusRecord && statusRecord.edited_amount !== null) {
-                            totalIncome += statusRecord.edited_amount;
-                        } else {
-                            totalIncome += item.amount;
-                        }
+                        totalIncome += (statusRecord && statusRecord.edited_amount !== null) ? statusRecord.edited_amount : item.amount;
                     });
                 });
                 oneTimeExpenses.forEach(item => {
-                    const occurrences = getOccurrencesInMonth(item, monthDate);
+                    const occurrences = getOccurrencesInMonth(item, monthDateUTC);
                     occurrences.forEach(occ => {
                         allOccurrences.push({ item: item, date: occ, type: 'expense' });
                         const statusRecord = findTransactionStatus(item.id, 'expense', occ);
-                         if (statusRecord && statusRecord.edited_amount !== null) {
-                            totalExpense += statusRecord.edited_amount;
-                        } else {
-                            totalExpense += item.amount;
-                        }
+                        totalExpense += (statusRecord && statusRecord.edited_amount !== null) ? statusRecord.edited_amount : item.amount;
                     });
                 });
-                
                 allOccurrences.sort((a, b) => a.date.getUTCDate() - b.date.getUTCDate());
-
                 if (allOccurrences.length > 0) {
                     hasItems = true;
                     allOccurrences.forEach(occurrence => {
@@ -288,66 +260,68 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (statusRecord?.status === 'paid') statusClass = 'row-paid';
                         if (statusRecord?.status === 'overdue') statusClass = 'row-overdue';
                         if (statusRecord?.status === 'highlighted') statusClass = 'row-highlighted';
-                        
                         let displayAmount = item.amount;
                         if (statusRecord && statusRecord.edited_amount !== null) {
                             displayAmount = statusRecord.edited_amount;
-                            statusClass += ' row-edited'; // Add class for styling
+                            statusClass += ' row-edited';
                         }
-
                         const typeClass = (type === 'income') ? 'row-income-text' : 'row-expense-text';
                         const dateString = date.toISOString().split('T')[0];
                         const dueDay = formatDay(date);
                         const amount = formatCurrency(displayAmount);
-
                         let itemName = item.name;
                         const totalPayments = item.advanced_data?.total_payments;
                          if (totalPayments && (item.advanced_data?.item_type === 'Mortgage/Loan' || item.advanced_data?.item_type === 'Car Loan')) {
                             const currentPaymentNum = calculatePaymentNumber(item.start_date, date, item.interval);
-                            if (currentPaymentNum) {
-                                itemName += ` <span class="payment-number">(${currentPaymentNum} of ${totalPayments})</span>`;
-                            }
+                            if (currentPaymentNum) itemName += ` <span class="payment-number">(${currentPaymentNum} of ${totalPayments})</span>`;
                         }
-
-                        rowsHTML += `
-                            <tr class="${statusClass} ${typeClass}" 
-                                data-item-id="${item.id}" 
-                                data-item-type="${type}" 
-                                data-date="${dateString}"
-                                data-amount="${item.amount}"
-                                title="Right-click to change status">
-                                <td>${itemName}</td>
-                                <td>${dueDay}</td>
-                                <td>${amount}</td>
-                            </tr>
-                        `;
+                        rowsHTML += `<tr class="${statusClass} ${typeClass}" data-item-id="${item.id}" data-item-type="${type}" data-date="${dateString}" data-amount="${item.amount}" title="Right-click to change status"><td>${itemName}</td><td>${dueDay}</td><td>${amount}</td></tr>`;
                     });
                 }
-                if (!hasItems) {
-                    rowsHTML = `<tr><td colspan="3">No one-time items this month.</td></tr>`;
-                }
-                const net = totalIncome - totalExpense; 
-                return { html: rowsHTML, net: net }; 
+                if (!hasItems) rowsHTML = `<tr><td colspan="3">No one-time items this month.</td></tr>`;
+                const net = totalIncome - totalExpense;
+                return { html: rowsHTML, net: net };
             };
 
-
-            // --- Generate all row sections and get data ---
+            // --- Generate Income/Expense sections ---
             const incomeData = generateRows(recurringIncomes, 'income');
             const expenseData = generateRows(recurringExpenses, 'expense');
             const oneTimeData = generateOneTimeRows();
-            
-            // --- Calculate totals ---
+
+            // --- Calculate Net Totals ---
             const monthlyNetTotal = (incomeData.total - expenseData.total) + oneTimeData.net;
             runningOverallNet += monthlyNetTotal;
-            
-            // ... (rest of the HTML generation is identical) ...
-            
-            // --- Format totals for display ---
+
+            // --- NEW: Calculate Banking Section ---
+            const bankingMonthData = calculateAccountBalancesForMonth(monthDateUTC, runningAccountBalances);
+            let bankingRowsHTML = '';
+            appState.accounts.forEach(acc => {
+                 const startBal = runningAccountBalances[acc.id] || 0;
+                 const endBal = bankingMonthData.endingBalances[acc.id] || 0;
+                 const delta = bankingMonthData.deltas[acc.id] || { deposits: 0, transfers: 0, payments: 0, growth: 0 };
+                 bankingRowsHTML += `
+                     <tr>
+                         <td>${acc.name} (${acc.type})</td>
+                         <td>${formatCurrency(startBal)}</td>
+                         <td>${formatCurrency(delta.deposits, 'dash')}</td>
+                         <td>${formatCurrency(delta.transfers, 'dash')}</td>
+                         <td>${formatCurrency(delta.payments, 'dash')}</td>
+                         <td>${formatCurrency(delta.growth, 'dash')}</td>
+                         <td>${formatCurrency(endBal)}</td>
+                     </tr>
+                 `;
+            });
+            // Update running balances for the *next* month
+            runningAccountBalances = bankingMonthData.endingBalances;
+            // --- END NEW BANKING ---
+
+
+            // --- Format totals ---
             const incomeTotalFormatted = formatCurrency(incomeData.total);
             const expenseTotalFormatted = formatCurrency(expenseData.total);
             const oneTimeNetFormatted = formatCurrency(oneTimeData.net);
             const monthlyNetTotalFormatted = formatCurrency(monthlyNetTotal);
-            const overallNetTotalFormatted = formatCurrency(runningOverallNet); 
+            const overallNetTotalFormatted = formatCurrency(runningOverallNet);
 
             // --- Assemble the final table HTML ---
             finalHTML += `
@@ -355,81 +329,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     <h3 class="month-grid-header">${monthYear}</h3>
                     <table class="month-grid-table">
                         <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Due Day(s)</th>
-                                <th>Amount</th>
-                            </tr>
+                            <tr><th>Name</th><th>Due Day(s)</th><th>Amount</th></tr>
                         </thead>
                         <tbody class="grid-grand-total">
-                            <tr class="grid-monthly-net-total-row">
-                                <td colspan="2">MONTHLY NET TOTAL</td>
-                                <td>${monthlyNetTotalFormatted}</td>
-                            </tr>
-                            <tr class="grid-overall-net-total-row">
-                                <td colspan="2">OVERALL NET TOTAL</td>
-                                <td>${overallNetTotalFormatted}</td>
-                            </tr>
+                            <tr class="grid-monthly-net-total-row"><td colspan="2">MONTHLY NET TOTAL</td><td>${monthlyNetTotalFormatted}</td></tr>
+                            <tr class="grid-overall-net-total-row"><td colspan="2">OVERALL NET TOTAL</td><td>${overallNetTotalFormatted}</td></tr>
                         </tbody>
                         <tbody class="grid-group-income">
-                            <tr class="grid-group-header">
-                                <td colspan="3">
-                                    <div class="grid-header-content">
-                                        <span>Income</span>
-                                        <button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}">+ Add</button>
-                                    </div>
-                                </td>
-                            </tr>
+                            <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><span>Income</span><button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}">+ Add</button></div></td></tr>
                             ${incomeData.html}
-                            <tr class="grid-total-row">
-                                <td colspan="2">Total Income</td>
-                                <td>${incomeTotalFormatted}</td>
-                            </tr>
+                            <tr class="grid-total-row"><td colspan="2">Total Income</td><td>${incomeTotalFormatted}</td></tr>
                         </tbody>
                         <tbody class="grid-group-expense">
-                            <tr class="grid-group-header">
-                                <td colspan="3">
-                                    <div class="grid-header-content">
-                                        <span>Expenses</span>
-                                        <button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}">+ Add</button>
-                                    </div>
-                                </td>
-                            </tr>
+                            <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><span>Expenses</span><button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}">+ Add</button></div></td></tr>
                             ${expenseData.html}
-                            <tr class="grid-total-row">
-                                <td colspan="2">Total Expenses</td>
-                                <td>${expenseTotalFormatted}</td>
-                            </tr>
+                            <tr class="grid-total-row"><td colspan="2">Total Expenses</td><td>${expenseTotalFormatted}</td></tr>
                         </tbody>
                         <tbody class="grid-group-onetime">
-                            <tr class="grid-group-header">
-                                <td colspan="3">
-                                    <div class="grid-header-content">
-                                        <span>One-time</span>
-                                        <div class="grid-header-buttons">
-                                            <button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}" data-interval="one-time">+ Income</button>
-                                            <button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}" data-interval="one-time">+ Expense</button>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
+                            <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><span>One-time</span><div class="grid-header-buttons"><button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}" data-interval="one-time">+ Income</button><button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}" data-interval="one-time">+ Expense</button></div></div></td></tr>
                             ${oneTimeData.html}
-                            <tr class="grid-total-row">
-                                <td colspan="2">One-time Net</td>
-                                <td>${oneTimeNetFormatted}</td>
-                            </tr>
+                            <tr class="grid-total-row"><td colspan="2">One-time Net</td><td>${oneTimeNetFormatted}</td></tr>
                         </tbody>
                         <tbody class="grid-group-banking">
-                            <tr class="grid-group-header">
-                                <td colspan="3">
-                                    <div class="grid-header-content">
-                                        <span>Banking</span>
-                                    </div>
-                                </td>
+                            <tr class="grid-group-header"><td colspan="7"><div class="grid-header-content"><span>Banking</span></div></td></tr>
+                            <tr class="banking-sub-header">
+                                <th>Account</th><th>Start Bal.</th><th>Deposits</th><th>Transfers</th><th>Payments</th><th>Growth</th><th>End Bal.</th>
                             </tr>
-                            <tr>
-                                <td colspan="3">*Net Totals (Coming Soon)*</td>
-                            </tr>
+                            ${bankingRowsHTML}
                         </tbody>
                     </table>
                 </div>
@@ -437,8 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         finalHTML += '</div>';
-        
-        // This function returns the HTML string to be injected by the caller
         return finalHTML;
     }
     // --- Dark/Light Mode Functions ---
@@ -2328,6 +2252,79 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
             transferList.appendChild(li);
         });
+    }
+    /**
+     * Calculates the ending balances for all accounts for a given month,
+     * based on starting balances, incomes, expenses, transfers, and growth.
+     * @param {Date} monthDateUTC - A Date object representing the *start* of the target month (UTC).
+     * @param {object} startingBalances - An object mapping accountId to starting balance, e.g., { 1: 1000, 2: 5000 }.
+     * @returns {object} An object containing:
+     * - endingBalances: { accountId: endingBalance, ... }
+     * - deltas: { accountId: { deposits, transfers, payments, growth }, ... }
+     */
+    function calculateAccountBalancesForMonth(monthDateUTC, startingBalances) {
+        const endingBalances = { ...startingBalances }; // Start with beginning balances
+        const deltas = {}; // To store changes for the grid: { accId: { deposits: 0, transfers: 0, payments: 0, growth: 0 }}
+
+        // Initialize deltas for all accounts
+        appState.accounts.forEach(acc => {
+            deltas[acc.id] = { deposits: 0, transfers: 0, payments: 0, growth: 0 };
+            // Ensure balance exists, default to 0 if account is new/missing start balance
+            if (endingBalances[acc.id] === undefined) {
+                endingBalances[acc.id] = 0;
+            }
+        });
+
+        // 1. Calculate Investment Growth (applied to starting balance)
+        appState.accounts.forEach(acc => {
+            if (acc.type === 'investment' && acc.growth_rate && acc.growth_rate > 0) {
+                const monthlyGrowthRate = acc.growth_rate / 12;
+                const growthAmount = (endingBalances[acc.id] || 0) * monthlyGrowthRate;
+                endingBalances[acc.id] = (endingBalances[acc.id] || 0) + growthAmount;
+                deltas[acc.id].growth += growthAmount;
+            }
+        });
+
+        // 2. Process Incomes
+        appState.incomes.forEach(income => {
+            if (income.deposit_account_id) {
+                const occurrences = getOccurrencesInMonth(income, monthDateUTC);
+                occurrences.forEach(occDate => {
+                    const statusRecord = findTransactionStatus(income.id, 'income', occDate);
+                    const amount = (statusRecord && statusRecord.edited_amount !== null) ? statusRecord.edited_amount : income.amount;
+                    endingBalances[income.deposit_account_id] = (endingBalances[income.deposit_account_id] || 0) + amount;
+                    deltas[income.deposit_account_id].deposits += amount;
+                });
+            }
+        });
+
+        // 3. Process Expenses
+        appState.expenses.forEach(expense => {
+            if (expense.payment_account_id) {
+                const occurrences = getOccurrencesInMonth(expense, monthDateUTC);
+                occurrences.forEach(occDate => {
+                    const statusRecord = findTransactionStatus(expense.id, 'expense', occDate);
+                    const amount = (statusRecord && statusRecord.edited_amount !== null) ? statusRecord.edited_amount : expense.amount;
+                    endingBalances[expense.payment_account_id] = (endingBalances[expense.payment_account_id] || 0) - amount;
+                    deltas[expense.payment_account_id].payments -= amount; // Payments are negative delta
+                });
+            }
+        });
+
+        // 4. Process Transfers
+        appState.transfers.forEach(transfer => {
+            const occurrences = getOccurrencesInMonth(transfer, monthDateUTC); // Use same logic for transfers
+            occurrences.forEach(() => { // Amount is per occurrence
+                // Subtract from 'from' account
+                endingBalances[transfer.from_account_id] = (endingBalances[transfer.from_account_id] || 0) - transfer.amount;
+                deltas[transfer.from_account_id].transfers -= transfer.amount;
+                // Add to 'to' account
+                endingBalances[transfer.to_account_id] = (endingBalances[transfer.to_account_id] || 0) + transfer.amount;
+                deltas[transfer.to_account_id].transfers += transfer.amount;
+            });
+        });
+
+        return { endingBalances, deltas };
     }
     // === EVENT LISTENERS ===
     gridContentArea.addEventListener('contextmenu', (event) => {

@@ -863,6 +863,32 @@ body.dark-mode .amortization-table tbody tr.edited-payment-row td {
     font-size: 0.85rem;
     color: var(--secondary-btn-bg); /* Use a muted color */
 }
+/* === Grid Banking Section Styles === */
+/* Make the banking header span all 7 columns */
+.grid-group-banking .grid-group-header td {
+    border-left: 4px solid #3498db; /* Blue accent */
+    color: #3498db;
+}
+/* Style the sub-header row for banking columns */
+.banking-sub-header th {
+    background-color: var(--list-item-bg);
+    font-size: 0.85rem;
+    padding: 0.4rem 0.6rem;
+    text-align: right; /* Right-align numeric headers */
+}
+.banking-sub-header th:first-child {
+    text-align: left; /* Left-align Account name */
+}
+/* Ensure banking data rows also span correctly and align */
+.grid-group-banking tr:not(.grid-group-header):not(.banking-sub-header) td {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.6rem;
+    text-align: right;
+}
+.grid-group-banking tr:not(.grid-group-header):not(.banking-sub-header) td:first-child {
+    text-align: left;
+    font-weight: 500;
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
