@@ -919,26 +919,196 @@ document.addEventListener('DOMContentLoaded', () => {
         openModal();
     }
     function showAccountModal(accountId) {
-        modalTitle.textContent = accountId ? 'Edit Account' : 'Add New Account';
+        const isEditMode = accountId !== undefined;
+        const accountToEdit = isEditMode && Array.isArray(appState.accounts) ? appState.accounts.find(a => a.id === accountId) : null;
+        modalTitle.textContent = isEditMode ? 'Edit Account' : 'Add New Account';
+
         modalBody.innerHTML = `
-            <p>Account form coming soon...</p>
-            `;
+            <div class="form-group">
+                <label for="modal-account-name">Account Name:</label>
+                <input type="text" id="modal-account-name" placeholder="e.g., Chase Checking" required>
+            </div>
+            <div class="form-group">
+                <label for="modal-account-type">Account Type:</label>
+                <select id="modal-account-type" required>
+                    <option value="">-- Select Type --</option>
+                    <option value="checking">Checking</option>
+                    <option value="savings">Savings</option>
+                    <option value="investment">Investment</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="modal-account-balance">Current Balance ($):</label>
+                <input type="number" id="modal-account-balance" placeholder="1000" min="0" step="0.01" required>
+            </div>
+            <div id="growth-rate-group" class="form-group" style="display: none;">
+                <label for="modal-account-growth">Est. Annual Growth (%):</label>
+                <input type="number" id="modal-account-growth" placeholder="5" min="0" step="0.01">
+            </div>
+        `;
+
+        const typeSelect = document.getElementById('modal-account-type');
+        const growthGroup = document.getElementById('growth-rate-group');
+        const balanceInput = document.getElementById('modal-account-balance');
+
+        // Show/hide growth rate field based on type
+        typeSelect.addEventListener('change', () => {
+            growthGroup.style.display = typeSelect.value === 'investment' ? 'grid' : 'none';
+        });
+
+        // Populate fields if editing
+        if (isEditMode && accountToEdit) {
+            document.getElementById('modal-account-name').value = accountToEdit.name || '';
+            typeSelect.value = accountToEdit.type || '';
+            balanceInput.value = accountToEdit.current_balance || '';
+            // Make balance read-only when editing (to prevent accidental changes? Discuss later if needed)
+            // balanceInput.readOnly = true;
+            // balanceInput.title = "Balance can only be adjusted via transfers or edits.";
+
+            if (accountToEdit.type === 'investment') {
+                document.getElementById('modal-account-growth').value = accountToEdit.growth_rate ? (accountToEdit.growth_rate * 100).toFixed(2) : '';
+                growthGroup.style.display = 'grid'; // Ensure it's visible
+            }
+        } else {
+             growthGroup.style.display = 'none'; // Ensure hidden for new non-investment
+        }
+
         onSave = async () => {
-             console.log("Account save logic coming soon...");
-             // TODO: Add save logic
-             closeModal();
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) { /* ... error handling ... */ return; }
+
+            const type = typeSelect.value;
+            const growthRateInput = document.getElementById('modal-account-growth').value;
+
+            const formItem = {
+                user_id: user.id,
+                name: document.getElementById('modal-account-name').value.trim(),
+                type: type,
+                current_balance: parseFloat(balanceInput.value),
+                growth_rate: (type === 'investment' && growthRateInput) ? parseFloat(growthRateInput) / 100.0 : null
+            };
+
+            // Basic Validation
+            if (!formItem.name || !formItem.type || isNaN(formItem.current_balance) || formItem.current_balance < 0) {
+                alert("Please fill out Name, Type, and a valid Balance.");
+                return;
+            }
+            if (formItem.type === 'investment' && formItem.growth_rate !== null && isNaN(formItem.growth_rate)) {
+                 alert("Please enter a valid growth rate or leave it blank.");
+                 return;
+            }
+
+
+            let { error } = isEditMode
+                ? await supabaseClient.from('accounts').update(formItem).eq('id', accountId)
+                : await supabaseClient.from('accounts').insert([formItem]).select();
+
+            if (error) { console.error("Error saving account:", error); alert(`Error: ${error.message}`); }
+            else { await fetchData(); }
+            closeModal();
         };
         openModal();
     }
     function showTransferModal(transferId) {
-        modalTitle.textContent = transferId ? 'Edit Transfer' : 'Add New Transfer';
+        const isEditMode = transferId !== undefined;
+        const transferToEdit = isEditMode && Array.isArray(appState.transfers) ? appState.transfers.find(t => t.id === transferId) : null;
+        modalTitle.textContent = isEditMode ? 'Edit Transfer' : 'Add New Transfer';
+
+        // Get all accounts for dropdowns
+        let accountOptions = '<option value="">-- Select Account --</option>';
+        if (appState.accounts.length > 0) {
+            accountOptions += appState.accounts.map(acc => `<option value="${acc.id}">${acc.name}</option>`).join('');
+        } else {
+            accountOptions = '<option value="" disabled>-- No accounts defined --</option>';
+        }
+
         modalBody.innerHTML = `
-            <p>Transfer form coming soon...</p>
-            `;
+             <div class="form-group">
+                <label for="modal-transfer-desc">Description (Optional):</label>
+                <input type="text" id="modal-transfer-desc" placeholder="e.g., Monthly Savings">
+            </div>
+            <div class="form-group">
+                <label for="modal-transfer-from">From Account:</label>
+                <select id="modal-transfer-from" required>${accountOptions}</select>
+            </div>
+            <div class="form-group">
+                <label for="modal-transfer-to">To Account:</label>
+                <select id="modal-transfer-to" required>${accountOptions}</select>
+            </div>
+            <div class="form-group">
+                <label for="modal-transfer-amount">Amount ($):</label>
+                <input type="number" id="modal-transfer-amount" placeholder="100" min="0.01" step="0.01" required>
+            </div>
+             <div class="form-group">
+                <label for="modal-transfer-interval">Interval:</label>
+                <select id="modal-transfer-interval" required>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="annually">Annually</option>
+                    <option value="one-time">One-time</option>
+                    </select>
+            </div>
+            <div class="form-group">
+                <label for="modal-transfer-date">Start/Transfer Date:</label>
+                <input type="date" id="modal-transfer-date" required>
+            </div>
+        `;
+
+        // Populate fields if editing
+        if (isEditMode && transferToEdit) {
+            document.getElementById('modal-transfer-desc').value = transferToEdit.description || '';
+            document.getElementById('modal-transfer-from').value = transferToEdit.from_account_id || '';
+            document.getElementById('modal-transfer-to').value = transferToEdit.to_account_id || '';
+            document.getElementById('modal-transfer-amount').value = transferToEdit.amount || '';
+            document.getElementById('modal-transfer-interval').value = transferToEdit.interval || 'monthly';
+            document.getElementById('modal-transfer-date').value = transferToEdit.start_date || '';
+        } else if (!isEditMode) {
+            // Default date for new transfers
+             document.getElementById('modal-transfer-date').value = new Date().toISOString().split('T')[0];
+        }
+
         onSave = async () => {
-             console.log("Transfer save logic coming soon...");
-             // TODO: Add save logic
-             closeModal();
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) { /* ... error handling ... */ return; }
+
+            const fromAccountId = parseInt(document.getElementById('modal-transfer-from').value);
+            const toAccountId = parseInt(document.getElementById('modal-transfer-to').value);
+            const amount = parseFloat(document.getElementById('modal-transfer-amount').value);
+            const startDate = document.getElementById('modal-transfer-date').value;
+            const interval = document.getElementById('modal-transfer-interval').value;
+
+            // Validation
+            if (!fromAccountId || !toAccountId) {
+                 alert("Please select both From and To accounts."); return;
+            }
+            if (fromAccountId === toAccountId) {
+                alert("From and To accounts cannot be the same."); return;
+            }
+            if (isNaN(amount) || amount <= 0) {
+                 alert("Please enter a valid positive amount."); return;
+            }
+            if (!startDate || !interval) {
+                 alert("Please select an interval and start/transfer date."); return;
+            }
+
+
+            const formItem = {
+                user_id: user.id,
+                description: document.getElementById('modal-transfer-desc').value.trim() || null,
+                from_account_id: fromAccountId,
+                to_account_id: toAccountId,
+                amount: amount,
+                interval: interval,
+                start_date: startDate,
+            };
+
+            let { error } = isEditMode
+                ? await supabaseClient.from('transfers').update(formItem).eq('id', transferId)
+                : await supabaseClient.from('transfers').insert([formItem]).select();
+
+            if (error) { console.error("Error saving transfer:", error); alert(`Error: ${error.message}`); }
+            else { await fetchData(); }
+            closeModal();
         };
         openModal();
     }
@@ -2082,17 +2252,82 @@ document.addEventListener('DOMContentLoaded', () => {
             accountList.innerHTML = `<li>No accounts added yet.</li>`;
             return;
         }
-        // TODO: Implement rendering logic for accounts list
-        accountList.innerHTML = `<li>Account rendering coming soon...</li>`;
+
+        // Group accounts by type for display order
+        const groupedAccounts = { checking: [], savings: [], investment: [] };
+        appState.accounts.forEach(acc => {
+            if (groupedAccounts[acc.type]) {
+                groupedAccounts[acc.type].push(acc);
+            }
+        });
+
+        const renderGroup = (group, title) => {
+            if (group.length > 0) {
+                group.sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
+                group.forEach(acc => {
+                    const li = document.createElement('li');
+                    const formattedBalance = acc.current_balance.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+                    const growthText = acc.type === 'investment' && acc.growth_rate ? ` (${(acc.growth_rate * 100).toFixed(1)}% growth)` : '';
+
+                    li.innerHTML = `
+                        <div class="item-details">
+                            <strong>${acc.name}</strong> (${acc.type})${growthText}<br>
+                            <span>Balance: ${formattedBalance}</span>
+                        </div>
+                        <div class="item-controls">
+                            <button class="edit-btn" data-id="${acc.id}" data-type="account">Edit</button>
+                            <button class="delete-btn" data-id="${acc.id}" data-type="account">X</button>
+                        </div>`;
+                    accountList.appendChild(li);
+                });
+            }
+        };
+
+        renderGroup(groupedAccounts.checking, 'Checking');
+        renderGroup(groupedAccounts.savings, 'Savings');
+        renderGroup(groupedAccounts.investment, 'Investment');
     }
     function renderTransfersList() {
         transferList.innerHTML = ''; // Clear previous
-        if (!appState.transfers || appState.transfers.length === 0) {
-            transferList.innerHTML = `<li>No transfers added yet.</li>`;
+        const recurringTransfers = appState.transfers.filter(t => t.interval !== 'one-time');
+
+        if (!recurringTransfers || recurringTransfers.length === 0) {
+            transferList.innerHTML = `<li>No recurring transfers added yet.</li>`;
             return;
         }
-        // TODO: Implement rendering logic for transfers list
-        transferList.innerHTML = `<li>Transfer rendering coming soon...</li>`;
+
+        // Sort by start date, then maybe description?
+        recurringTransfers.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+
+        const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+        recurringTransfers.forEach(transfer => {
+            const fromAcc = appState.accounts.find(a => a.id === transfer.from_account_id);
+            const toAcc = appState.accounts.find(a => a.id === transfer.to_account_id);
+            const fromName = fromAcc ? fromAcc.name : 'Unknown';
+            const toName = toAcc ? toAcc.name : 'Unknown';
+
+            let dateText = '';
+            if (transfer.start_date) {
+                 try {
+                     const date = new Date(transfer.start_date + 'T00:00:00');
+                     dateText = ` (Starts: ${date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })})`;
+                 } catch (e) { dateText = ' (Invalid Date)'; }
+            }
+
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div class="item-details">
+                    <strong>${transfer.description || 'Transfer'}</strong><br>
+                    <span>${formatCurrency(transfer.amount)} / ${transfer.interval}</span><br>
+                    <span class="transfer-details">From: ${fromName} -> To: ${toName}${dateText}</span>
+                </div>
+                <div class="item-controls">
+                    <button class="edit-btn" data-id="${transfer.id}" data-type="transfer">Edit</button>
+                    <button class="delete-btn" data-id="${transfer.id}" data-type="transfer">X</button>
+                </div>`;
+            transferList.appendChild(li);
+        });
     }
     // === EVENT LISTENERS ===
     gridContentArea.addEventListener('contextmenu', (event) => {
@@ -2287,6 +2522,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 showExpenseModal(undefined, prefillData);
             }
             return;
+        }
+    });
+    bankingSection.addEventListener('click', async (event) => {
+        const target = event.target;
+        const idString = target.dataset.id;
+        const type = target.dataset.type; // 'account' or 'transfer'
+
+        if (!idString || !type) return;
+
+        const id = parseInt(idString);
+        if (isNaN(id)) { console.error(`Invalid ID found: ${idString}`); return; }
+
+        if (target.classList.contains('edit-btn')) {
+            console.log(`Edit ${type} ID ${id}`);
+            if (type === 'account') showAccountModal(id);
+            else if (type === 'transfer') showTransferModal(id);
+
+        } else if (target.classList.contains('delete-btn')) {
+            console.log(`Delete ${type} ID ${id}`);
+            const tableName = type === 'account' ? 'accounts' : 'transfers';
+            // Simple confirm for now, add checks later if deleting account affects transfers/links
+            if (confirm(`Are you sure you want to delete this ${type}?`)) {
+                 const { error } = await supabaseClient.from(tableName).delete().eq('id', id);
+                 if (error) { console.error(`Error deleting from ${tableName}:`, error); alert(`Error: ${error.message}`); }
+                 else { console.log(`Successfully deleted ${type} ID ${id}`); await fetchData(); }
+            }
         }
     });
     authModalCloseBtn.addEventListener('click', closeAuthModal);

@@ -857,6 +857,11 @@ body.dark-mode .amortization-table tbody tr.edited-payment-row td {
 #grid-yearly-summary-panel .form-group {
     margin-bottom: 0.5rem; 
 }
+/* === Banking List Styles === */
+.transfer-details {
+    font-size: 0.85rem;
+    color: var(--secondary-btn-bg); /* Use a muted color */
+}
 /* COMMENTED OUT: Old multi-theme definitions */
 /*
 body[data-theme="sunflower"] {
