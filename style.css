@@ -209,8 +209,9 @@ select {
 .chart-container { margin-top: 2rem; position: relative; height: 300px; }
 .divider { margin-top: 1.5rem; margin-bottom: 1.5rem; border: 0; border-top: 1px solid var(--border-color); }
 main.dashboard-expanded #dashboard-section { flex-grow: 20; }
-main.dashboard-expanded #income-section, 
-main.dashboard-expanded #expenses-section { 
+main.dashboard-expanded #income-section,
+main.dashboard-expanded #expenses-section,
+main.dashboard-expanded #banking-section { 
     display: none; /* Hide the sections completely */
 }
 
