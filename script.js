@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13dXhycndiZ3l0YnFybGh6d3NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MjcxNTYsImV4cCI6MjA3NjEwMzE1Nn0.up3JOKKXEyw6axEGhI2eESJbrZzoH-93zRmCSXukYZY';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     // === STATE MANAGEMENT ===
-    let appState = { incomes: [], expenses: [], transactions: [] };
+    let appState = { incomes: [], expenses: [], transactions: [], accounts: [], transfers: [] };
     let onSave = null;
     let expenseChartInstance = null;
     let activeDashboardTab = 'grids'; 
@@ -54,6 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const expandedExpenseChartCanvas = document.getElementById('expanded-expense-chart'); 
     const expandedChartContainer = document.getElementById('expanded-expense-chart').parentElement;
     const gridContextMenu = document.getElementById('grid-context-menu');
+    const bankingSection = document.getElementById('banking-section');
+    const showAccountModalBtn = document.getElementById('show-account-modal-btn');
+    const showTransferModalBtn = document.getElementById('show-transfer-modal-btn');
+    const accountList = document.getElementById('account-list');
+    const transferList = document.getElementById('transfer-list');
     // === FUNCTIONS ===
     // --- Dashboard Tab/View Management ---
     function setActiveDashboardTab(tabId) {
@@ -469,21 +474,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) {
              console.log("No user logged in for fetchData, clearing local state.");
-             appState = { incomes: [], expenses: [], transactions: [] }; // Clear all
+             appState = { incomes: [], expenses: [], transactions: [], accounts: [], transfers: [] }; // Clear all
              renderAll();
              return;
         }
         console.log("Fetching data for user:", user.id);
-        
+
         // Use Promise.all to fetch concurrently
         const [
             { data: incomes, error: incomesError },
             { data: expenses, error: expensesError },
-            { data: transactions, error: transactionsError }
+            { data: transactions, error: transactionsError },
+            { data: accounts, error: accountsError },         // <-- NEW
+            { data: transfers, error: transfersError }        // <-- NEW
         ] = await Promise.all([
             supabaseClient.from('incomes').select('*').eq('user_id', user.id),
             supabaseClient.from('expenses').select('*').eq('user_id', user.id),
-            supabaseClient.from('transaction_log').select('*').eq('user_id', user.id) // Fetch new log
+            supabaseClient.from('transaction_log').select('*').eq('user_id', user.id),
+            supabaseClient.from('accounts').select('*').eq('user_id', user.id),    // <-- NEW
+            supabaseClient.from('transfers').select('*').eq('user_id', user.id)     // <-- NEW
         ]);
 
         if (incomesError) console.error('Error fetching incomes:', incomesError);
@@ -493,7 +502,14 @@ document.addEventListener('DOMContentLoaded', () => {
         else appState.expenses = expenses || [];
 
         if (transactionsError) console.error('Error fetching transactions:', transactionsError);
-        else appState.transactions = transactions || []; // Store transactions
+        else appState.transactions = transactions || [];
+
+        if (accountsError) console.error('Error fetching accounts:', accountsError); // <-- NEW
+        else appState.accounts = accounts || [];                                       // <-- NEW
+
+        if (transfersError) console.error('Error fetching transfers:', transfersError); // <-- NEW
+        else appState.transfers = transfers || [];                                       // <-- NEW
+
 
         console.log("Data fetch complete, rendering UI.");
         renderAll();
@@ -896,11 +912,36 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         openModal();
     }
+    function showAccountModal(accountId) {
+        modalTitle.textContent = accountId ? 'Edit Account' : 'Add New Account';
+        modalBody.innerHTML = `
+            <p>Account form coming soon...</p>
+            `;
+        onSave = async () => {
+             console.log("Account save logic coming soon...");
+             // TODO: Add save logic
+             closeModal();
+        };
+        openModal();
+    }
+    function showTransferModal(transferId) {
+        modalTitle.textContent = transferId ? 'Edit Transfer' : 'Add New Transfer';
+        modalBody.innerHTML = `
+            <p>Transfer form coming soon...</p>
+            `;
+        onSave = async () => {
+             console.log("Transfer save logic coming soon...");
+             // TODO: Add save logic
+             closeModal();
+        };
+        openModal();
+    }
     // --- RENDER & UTILITY FUNCTIONS ---
     function renderAll() {
         renderIncomes();
         renderExpenses();
         renderDashboard();
+        renderBankingSection();
 
         // --- UPDATED: Auto-restore Yearly Summary View ---
         if (lastNumYears !== null) {
@@ -2025,6 +2066,28 @@ document.addEventListener('DOMContentLoaded', () => {
         logHTML += '</ul>';
         logContent.innerHTML = logHTML;
     }
+    function renderBankingSection() {
+        renderAccountsList();
+        renderTransfersList();
+    }
+    function renderAccountsList() {
+        accountList.innerHTML = ''; // Clear previous
+        if (!appState.accounts || appState.accounts.length === 0) {
+            accountList.innerHTML = `<li>No accounts added yet.</li>`;
+            return;
+        }
+        // TODO: Implement rendering logic for accounts list
+        accountList.innerHTML = `<li>Account rendering coming soon...</li>`;
+    }
+    function renderTransfersList() {
+        transferList.innerHTML = ''; // Clear previous
+        if (!appState.transfers || appState.transfers.length === 0) {
+            transferList.innerHTML = `<li>No transfers added yet.</li>`;
+            return;
+        }
+        // TODO: Implement rendering logic for transfers list
+        transferList.innerHTML = `<li>Transfer rendering coming soon...</li>`;
+    }
     // === EVENT LISTENERS ===
     gridContentArea.addEventListener('contextmenu', (event) => {
         event.preventDefault(); // Stop the default right-click menu
@@ -2232,6 +2295,8 @@ document.addEventListener('DOMContentLoaded', () => {
     appModal.addEventListener('click', (event) => { if (event.target === appModal) closeModal(); });
     incomeList.addEventListener('click', handleListClick);
     expenseList.addEventListener('click', handleListClick);
+    showAccountModalBtn.addEventListener('click', () => showAccountModal());
+    showTransferModalBtn.addEventListener('click', () => showTransferModal());
     // === INITIALIZATION ===
     loadMode(); 
     initializeFooter();
