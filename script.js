@@ -131,7 +131,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // Default to 2 months if not 6m
                 const months = (activeGridView === '6m') ? 6 : 2;
-                gridMonthlyContent.innerHTML = renderGridView(months, new Date());
+                // ⭐️ Pass 0 for startingNetTotal and null for startingAccountBalances
+                gridMonthlyContent.innerHTML = renderGridView(months, new Date(), 0, null);
             }
         } else if (activeDashboardTab === 'charts') {
             if (activeChartView === 'expensePie') {
@@ -144,8 +145,9 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {number} numberOfMonths - The number of months to show.
      * @param {Date} startDate - The date to start the grid from.
      * @param {number} [startingNetTotal=0] - The starting net total to carry over.
+     * @param {object | null} [startingAccountBalances=null] - The starting account balances { accId: balance, ... }.
      */
-    function renderGridView(numberOfMonths, startDate, startingNetTotal = 0) {
+    function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, startingAccountBalances = null) {
         console.log(`Rendering grid view for ${numberOfMonths} months starting from ${startDate.toISOString()} with starting net: ${startingNetTotal}`);
 
         // Use UTC methods to read the date
@@ -168,11 +170,21 @@ document.addEventListener('DOMContentLoaded', () => {
         let finalHTML = '<div class="grid-view-container">';
         let runningOverallNet = startingNetTotal;
 
+        // === ⭐️ MODIFIED LOGIC HERE ===
         // Initialize running account balances
-        let runningAccountBalances = appState.accounts.reduce((acc, account) => {
-            acc[account.id] = account.current_balance;
-            return acc;
-        }, {});
+        let runningAccountBalances;
+        if (startingAccountBalances) {
+            console.log("Using provided starting account balances:", startingAccountBalances);
+            runningAccountBalances = { ...startingAccountBalances }; // Use a copy
+        } else {
+            console.log("Initializing account balances from appState");
+            runningAccountBalances = appState.accounts.reduce((acc, account) => {
+                acc[account.id] = account.current_balance;
+                return acc;
+            }, {});
+        }
+        // === END MODIFICATION ===
+
 
         months.forEach(monthDateUTC => {
             const monthYear = monthDateUTC.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -1053,16 +1065,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // If a specific year was open, render its detail view
             if (lastOpenYear !== null) {
-                 // Calculate starting net total for the restored year
+                 // === ⭐️ MODIFIED LOGIC HERE ===
+                 // Calculate starting net total AND starting account balances
                  let startingNetTotal = 0;
+                 let yearStartAccountBalances = appState.accounts.reduce((acc, account) => {
+                     acc[account.id] = account.current_balance;
+                     return acc;
+                 }, {});
+                 
                  const startYear = new Date().getFullYear();
                  for (let y = startYear; y < lastOpenYear; y++) {
+                     // 1. Calculate cash flow
                      const yearIncome = calculateYearlyTotals(appState.incomes, y);
                      const yearExpense = calculateYearlyTotals(appState.expenses, y);
                      startingNetTotal += (yearIncome - yearExpense);
+                     
+                     // 2. Calculate account balances
+                     // The end of year 'y' becomes the start of year 'y+1'
+                     yearStartAccountBalances = calculateAccountBalancesForYear(y, yearStartAccountBalances);
                  }
+                
                 const startDate = new Date(Date.UTC(lastOpenYear, 0, 1));
-                gridDetailContent.innerHTML = renderGridView(12, startDate, startingNetTotal);
+                // Pass both values to the render function
+                gridDetailContent.innerHTML = renderGridView(12, startDate, startingNetTotal, yearStartAccountBalances);
+                // === END MODIFICATION ===
             } else {
                  // Ensure detail content is cleared if no specific year was open
                  gridDetailContent.innerHTML = '<p>Click a year in the summary to see details.</p>';
@@ -2317,6 +2343,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return { endingBalances, deltas };
     }
+    /**
+     * Calculates the ending balances for all accounts after a full year.
+     * @param {number} year - The year to calculate (e.g., 2025).
+     * @param {object} startingBalances - Balances at the start of Jan 1.
+     * @returns {object} Balances at the end of Dec 31.
+     */
+    function calculateAccountBalancesForYear(year, startingBalances) {
+        let runningBalances = { ...startingBalances }; // Start with the passed-in balances
+
+        for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
+            const monthDate = new Date(Date.UTC(year, monthIndex, 1));
+            // Get ending balances for this month
+            const monthData = calculateAccountBalancesForMonth(monthDate, runningBalances);
+            // The end of this month is the start of the next
+            runningBalances = monthData.endingBalances; 
+        }
+        
+        return runningBalances; // This is the balance at the end of December
+    }
     // === EVENT LISTENERS ===
     gridContentArea.addEventListener('contextmenu', (event) => {
         event.preventDefault(); // Stop the default right-click menu
@@ -2475,18 +2520,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const clickedYear = parseInt(yearButton.dataset.year, 10);
             if (isNaN(clickedYear)) return;
 
-            // Calculate starting net total
+            // === ⭐️ MODIFIED LOGIC HERE ===
+            // Calculate starting net total AND starting account balances
             let startingNetTotal = 0;
+            // Initialize balances from the appState (i.e., "today's" balance)
+            let yearStartAccountBalances = appState.accounts.reduce((acc, account) => {
+                acc[account.id] = account.current_balance;
+                return acc;
+            }, {});
+
             const startYear = new Date().getFullYear();
             for (let y = startYear; y < clickedYear; y++) {
+                // 1. Calculate cash flow for the year
                 const yearIncome = calculateYearlyTotals(appState.incomes, y);
                 const yearExpense = calculateYearlyTotals(appState.expenses, y);
                 startingNetTotal += (yearIncome - yearExpense);
-            }
 
-            // Render detail view
+                // 2. Calculate account balances for the year
+                // The balances at the end of year 'y' are the start of year 'y+1'
+                yearStartAccountBalances = calculateAccountBalancesForYear(y, yearStartAccountBalances);
+            }
+            console.log(`Starting balances for ${clickedYear}:`, yearStartAccountBalances);
+
+            // Render detail view, passing BOTH starting values
             const startDate = new Date(Date.UTC(clickedYear, 0, 1));
-            gridDetailContent.innerHTML = renderGridView(12, startDate, startingNetTotal);
+            gridDetailContent.innerHTML = renderGridView(12, startDate, startingNetTotal, yearStartAccountBalances);
+            // === END MODIFICATION ===
 
             // --- NEW: Update state ---
             lastOpenYear = clickedYear; // Remember which year detail is open
