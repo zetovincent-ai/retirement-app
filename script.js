@@ -307,14 +307,16 @@ document.addEventListener('DOMContentLoaded', () => {
                  appState.accounts.forEach(acc => {
                      const startBal = runningAccountBalances[acc.id] || 0;
                      const endBal = bankingMonthData.endingBalances[acc.id] || 0;
-                     // --- SIMPLIFIED ROW ---
+                     // === ⭐️ MODIFIED LOGIC HERE ===
+                     // Removed `(${acc.type})` from the display
                      bankingRowsHTML += `
                          <tr>
-                             <td>${acc.name} (${acc.type})</td>
+                             <td>${acc.name}</td>
                              <td>${formatCurrency(startBal)}</td>
                              <td>${formatCurrency(endBal)}</td>
                          </tr>
                      `;
+                     // === END MODIFICATION ===
                  });
             }
             // Update running balances for the next month
@@ -328,7 +330,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const overallNetTotalFormatted = formatCurrency(runningOverallNet);
 
             // --- Assemble the final table HTML ---
-            // === ⭐️ MODIFIED LOGIC HERE ===
             finalHTML += `
                 <div class="month-grid-container">
                     <h3 class="month-grid-header">${monthYear}</h3>
@@ -337,9 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             <tr><th>Name</th><th>Due Day(s)</th><th>Amount</th></tr>
                         </thead>
                         <tbody class="grid-grand-total">
-            `;
-            // === END MODIFICATION ===
-            finalHTML += `
                             <tr class="grid-monthly-net-total-row"><td colspan="2">MONTHLY NET TOTAL</td><td>${monthlyNetTotalFormatted}</td></tr>
                             <tr class="grid-overall-net-total-row"><td colspan="2">OVERALL NET TOTAL</td><td>${overallNetTotalFormatted}</td></tr>
                         </tbody>
