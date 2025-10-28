@@ -874,10 +874,11 @@ body.dark-mode .amortization-table tbody tr.edited-payment-row td {
     font-size: 0.9rem;
     padding: 0.4rem 0.6rem;
     text-align: right; /* Right-align balances by default */
+    font-weight: bold; /* Make all banking data rows bold */
 }
 .grid-group-banking tr:not(.grid-group-header) td:first-child {
     text-align: left; /* Left-align account name */
-    font-weight: 500;
+    /* font-weight is already set above */
 }
 /* Ensure the colspan=3 on the header row works correctly */
 .grid-group-banking .grid-group-header td {

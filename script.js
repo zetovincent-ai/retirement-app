@@ -170,7 +170,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let finalHTML = '<div class="grid-view-container">';
         let runningOverallNet = startingNetTotal;
 
-        // === ⭐️ MODIFIED LOGIC HERE ===
         // Initialize running account balances
         let runningAccountBalances;
         if (startingAccountBalances) {
@@ -183,7 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return acc;
             }, {});
         }
-        // === END MODIFICATION ===
 
 
         months.forEach(monthDateUTC => {
@@ -330,14 +328,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const overallNetTotalFormatted = formatCurrency(runningOverallNet);
 
             // --- Assemble the final table HTML ---
+            // === ⭐️ MODIFIED LOGIC HERE ===
             finalHTML += `
                 <div class="month-grid-container">
                     <h3 class="month-grid-header">${monthYear}</h3>
                     <table class="month-grid-table">
                         <thead>
-                            <tr><th>Name</th><th>Due Day(s) / Start Bal</th><th>Amount / End Bal</th></tr>
+                            <tr><th>Name</th><th>Due Day(s)</th><th>Amount</th></tr>
                         </thead>
                         <tbody class="grid-grand-total">
+            `;
+            // === END MODIFICATION ===
+            finalHTML += `
                             <tr class="grid-monthly-net-total-row"><td colspan="2">MONTHLY NET TOTAL</td><td>${monthlyNetTotalFormatted}</td></tr>
                             <tr class="grid-overall-net-total-row"><td colspan="2">OVERALL NET TOTAL</td><td>${overallNetTotalFormatted}</td></tr>
                         </tbody>
