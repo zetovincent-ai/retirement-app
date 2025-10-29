@@ -1,0 +1,314 @@
+/* COMPONENTS.CSS
+  Contains styles for all reusable UI components:
+  Modals, item-lists, notifications, context-menu,
+  theme-toggle, auth-divider, etc.
+*/
+
+/* === Item List === */
+.item-list { 
+    list-style: none; 
+    padding: 0; 
+}
+
+.item-list li {
+    background-color: var(--list-item-bg);
+    border: 1px solid var(--border-color);
+    padding: 10px; 
+    margin-bottom: 8px; 
+    border-radius: 4px; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+}
+
+.item-controls { 
+    display: flex; 
+    gap: 8px; 
+}
+
+.edit-btn { 
+    padding: 4px 8px; 
+}
+
+.delete-btn { 
+    padding: 4px 8px; 
+    font-weight: bold; 
+}
+
+.payment-number {
+    font-size: 0.8rem;
+    color: var(--secondary-btn-bg); /* Use a muted gray color */
+    font-weight: normal;
+    margin-left: 0.25rem;
+}
+
+.transfer-details {
+    font-size: 0.85rem;
+    color: var(--secondary-btn-bg); /* Use a muted color */
+}
+
+
+/* === Modals === */
+.modal { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background-color: rgba(0, 0, 0, 0.5); 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    z-index: 1000; 
+    opacity: 1; 
+    transition: opacity 0.3s ease; 
+}
+
+.modal-hidden { 
+    opacity: 0; 
+    pointer-events: none; 
+}
+
+.modal-content { 
+    background-color: var(--section-bg-color); 
+    padding: 20px; 
+    border-radius: 8px; 
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2); 
+    width: 90%; 
+    max-width: 500px; 
+}
+
+.modal-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    border-bottom: 1px solid var(--border-color); 
+    padding-bottom: 10px; 
+    margin-bottom: 20px; 
+}
+
+.modal-footer { 
+    display: flex; 
+    justify-content: flex-end; 
+    gap: 10px; 
+    border-top: 1px solid var(--border-color); 
+    padding-top: 20px; 
+    margin-top: 20px; 
+}
+
+.modal--read-only .modal-footer {
+    display: none;
+}
+
+.form-group {
+    display: grid;
+    grid-template-columns: 3fr 4fr; /* 1 part for label, 2 parts for input */
+    gap: 5px; /* Space between label and input */
+    align-items: center; /* Vertically align label and input */
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.form-group label {
+    font-weight: bold;
+    text-align: left; /* Ensures labels are right-aligned within their column */
+}
+
+
+/* === Auth Modal === */
+#user-status {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.9rem;
+}
+
+#user-status button { 
+    margin-left: 10px; 
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: var(--text-color);
+    margin: 1.5rem 0;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.auth-divider:not(:empty)::before {
+    margin-right: .5em;
+}
+
+.auth-divider:not(:empty)::after {
+    margin-left: .5em;
+}
+
+#github-login-btn {
+    width: 100%;
+    background-color: #333; /* GitHub brand color */
+}
+
+#github-login-btn:hover {
+    background-color: #555;
+}
+
+
+/* === Theme Toggle === */
+.theme-toggle-group {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 150px;
+}
+
+.theme-switch-wrapper {
+    top: 45px;
+    right: 25px;
+    display: flex;
+    align-items: center;
+}
+
+.theme-switch {
+    display: inline-block;
+    height: 24px;
+    position: relative;
+    width: 48px;
+}
+
+.theme-switch input {
+    display:none;
+}
+
+.slider {
+    background-color: #ccc;
+    bottom: 0;
+    cursor: pointer;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    transition: .4s;
+}
+
+.slider:before {
+    background-color: #fff;
+    bottom: 4px;
+    content: "";
+    height: 16px;
+    left: 4px;
+    position: absolute;
+    transition: .4s;
+    width: 16px;
+}
+
+input:checked + .slider {
+    background-color: var(--primary-btn-bg);
+}
+
+input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+.slider.round {
+    border-radius: 24px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+
+/* === Notifications (Toasts) === */
+#notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2000; /* Ensure it's above modals */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    padding: 1rem 1.5rem;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    color: #fff;
+    opacity: 0;
+    animation: slideIn 0.5s forwards, fadeOut 0.5s 2.5s forwards;
+    transform: translateX(100%);
+}
+
+.toast--success {
+    background-color: var(--income-total-color);
+}
+
+.toast--error {
+    background-color: var(--expense-total-color);
+}
+
+@keyframes slideIn {
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+
+/* === Context Menu === */
+.context-menu {
+    position: fixed;
+    z-index: 10000;
+    background-color: var(--section-bg-color);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 6px;
+    padding: 0.5rem 0;
+}
+
+.context-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.context-menu li {
+    padding: 0.5rem 1.5rem;
+    cursor: pointer;
+}
+
+.context-menu li:hover {
+    background-color: var(--background-color);
+}
+
+.context-menu li[data-status="paid"]:hover { color: var(--income-total-color); }
+.context-menu li[data-status="overdue"]:hover { color: var(--expense-total-color); }
+.context-menu li[data-status="highlighted"]:hover { color: #3498db; }
+.context-menu li[data-action="edit-amount"]:hover {
+    color: var(--net-total-color);
+}
+.context-menu li[data-action="revert-amount"]:hover {
+    color: var(--edit-btn-bg);
+}
+.context-menu li.menu-divider {
+    border-top: 1px solid var(--border-color);
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+}

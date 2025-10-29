@@ -1,0 +1,555 @@
+/* DASHBOARD.CSS
+  Contains all styles related to the dashboard section,
+  including the summary, charts, tabs, grid views,
+  yearly summary, amortization tables, and layout states.
+*/
+
+/* === Dashboard Summary (Collapsed View) === */
+.summary-item { 
+    margin-bottom: 1rem; 
+}
+
+.summary-item h3 { 
+    margin-bottom: 0.25rem; 
+    font-size: 1rem; 
+    font-weight: normal; 
+}
+
+.summary-item p { 
+    font-size: 1.75rem; 
+    font-weight: bold; 
+    margin: 0; 
+}
+
+#toggle-dashboard-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+#toggle-dashboard-btn:hover { 
+    background-color: var(--background-color); 
+}
+
+.chart-container { 
+    margin-top: 2rem; 
+    position: relative; 
+    height: 300px; 
+}
+
+
+/* === Dashboard Expanded State === */
+main.dashboard-expanded #dashboard-section { 
+    flex-grow: 20; 
+}
+
+main.dashboard-expanded #income-section,
+main.dashboard-expanded #expenses-section,
+main.dashboard-expanded #banking-section { 
+    display: none; /* Hide the sections completely */
+}
+
+/* Ensure the dashboard section takes up all the space */
+main.dashboard-expanded #dashboard-section {
+    flex-grow: 1; /* Allow dashboard to expand fully */
+    width: 100%; /* Explicitly set width */
+    min-width: 0; /* Override any potential minimum width */
+}
+
+/* Hide default summary/chart when expanded */
+main.dashboard-expanded #dashboard-summary,
+main.dashboard-expanded #summary-chart-container {
+    display: none;
+}
+
+/* Show expanded content container when expanded */
+main.dashboard-expanded #expanded-dashboard-content {
+    display: flex; /* Use flexbox for overall layout */
+    flex-direction: column; /* Stack tabs, controls, content vertically */
+}
+
+
+/* === Dashboard Tabs & Controls === */
+.dashboard-tabs {
+    display: flex;
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 1rem;
+}
+
+.tab-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    background-color: transparent;
+    color: var(--text-color);
+    cursor: pointer;
+    border-bottom: 2px solid transparent; /* Placeholder for active indicator */
+    margin-bottom: -2px; /* Overlap the container's border */
+    font-size: 1rem;
+}
+
+.tab-btn.active {
+    color: var(--primary-btn-bg); /* Use primary color for active tab */
+    border-bottom-color: var(--primary-btn-bg);
+    font-weight: bold;
+}
+
+.tab-btn:hover:not(.active) {
+    background-color: var(--background-color); /* Subtle hover */
+}
+
+.dashboard-view-controls {
+    margin-bottom: 1rem;
+}
+
+.view-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.view-btn {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--section-bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.view-btn.active {
+    background-color: var(--primary-btn-bg);
+    color: var(--header-text-color); /* White text on primary bg */
+    border-color: var(--primary-btn-bg);
+}
+
+.view-btn:hover:not(.active) {
+    background-color: var(--background-color);
+}
+
+.dashboard-content-area {
+    flex-grow: 1; /* Allow content to fill remaining space */
+    overflow-y: auto; /* Make content scrollable if needed */
+    padding-top: 1rem;
+}
+
+.tab-content {
+    display: none; /* Hide content by default */
+}
+
+.tab-content.active {
+    display: block; /* Show active content */
+}
+
+/* Ensure chart inside tab content resizes */
+#chart-content .chart-container {
+    height: 400px; /* Adjust height as needed for expanded view */
+}
+
+
+/* === Amortization Table === */
+.amortization-table-container {
+    max-height: 400px; /* Limit height and make it scrollable */
+    overflow-y: auto;
+    margin-top: 1rem;
+    border: 1px solid var(--border-color);
+}
+
+.amortization-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.amortization-table th,
+.amortization-table td {
+    border: 1px solid var(--border-color);
+    padding: 6px 8px;
+    text-align: right;
+}
+
+.amortization-table th {
+    background-color: var(--list-item-bg); /* Use list item background for header */
+    position: sticky; /* Make header stick during scroll */
+    top: 0;
+}
+
+.amortization-table tbody tr:nth-child(even) {
+    background-color: var(--list-item-bg); /* Zebra striping */
+}
+
+.amortization-table tbody tr.edited-payment-row td {
+    font-weight: bold;
+    color: var(--net-total-color); /* Use a distinct color */
+}
+.amortization-table tbody tr.edited-payment-row:nth-child(even) {
+     /* Ensure background doesn't clash with default zebra stripe */
+    background-color: var(--list-item-bg); 
+}
+body.dark-mode .amortization-table tbody tr.edited-payment-row td {
+     color: var(--income-total-color); /* Use a brighter color in dark mode */
+}
+
+
+/* === Monthly Grid View Styles === */
+.grid-view-container {
+    display: flex;
+    flex-direction: row; /* Lay out months side-by-side */
+    gap: 1.5rem;
+    padding-bottom: 1rem; /* Space for scrollbar */
+}
+
+.month-grid-container {
+    flex-shrink: 0; /* Prevent containers from shrinking */
+    width: 450px; /* Give each month-table a fixed width */
+    max-width: 100%;
+}
+
+.month-grid-header {
+    background-color: var(--header-bg-color);
+    color: var(--header-text-color);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px 6px 0 0;
+    text-align: center;
+    font-size: 1.25rem;
+    margin: 0;
+}
+
+.month-grid-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid var(--border-color);
+    border-top: none; /* Header is the top */
+}
+
+.month-grid-table th,
+.month-grid-table td {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.month-grid-table th {
+    background-color: var(--list-item-bg);
+}
+
+/* Make second and third columns right-aligned */
+.month-grid-table th:nth-child(2),
+.month-grid-table td:nth-child(2),
+.month-grid-table th:nth-child(3),
+.month-grid-table td:nth-child(3) {
+    text-align: right;
+    width: 25%; /* Give them a set width */
+}
+
+.grid-group-header td {
+    font-weight: bold;
+    font-size: 1.1rem;
+    background-color: var(--list-item-bg);
+}
+
+/* Group Colors */
+.grid-group-income .grid-group-header td {
+    color: var(--income-total-color);
+    border-left: 4px solid var(--income-total-color);
+}
+.grid-group-expense .grid-group-header td {
+    color: var(--expense-total-color);
+    border-left: 4px solid var(--expense-total-color);
+}
+.grid-group-banking .grid-group-header td {
+    color: #3498db; /* Using a standard blue for now */
+    border-left: 4px solid #3498db;
+}
+.grid-group-onetime .grid-group-header td {
+    color: var(--secondary-btn-bg); /* Set text color to gray */
+    border-left: 4px solid var(--secondary-btn-bg);
+}
+
+.month-grid-table tbody tr:not(.grid-group-header):hover {
+    background-color: var(--background-color);
+}
+
+
+/* === Grid Row Status Styles === */
+.month-grid-table tr.row-paid {
+    background-color: #27ae6020; /* Faint green */
+}
+.month-grid-table tr.row-paid:hover {
+    background-color: #27ae6040; /* Stronger green on hover */
+}
+.month-grid-table tr.row-overdue {
+    background-color: #e74c3c20; /* Faint red */
+}
+.month-grid-table tr.row-overdue:hover {
+    background-color: #e74c3c40; /* Stronger red on hover */
+}
+body.dark-mode .month-grid-table tr.row-paid {
+    background-color: #48bb7820;
+}
+body.dark-mode .month-grid-table tr.row-paid:hover {
+    background-color: #48bb7840;
+}
+body.dark-mode .month-grid-table tr.row-overdue {
+    background-color: #f5656520;
+}
+body.dark-mode .month-grid-table tr.row-overdue:hover {
+    background-color: #f5656540;
+}
+.month-grid-table tr.row-highlighted {
+    background-color: #3498db20; /* Faint blue */
+}
+.month-grid-table tr.row-highlighted:hover {
+    background-color: #3498db40; /* Stronger blue on hover */
+}
+body.dark-mode .month-grid-table tr.row-highlighted {
+    background-color: #3498db20;
+}
+body.dark-mode .month-grid-table tr.row-highlighted:hover {
+    background-color: #3498db40;
+}
+
+/* Style the text color for one-time item rows */
+.month-grid-table tr.row-income-text td {
+    color: var(--income-total-color);
+    font-weight: 500;
+}
+.month-grid-table tr.row-expense-text td {
+    color: var(--expense-total-color);
+    font-weight: 500;
+}
+
+/* Style for edited amount rows */
+.month-grid-table tr.row-edited td:nth-child(3) {
+    font-weight: bold;
+    font-style: italic;
+    color: var(--net-total-color);
+}
+
+
+/* === Grid Header & Total Styles === */
+.grid-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%; 
+}
+.grid-header-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+.btn-grid-add {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: 500;
+}
+.btn-grid-add:hover {
+    background-color: var(--list-item-bg);
+    border-color: var(--text-color);
+}
+
+.grid-total-row td {
+    font-weight: bold;
+    background-color: var(--list-item-bg);
+    border-top: 1px solid var(--border-color);
+}
+.grid-total-row td[colspan="2"] {
+    text-align: right;
+    padding-right: 0.75rem;
+}
+.grid-monthly-net-total-row td {
+    font-weight: bold;
+    font-size: 1.1rem; 
+    color: var(--net-total-color);
+    background-color: var(--background-color); 
+    border-bottom: 1px dashed var(--border-color); /* Separator between the two totals */
+}
+.grid-monthly-net-total-row td[colspan="2"] {
+    text-align: right;
+    padding-right: 0.75rem;
+}
+.grid-grand-total {
+    border-bottom: 1px solid var(--border-color);
+}
+.grid-overall-net-total-row td {
+    font-weight: bold;
+    font-size: 1.1rem; 
+    color: var(--net-total-color);
+    background-color: var(--background-color); 
+}
+.grid-overall-net-total-row td[colspan="2"] {
+    text-align: right;
+    padding-right: 0.75rem;
+}
+
+
+/* === Grid Banking Section Styles === */
+.grid-group-banking .grid-group-header td {
+    border-left: 4px solid #3498db;
+    color: #3498db;
+}
+.grid-group-banking tr:not(.grid-group-header) td {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.6rem;
+    text-align: right; /* Right-align balances by default */
+    font-weight: bold; /* Make all banking data rows bold */
+}
+.grid-group-banking tr:not(.grid-group-header) td:first-child {
+    text-align: left; /* Left-align account name */
+    font-style: normal; /* Override any inherited italic/light styling */
+    color: inherit; /* Ensure color is not greyed out */
+}
+
+
+/* === Yearly Summary View Styles === */
+.grid-layout-container {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+}
+
+#grid-monthly-content {
+    flex-direction: column; 
+    overflow: hidden;
+}
+
+#grid-yearly-content {
+    flex-direction: row; 
+    gap: 1rem;
+    height: 100%;
+}
+
+#grid-yearly-summary-panel {
+    flex-shrink: 0;
+    width: 425px;
+    height: 100%;
+    overflow-y: auto; 
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    background-color: var(--background-color); 
+}
+
+#grid-detail-content {
+    flex-grow: 1; 
+    height: 100%;
+    overflow: auto; 
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+#grid-yearly-summary-panel h3 {
+    margin-bottom: 0.5rem; 
+}
+#grid-yearly-summary-panel p {
+    margin-bottom: 0.5rem; 
+}
+#grid-yearly-summary-panel .form-group {
+    margin-bottom: 0.5rem; 
+}
+
+.yearly-summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+}
+
+.yearly-summary-header h4 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.yearly-summary-header button {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+.yearly-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+}
+
+.yearly-summary-table th,
+.yearly-summary-table td {
+    border: 1px solid var(--border-color);
+    padding: 6px 8px;
+    text-align: right;
+}
+
+.yearly-summary-table th {
+    background-color: var(--list-item-bg);
+}
+
+.yearly-summary-table th:first-child,
+.yearly-summary-table td:first-child {
+    text-align: left;
+    width: 20%;
+}
+
+.year-summary-row:hover {
+    background-color: var(--background-color);
+}
+
+
+/* === Edits Log Styles === */
+.edits-log-container {
+    margin-top: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--section-bg-color); 
+}
+
+.edits-log-summary {
+    padding: 0.75rem 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    background-color: var(--list-item-bg); 
+    border-bottom: 1px solid var(--border-color);
+}
+
+.edits-log-container[open] .edits-log-summary {
+     border-bottom: 1px solid var(--border-color);
+}
+
+#edits-log-content {
+    padding: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.edits-log-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.edits-log-entry {
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.edits-log-entry:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.edit-item-name {
+    font-weight: 500;
+}
+
+.edit-log-date {
+    font-weight: normal; 
+}
+
+.edit-amount {
+    font-weight: bold;
+    color: var(--net-total-color);
+}

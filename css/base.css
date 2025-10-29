@@ -1,0 +1,128 @@
+/* BASE.CSS
+  Contains root variables (colors, themes) and default
+  element styles (*, body, h1-h4, button, select, etc.)
+*/
+
+/* Define all our colors as variables in the :root (Light/Default Theme) */
+:root {
+    --background-color: #f4f7f6;
+    --section-bg-color: #ffffff;
+    --header-bg-color: #097969; 
+    --header-text-color: #ffffff;
+    --text-color: #334e68;
+    --border-color: #dde1e7;
+    --primary-btn-bg: #097969; 
+    --primary-btn-hover: #0a8f7b;
+    --secondary-btn-bg: #95a5a6;
+    --secondary-btn-hover: #bdc3c7;
+    --delete-btn-bg: #e74c3c;
+    --delete-btn-hover: #c0392b;
+    --edit-btn-bg: #f39c12;
+    --edit-btn-hover: #e67e22;
+    --income-total-color: #27ae60;
+    --expense-total-color: #e74c3c;
+    --net-total-color: #097969; 
+    --list-item-bg: #f8f9fa;
+    --transition-speed: 0.5s;
+}
+
+/* Dark Mode Theme Definition */
+body.dark-mode {
+    --background-color: #1a202c;
+    --section-bg-color: #2d3748;
+    --header-bg-color: #171923;
+    --header-text-color: #e2e8f0;
+    --text-color: #cbd5e0;
+    --border-color: #4a5568;
+    --primary-btn-bg: #097969; 
+    --primary-btn-hover: #0a8f7b;
+    --secondary-btn-bg: #4a5568;
+    --secondary-btn-hover: #718096;
+    --income-total-color: #48bb78;
+    --expense-total-color: #f56565;
+    --net-total-color: #27ae60;
+    --list-item-bg: #4a5568;
+}
+
+/* === BASE ELEMENT STYLES === */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1 { 
+    margin-bottom: 0; 
+    font-size: 40px;
+}
+
+button {
+    padding: 0.5rem 1rem;
+    border: none;
+    color: white;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+button:hover { 
+    background-color: #777; 
+}
+
+select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--section-bg-color);
+    color: var(--text-color);
+}
+
+/* === BUTTON SKIN CLASSES === */
+
+.btn-primary { background-color: var(--primary-btn-bg); }
+.btn-primary:hover { background-color: var(--primary-btn-hover); }
+
+.btn-secondary { background-color: var(--secondary-btn-bg); }
+.btn-secondary:hover { background-color: var(--secondary-btn-hover); }
+
+.delete-btn { background-color: var(--delete-btn-bg); }
+.delete-btn:hover { background-color: var(--delete-btn-hover); }
+
+.edit-btn { background-color: var(--edit-btn-bg); }
+.edit-btn:hover { background-color: var(--edit-btn-hover); }
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--net-total-color);
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    font-size: inherit;
+    font-weight: bold;
+}
+.btn-link:hover {
+    opacity: 0.8;
+}
+
+/* === UTILITY CLASSES === */
+
+.divider { 
+    margin-top: 1.5rem; 
+    margin-bottom: 1.5rem; 
+    border: 0; 
+    border-top: 1px solid var(--border-color); 
+}
+
+.income-total { color: var(--income-total-color); }
+.expense-total { color: var(--expense-total-color); }
+.net-total { color: var(--net-total-color); border-top: 1px solid var(--border-color); }
