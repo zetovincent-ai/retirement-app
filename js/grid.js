@@ -7,6 +7,8 @@ import * as state from './state.js';
 import * as ui from './ui.js';
 import * as calc from './calculations.js';
 import { findTransactionStatus } from './data.js';
+// === ⭐️ NEW STATIC IMPORT ===
+import * as loanChart from './chart-loan.js';
 
 // --- Main Render Function ---
 
@@ -142,6 +144,8 @@ export function setActiveGridView(viewId) {
     renderActiveDashboardContent();
 }
 
+// === ⭐️ NOTE: setActiveChartView was correctly moved to app.js, so it is NOT here. ===
+
 export async function renderActiveDashboardContent() {
     if (!s.mainContainer.classList.contains('dashboard-expanded')) return;
 
@@ -155,22 +159,16 @@ export async function renderActiveDashboardContent() {
     } else if (state.activeDashboardTab === 'charts') {
         
         if (state.activeChartView === 'expensePie') {
-            // === ⭐️ FIX IS HERE ===
             await ui.renderExpenseChart(true); 
-            // === END FIX ===
         } else if (state.activeChartView === 'loanChart') {
-            
-            import('./chart-loan.js')
-                .then(loanChartModule => {
-                    loanChartModule.initializeLoanChart();
-                })
-                .catch(err => {
-                    console.error("Failed to load loan chart module:", err);
-                    // We need ui for the notification
-                    import('./ui.js').then(uiModule => {
-                        uiModule.showNotification("Error loading loan chart. Check console.", "error");
-                    });
-                });
+            // === ⭐️ MODIFIED LOGIC: No dynamic import ===
+            try {
+                loanChart.initializeLoanChart();
+            } catch (err) {
+                console.error("Failed to initialize loan chart:", err);
+                ui.showNotification("Error loading loan chart. Check console.", "error");
+            }
+            // === END MODIFICATION ===
         }
     }
 }
