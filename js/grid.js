@@ -343,25 +343,38 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
         allTransferOccurrences.sort((a, b) => a.occDate.getUTCDate() - b.occDate.getUTCDate());
 
         if (allTransferOccurrences.length > 0) {
-            // Add the divider row
-            transferRowsHTML += '<tr><td colspan="3" class="grid-banking-divider">Monthly Transfers</td></tr>';
+            // Use the standard grid header class for the divider
+            transferRowsHTML += '<tr class="grid-group-header"><td colspan="3">Monthly Transfers</td></tr>';
             
-            // Add a row for each transfer
             allTransferOccurrences.forEach(({ transfer, occDate }) => {
-                const fromAcc = state.appState.accounts.find(a => a.id === transfer.from_account_id);
-                const toAcc = state.appState.accounts.find(a => a.id === transfer.to_account_id);
-                // Get first word of account name, or "Unknown"
-                const fromName = fromAcc ? fromAcc.name.split(' ')[0] : '???';
-                const toName = toAcc ? toAcc.name.split(' ')[0] : '???';
-
                 const desc = transfer.description || 'Transfer';
-                const names = `${fromName} → ${toName}`;
                 const day = formatDay(occDate);
-                const amount = formatCurrency(transfer.amount);
+                const dateString = occDate.toISOString().split('T')[0];
 
+                // Find status and check for edited amounts
+                const statusRecord = findTransactionStatus(transfer.id, 'transfer', occDate);
+                let statusClass = 'grid-banking-transfer-row row-pending';
+                if (statusRecord?.status === 'paid') statusClass = 'grid-banking-transfer-row row-paid';
+                if (statusRecord?.status === 'overdue') statusClass = 'grid-banking-transfer-row row-overdue';
+                if (statusRecord?.status === 'highlighted') statusClass = 'grid-banking-transfer-row row-highlighted';
+                
+                let displayAmount = transfer.amount;
+                if (statusRecord && statusRecord.edited_amount !== null) {
+                    displayAmount = statusRecord.edited_amount;
+                    statusClass += ' row-edited';
+                }
+                const amount = formatCurrency(displayAmount);
+
+                // Add all data attributes to the <tr> for the context menu
                 transferRowsHTML += `
-                    <tr class="grid-banking-transfer-row">
-                        <td>${desc} <i>(${names})</i></td>
+                    <tr class="${statusClass}" 
+                        data-item-id="${transfer.id}" 
+                        data-item-type="transfer" 
+                        data-date="${dateString}" 
+                        data-amount="${transfer.amount}" 
+                        title="Right-click to change status">
+                        
+                        <td>${desc}</td>
                         <td>${day}</td>
                         <td>${amount}</td>
                     </tr>`;

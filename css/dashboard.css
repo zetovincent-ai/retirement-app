@@ -419,6 +419,10 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     color: var(--secondary-btn-bg);
     font-style: italic;
 }
+.grid-group-banking tr.grid-banking-transfer-row td {
+    font-weight: normal;
+    font-style: normal;
+}
 
 /* === Yearly Summary View Styles === */
 .grid-layout-container {

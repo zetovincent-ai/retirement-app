@@ -329,9 +329,21 @@ export async function saveTransactionAmount(itemId, itemType, dateString, origin
         return;
     }
 
-    // --- RECALCULATION STEP ---
-    const parentItem = (itemType === 'expense' ? state.appState.expenses : state.appState.incomes).find(i => i.id === itemId);
+    // === ⭐️ MODIFIED LOGIC HERE ===
+    // Find the parent item from the correct state array
+    let parentItem;
+    if (itemType === 'expense') {
+        parentItem = state.appState.expenses.find(i => i.id === itemId);
+    } else if (itemType === 'income') {
+        parentItem = state.appState.incomes.find(i => i.id === itemId);
+    } else if (itemType === 'transfer') {
+        parentItem = state.appState.transfers.find(i => i.id === itemId);
+    }
+    // === END MODIFICATION ===
 
+    // --- RECALCULATION STEP ---
+    // This logic is now safe: it will only run for items that
+    // have advanced_data and are a loan (which transfers are not).
     if (parentItem && parentItem.advanced_data && (parentItem.advanced_data.item_type === 'Mortgage/Loan' || parentItem.advanced_data.item_type === 'Car Loan')) {
         showNotification("Recalculating loan forecast...", "success");
 
