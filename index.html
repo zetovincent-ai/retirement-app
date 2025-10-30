@@ -54,8 +54,9 @@
                     </div>
                     <div class="view-group" data-tab-group="charts" style="display: none;">
                          <button class="view-btn active" data-view="expensePie">Expenses</button>
+                         <button class="view-btn" data-view="loanChart">Loans</button>
                     </div>
-                </div>
+                    </div>
                 <div class="dashboard-content-area">
                     <div id="grid-content" class="tab-content active">
                         <div id="grid-monthly-content" class="grid-layout-container">
@@ -71,10 +72,34 @@
                         </div>
                     </div>
                     <div id="chart-content" class="tab-content">
-                         <div class="chart-container">
-                             <canvas id="expanded-expense-chart"></canvas> 
+                         <div id="expense-pie-chart-container" class="chart-container-wrapper">
+                             <div class="chart-container">
+                                <canvas id="expanded-expense-chart"></canvas> 
+                             </div>
                          </div>
-                    </div>
+
+                         <div id="loan-chart-content" class="chart-container-wrapper" style="display: none;">
+                            <div id="loan-chart-controls" class="chart-controls-container">
+                                <div class="form-group">
+                                    <label for="loan-chart-select">Select Loans:</label>
+                                    <select id="loan-chart-select" multiple></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="loan-timeframe-select">Select Timeframe:</label>
+                                    <select id="loan-timeframe-select">
+                                        <option value="10">10 Years</option>
+                                        <option value="15">15 Years</option>
+                                        <option value="20">20 Years</option>
+                                        <option value="25">25 Years</option>
+                                        <option value="30">30 Years</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="loan-chart-canvas"></canvas>
+                            </div>
+                         </div>
+                         </div>
                 </div>
             </div> 
 
@@ -110,7 +135,7 @@
     <footer>
        <div class="footer-content">
             <div class="copyright-group">
-                <img src="./SunflowerApplications.png" alt="Sunflower Applications logo" class="footer-logo">
+                <img src="./SunflowerApplications.png" alt="SunflowerApplications logo" class="footer-logo">
                 <span class="copyright">© <span id="current-year"></span> Sunflower Applications Inc.</span>
             </div>
             <span class="version">v1.0.0</span>

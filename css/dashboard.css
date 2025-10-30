@@ -574,3 +574,60 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     font-weight: bold;
     color: var(--net-total-color);
 }
+
+/* === Chart Controls Styles === */
+.chart-container-wrapper {
+    display: block; /* Will be toggled to 'none' */
+}
+
+.chart-controls-container {
+    display: flex;
+    gap: 2rem;
+    padding: 1rem;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.chart-controls-container .form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0;
+}
+
+.chart-controls-container .form-group label {
+    font-weight: bold;
+    text-align: left;
+}
+
+.chart-controls-container select {
+    width: 300px; /* Give selects a good width */
+}
+
+/* Style the multi-select box */
+#loan-chart-select[multiple] {
+    height: 120px; /* Give it a fixed height */
+    overflow-y: auto; /* Allow scrolling */
+    background-color: var(--section-bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem;
+}
+
+#loan-chart-select[multiple] option {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+/* Style for selected options in multi-select */
+#loan-chart-select[multiple] option:checked {
+    background-color: var(--primary-btn-bg);
+    color: var(--header-text-color);
+}

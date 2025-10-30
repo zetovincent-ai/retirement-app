@@ -18,6 +18,11 @@ export let activeChartView = 'expensePie';
 export let currentContextItem = null;
 export let lastNumYears = null; 
 export let lastOpenYear = null; 
+export let loanChartInstance = null;
+export let loanChartSelections = {
+    loans: [],
+    timeframe: 10
+};
 
 // We also provide "setter" functions for state variables
 // that other modules will need to modify.
@@ -48,4 +53,10 @@ export function setLastNumYears(years) {
 }
 export function setLastOpenYear(year) {
     lastOpenYear = year;
+}
+export function setLoanChartInstance(instance) {
+    loanChartInstance = instance;
+}
+export function setLoanChartSelections(selections) {
+    loanChartSelections = selections;
 }

@@ -147,6 +147,18 @@ export function setActiveChartView(viewId) {
     s.chartViewButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.view === viewId);
     });
+
+    // === ⭐️ NEW LOGIC HERE ===
+    // Show/hide the correct chart container
+    if (viewId === 'expensePie') {
+        s.expensePieChartContainer.style.display = 'block';
+        s.loanChartContent.style.display = 'none';
+    } else if (viewId === 'loanChart') {
+        s.expensePieChartContainer.style.display = 'none';
+        s.loanChartContent.style.display = 'block';
+    }
+    // === END NEW LOGIC ===
+
     renderActiveDashboardContent();
 }
 
@@ -161,9 +173,16 @@ export function renderActiveDashboardContent() {
             s.gridMonthlyContent.innerHTML = renderGridView(months, new Date(), 0, null);
         }
     } else if (state.activeDashboardTab === 'charts') {
+        // === ⭐️ MODIFIED LOGIC HERE ===
         if (state.activeChartView === 'expensePie') {
             ui.renderExpenseChart(true); 
+        } else if (state.activeChartView === 'loanChart') {
+            // Dynamically import and initialize the loan chart module
+            import('./chart-loan.js').then(loanChartModule => {
+                loanChartModule.initializeLoanChart();
+            });
         }
+        // === END MODIFICATION ===
     }
 }
 

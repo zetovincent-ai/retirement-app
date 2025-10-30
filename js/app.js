@@ -219,6 +219,25 @@ function handleDocumentClick(event) {
     }
 }
 
+function setActiveChartView(viewId) {
+    state.setActiveChartView(viewId);
+    s.chartViewButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === viewId);
+    });
+
+    // Show/hide the correct chart container
+    if (viewId === 'expensePie') {
+        s.expensePieChartContainer.style.display = 'block';
+        s.loanChartContent.style.display = 'none';
+    } else if (viewId === 'loanChart') {
+        s.expensePieChartContainer.style.display = 'none';
+        s.loanChartContent.style.display = 'block';
+    }
+
+    // Call the main render function
+    grid.renderActiveDashboardContent();
+}
+
 // === INITIALIZATION ===
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -283,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (state.activeDashboardTab === 'grids') {
                 grid.setActiveGridView(viewId);
             } else if (state.activeDashboardTab === 'charts') {
-                grid.setActiveChartView(viewId);
+                setActiveChartView(viewId);
             }
         }
     });
