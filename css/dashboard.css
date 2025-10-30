@@ -401,7 +401,24 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     font-style: normal; /* Override any inherited italic/light styling */
     color: inherit; /* Ensure color is not greyed out */
 }
-
+.grid-banking-divider td {
+    font-weight: bold;
+    font-size: 0.95rem;
+    color: var(--text-color);
+    background-color: var(--background-color);
+    text-align: left;
+    padding-top: 0.8rem;
+    border-top: 1px dashed var(--border-color);
+}
+.grid-banking-transfer-row td {
+    font-weight: normal; /* Make them regular weight */
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+.grid-banking-transfer-row td:first-child i {
+    color: var(--secondary-btn-bg);
+    font-style: italic;
+}
 
 /* === Yearly Summary View Styles === */
 .grid-layout-container {

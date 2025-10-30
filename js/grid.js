@@ -308,8 +308,13 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
         const monthlyNetTotal = (incomeData.total - expenseData.total) + oneTimeData.net;
         runningOverallNet += monthlyNetTotal;
 
+        // === ⭐️ MODIFIED LOGIC HERE ===
+
+        // --- Calculate Banking Section ---
         const bankingMonthData = calculateAccountBalancesForMonth(monthDateUTC, runningAccountBalances);
         let bankingRowsHTML = '';
+        
+        // 1. Render Account Balances
         if (state.appState.accounts.length === 0) {
              bankingRowsHTML = `<tr><td colspan="3">No accounts defined.</td></tr>`;
         } else {
@@ -325,7 +330,52 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
                  `;
              });
         }
+
+        // 2. Find and Render Transfers
+        let transferRowsHTML = '';
+        const allTransferOccurrences = [];
+        state.appState.transfers.forEach(transfer => {
+            const occurrences = calc.getOccurrencesInMonth(transfer, monthDateUTC);
+            occurrences.forEach(occDate => {
+                allTransferOccurrences.push({ transfer, occDate });
+            });
+        });
+        allTransferOccurrences.sort((a, b) => a.occDate.getUTCDate() - b.occDate.getUTCDate());
+
+        if (allTransferOccurrences.length > 0) {
+            // Add the divider row
+            transferRowsHTML += '<tr><td colspan="3" class="grid-banking-divider">Monthly Transfers</td></tr>';
+            
+            // Add a row for each transfer
+            allTransferOccurrences.forEach(({ transfer, occDate }) => {
+                const fromAcc = state.appState.accounts.find(a => a.id === transfer.from_account_id);
+                const toAcc = state.appState.accounts.find(a => a.id === transfer.to_account_id);
+                // Get first word of account name, or "Unknown"
+                const fromName = fromAcc ? fromAcc.name.split(' ')[0] : '???';
+                const toName = toAcc ? toAcc.name.split(' ')[0] : '???';
+
+                const desc = transfer.description || 'Transfer';
+                const names = `${fromName} → ${toName}`;
+                const day = formatDay(occDate);
+                const amount = formatCurrency(transfer.amount);
+
+                transferRowsHTML += `
+                    <tr class="grid-banking-transfer-row">
+                        <td>${desc} <i>(${names})</i></td>
+                        <td>${day}</td>
+                        <td>${amount}</td>
+                    </tr>`;
+            });
+        }
+        
+        // 3. Combine account and transfer rows
+        bankingRowsHTML += transferRowsHTML;
+        
+        // 4. Update running balances for next month
         runningAccountBalances = bankingMonthData.endingBalances;
+        
+        // === END MODIFICATION ===
+
 
         const incomeTotalFormatted = formatCurrency(incomeData.total);
         const expenseTotalFormatted = formatCurrency(expenseData.total);
