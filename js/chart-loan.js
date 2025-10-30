@@ -169,8 +169,6 @@ function generateLoanChartData() {
  * Renders or updates the loan chart on the canvas.
  */
 async function renderLoanChart() {
-    // We need parseUTCDate from calculations
-    const calc = await import('./calculations.js'); 
     
     // Destroy existing chart instance if it exists
     if (state.loanChartInstance) {

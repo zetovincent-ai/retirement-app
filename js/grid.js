@@ -142,26 +142,6 @@ export function setActiveGridView(viewId) {
     renderActiveDashboardContent();
 }
 
-export function setActiveChartView(viewId) {
-    state.setActiveChartView(viewId);
-    s.chartViewButtons.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.view === viewId);
-    });
-
-    // === ⭐️ NEW LOGIC HERE ===
-    // Show/hide the correct chart container
-    if (viewId === 'expensePie') {
-        s.expensePieChartContainer.style.display = 'block';
-        s.loanChartContent.style.display = 'none';
-    } else if (viewId === 'loanChart') {
-        s.expensePieChartContainer.style.display = 'none';
-        s.loanChartContent.style.display = 'block';
-    }
-    // === END NEW LOGIC ===
-
-    renderActiveDashboardContent();
-}
-
 export async function renderActiveDashboardContent() {
     if (!s.mainContainer.classList.contains('dashboard-expanded')) return;
 
