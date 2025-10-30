@@ -75,7 +75,7 @@ function renderDashboard(){
             <h3 class="income-total">Total Monthly Income</h3>
             <p class="income-total">${format(totalMonthlyIncome)}</p>
         </div>
-        <div class.summary-item">
+        <div class="summary-item">
             <h3 class="expense-total">Total Monthly Expenses</h3>
             <p class="expense-total">${format(totalMonthlyExpenses)}</p>
         </div>
@@ -147,13 +147,8 @@ export function setActiveGridView(viewId) {
 // === ⭐️ NOTE: setActiveChartView was correctly moved to app.js, so it is NOT here. ===
 
 export async function renderActiveDashboardContent() {
-    console.log("--- 8. grid.renderActiveDashboardContent() called ---"); // New log
-    if (!s.mainContainer.classList.contains('dashboard-expanded')) {
-        console.log("--- 9. Dashboard is not expanded. Aborting render. ---"); // New log
-        return;
-    }
+    if (!s.mainContainer.classList.contains('dashboard-expanded')) return;
 
-    console.log(`--- 9. Dashboard is expanded. Active tab: ${state.activeDashboardTab} ---`); // New log
     if (state.activeDashboardTab === 'grids') {
         if (state.activeGridView === 'yearly') {
             renderYearlyConfigUI();
@@ -162,16 +157,13 @@ export async function renderActiveDashboardContent() {
             s.gridMonthlyContent.innerHTML = renderGridView(months, new Date(), 0, null);
         }
     } else if (state.activeDashboardTab === 'charts') {
-        console.log(`--- 10. Chart tab is active. Active chart view: ${state.activeChartView} ---`); // New log
         
         if (state.activeChartView === 'expensePie') {
             await ui.renderExpenseChart(true); 
         } else if (state.activeChartView === 'loanChart') {
             // === ⭐️ MODIFIED LOGIC: No dynamic import ===
             try {
-                console.log("--- 10a. Calling loanChart.initializeLoanChart() ---"); // New log
                 loanChart.initializeLoanChart();
-                console.log("--- 10b. Finished loanChart.initializeLoanChart() ---"); // New log
             } catch (err) {
                 console.error("Failed to initialize loan chart:", err);
                 ui.showNotification("Error loading loan chart. Check console.", "error");
@@ -307,7 +299,7 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
                         const currentPaymentNum = calc.calculatePaymentNumber(item.start_date, date, item.interval);
                         if (currentPaymentNum) itemName += ` <span class="payment-number">(${currentPaymentNum} of ${totalPayments})</span>`;
                     }
-                    rowsHTML += `<tr class="${statusClass} ${typeClass}" data-item-id="${item.id}" data-item-type="${type}" data-date="${dateString}" data-amount="${item.amount}" title="Right-click to change."><td>${itemName}</td><td>${dueDay}</td><td>${amount}</td></tr>`;
+                    rowsHTML += `<tr class="${statusClass} ${typeClass}" data-item-id="${item.id}" data-item-type="${type}" data-date="${dateString}" data-amount="${item.amount}" title="Right-click to change status"><td>${itemName}</td><td>${dueDay}</td><td>${amount}</td></tr>`;
                 });
             }
             if (!hasItems) rowsHTML = `<tr><td colspan="3">No one-time items this month.</td></tr>`;
@@ -455,7 +447,7 @@ export function renderYearlyConfigUI() {
     s.gridYearlySummaryPanel.innerHTML = `
         <h3>Yearly Forecast</h3>
         <p>Select the number of years to forecast.</p>
-        <div class.form-group">
+        <div class="form-group">
             <label for="yearly-forecast-years">Years (1-30):</label>
             <input type="number" id="yearly-forecast-years" value="10" min="1" max="30" step="1">
         </div>

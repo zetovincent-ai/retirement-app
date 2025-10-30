@@ -220,7 +220,6 @@ function handleDocumentClick(event) {
 }
 
 async function setActiveChartView(viewId) {
-    console.log(`--- 5. setActiveChartView called with: ${viewId} ---`); // New log
     state.setActiveChartView(viewId);
     s.chartViewButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.view === viewId);
@@ -228,19 +227,15 @@ async function setActiveChartView(viewId) {
 
     // Show/hide the correct chart container
     if (viewId === 'expensePie') {
-        console.log("--- 6. Setting view to 'expensePie' ---"); // New log
         s.expensePieChartContainer.style.display = 'block';
         s.loanChartContent.style.display = 'none';
     } else if (viewId === 'loanChart') {
-        console.log("--- 6. Setting view to 'loanChart' ---"); // New log
         s.expensePieChartContainer.style.display = 'none';
         s.loanChartContent.style.display = 'block';
     }
 
     // Call the main render function and AWAIT it
-    console.log("--- 7. Awaiting grid.renderActiveDashboardContent() ---"); // New log
     await grid.renderActiveDashboardContent();
-    console.log("--- 11. Finished awaiting grid.renderActiveDashboardContent() ---"); // New log
 }
 
 // === INITIALIZATION ===
@@ -302,20 +297,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     s.viewControlsContainer.addEventListener('click', (event) => {
-        console.log("--- 1. View Controls Clicked ---"); // New log
         if (event.target.classList.contains('view-btn')) {
             const viewId = event.target.dataset.view;
-            console.log(`--- 2. Button has 'view-btn' class. viewId: ${viewId} ---`); // New log
-            console.log(`--- 3. Current active tab: ${state.activeDashboardTab} ---`); // New log
             if (state.activeDashboardTab === 'grids') {
-                console.log("--- 4. Calling grid.setActiveGridView ---"); // New log
                 grid.setActiveGridView(viewId);
             } else if (state.activeDashboardTab === 'charts') {
-                console.log("--- 4. Calling setActiveChartView ---"); // New log
                 setActiveChartView(viewId);
             }
-        } else {
-             console.log("--- 2. Target was not a 'view-btn'. Click ignored. ---"); // New log
         }
     });
 
