@@ -169,12 +169,16 @@ function generateLoanChartData() {
  * Renders or updates the loan chart on the canvas.
  */
 async function renderLoanChart() {
+    // === ⭐️ THE REDUNDANT LINE BELOW IS NOW REMOVED ===
+    // const calc = await import('./calculations.js'); <--- DELETE THIS
     
     // Destroy existing chart instance if it exists
     if (state.loanChartInstance) {
         state.loanChartInstance.destroy();
         state.setLoanChartInstance(null);
     }
+    
+    // ... (rest of the function is unchanged) ...
 
     const { labels, datasets, yAxisMax } = generateLoanChartData();
 
