@@ -162,7 +162,7 @@ export function setActiveChartView(viewId) {
     renderActiveDashboardContent();
 }
 
-export function renderActiveDashboardContent() {
+export async function renderActiveDashboardContent() {
     if (!s.mainContainer.classList.contains('dashboard-expanded')) return;
 
     if (state.activeDashboardTab === 'grids') {
@@ -172,18 +172,27 @@ export function renderActiveDashboardContent() {
             const months = (state.activeGridView === '6m') ? 6 : 2;
             s.gridMonthlyContent.innerHTML = renderGridView(months, new Date(), 0, null);
         }
-    } else if (state.activeChartView === 'loanChart') {
-            // Dynamically import and initialize the loan chart module
+    } else if (state.activeDashboardTab === 'charts') {
+        
+        if (state.activeChartView === 'expensePie') {
+            // === ⭐️ FIX IS HERE ===
+            await ui.renderExpenseChart(true); 
+            // === END FIX ===
+        } else if (state.activeChartView === 'loanChart') {
+            
             import('./chart-loan.js')
                 .then(loanChartModule => {
                     loanChartModule.initializeLoanChart();
                 })
-                // === ⭐️ ADD THIS .catch() BLOCK ===
                 .catch(err => {
                     console.error("Failed to load loan chart module:", err);
-                    ui.showNotification("Error loading loan chart. Check console.", "error");
+                    // We need ui for the notification
+                    import('./ui.js').then(uiModule => {
+                        uiModule.showNotification("Error loading loan chart. Check console.", "error");
+                    });
                 });
-            }
+        }
+    }
 }
 
 // --- Grid Rendering ---

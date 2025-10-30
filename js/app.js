@@ -219,7 +219,7 @@ function handleDocumentClick(event) {
     }
 }
 
-function setActiveChartView(viewId) {
+async function setActiveChartView(viewId) {
     state.setActiveChartView(viewId);
     s.chartViewButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.view === viewId);
@@ -234,8 +234,8 @@ function setActiveChartView(viewId) {
         s.loanChartContent.style.display = 'block';
     }
 
-    // Call the main render function
-    grid.renderActiveDashboardContent();
+    // Call the main render function and AWAIT it
+    await grid.renderActiveDashboardContent();
 }
 
 // === INITIALIZATION ===
