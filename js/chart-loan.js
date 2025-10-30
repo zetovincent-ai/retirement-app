@@ -4,6 +4,7 @@
 import * as s from './selectors.js';
 import * as state from './state.js';
 import { getDynamicAmortization } from './data.js';
+import * as calc from './calculations.js';
 
 // Chart.js instance is defined in state.js as loanChartInstance
 // Chart settings are in state.js as loanChartSelections
