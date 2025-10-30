@@ -31,10 +31,14 @@ export function initializeLoanChart() {
  * This is called once by initializeLoanChart.
  */
 function addLoanChartListeners() {
-    // We use 'change' for multi-select
-    s.loanChartSelect.addEventListener('change', () => {
-        const selectedOptions = Array.from(s.loanChartSelect.selectedOptions);
-        const selectedLoanIds = selectedOptions.map(opt => parseInt(opt.value));
+    // ⭐️ MODIFIED: Listen for clicks on the checkbox container
+    s.loanChartSelectContainer.addEventListener('click', (event) => {
+        // Only trigger if a checkbox was clicked
+        if (event.target.type !== 'checkbox') return;
+
+        // Find all checked checkboxes
+        const checkedBoxes = s.loanChartSelectContainer.querySelectorAll('input[type="checkbox"]:checked');
+        const selectedLoanIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
         
         state.setLoanChartSelections({
             ...state.loanChartSelections,
@@ -56,7 +60,7 @@ function addLoanChartListeners() {
 }
 
 /**
- * Populates the multi-select dropdown with all available loans.
+ * Populates the checkbox container with all available loans.
  */
 function populateLoanSelect() {
     const allLoans = state.appState.expenses.filter(exp => 
@@ -64,21 +68,36 @@ function populateLoanSelect() {
         (exp.advanced_data.item_type === 'Mortgage/Loan' || exp.advanced_data.item_type === 'Car Loan')
     );
 
-    s.loanChartSelect.innerHTML = ''; // Clear existing options
+    s.loanChartSelectContainer.innerHTML = ''; // Clear existing options
     if (allLoans.length === 0) {
-        s.loanChartSelect.innerHTML = '<option value="" disabled>No loans found</option>';
+        s.loanChartSelectContainer.innerHTML = '<p>No loans found.</p>'; // Use a <p> tag
         return;
     }
 
+    // ⭐️ MODIFIED: Create checkboxes instead of options
     allLoans.forEach(loan => {
-        const option = document.createElement('option');
-        option.value = loan.id;
-        option.textContent = loan.name;
-        // Pre-select if it was selected before
+        const checkboxId = `loan-cb-${loan.id}`;
+        
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('checkbox-item');
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = checkboxId;
+        checkbox.value = loan.id;
+        
+        // Pre-check if it was selected before
         if (state.loanChartSelections.loans.includes(loan.id)) {
-            option.selected = true;
+            checkbox.checked = true;
         }
-        s.loanChartSelect.appendChild(option);
+
+        const label = document.createElement('label');
+        label.htmlFor = checkboxId;
+        label.textContent = loan.name;
+
+        wrapper.appendChild(checkbox);
+        wrapper.appendChild(label);
+        s.loanChartSelectContainer.appendChild(wrapper);
     });
 }
 
@@ -169,17 +188,12 @@ function generateLoanChartData() {
  * Renders or updates the loan chart on the canvas.
  */
 async function renderLoanChart() {
-    // === ⭐️ THE REDUNDANT LINE BELOW IS NOW REMOVED ===
-    // const calc = await import('./calculations.js'); <--- DELETE THIS
-    
     // Destroy existing chart instance if it exists
     if (state.loanChartInstance) {
         state.loanChartInstance.destroy();
         state.setLoanChartInstance(null);
     }
     
-    // ... (rest of the function is unchanged) ...
-
     const { labels, datasets, yAxisMax } = generateLoanChartData();
 
     if (datasets.length === 0) {

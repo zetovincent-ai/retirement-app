@@ -631,3 +631,30 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     background-color: var(--primary-btn-bg);
     color: var(--header-text-color);
 }
+
+/* --- Chart Checkbox Controls --- */
+
+.checkbox-container {
+    max-height: 120px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 8px;
+    background-color: var(--section-bg-color); /* Corrected variable */
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.checkbox-item label {
+    margin-left: 8px;
+    user-select: none;
+    cursor: pointer;
+}
+
+.checkbox-item input {
+    cursor: pointer;
+}

@@ -49,5 +49,5 @@ export const transferList = document.getElementById('transfer-list');
 export const expensePieChartContainer = document.getElementById('expense-pie-chart-container');
 export const loanChartContent = document.getElementById('loan-chart-content');
 export const loanChartCanvas = document.getElementById('loan-chart-canvas');
-export const loanChartSelect = document.getElementById('loan-chart-select');
+export const loanChartSelectContainer = document.getElementById('loan-chart-select-container');
 export const loanTimeframeSelect = document.getElementById('loan-timeframe-select');
