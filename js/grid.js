@@ -615,7 +615,7 @@ export function calculateAccountBalancesForMonth(monthDateUTC, startingBalances)
         });
     });
 
-    return { endingBalaneces, deltas };
+    return { endingBalances, deltas };
 }
 
 export function calculateAccountBalancesForYear(year, startingBalances) {
