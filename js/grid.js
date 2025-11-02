@@ -184,10 +184,26 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
     const formatCurrency = (num) => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     const formatDay = date => date.getUTCDate();
 
+    // === ⭐️ 1. Identify Credit Card Accounts & Charges ===
+    const creditCardAccounts = state.appState.accounts.filter(acc => acc.type === 'credit_card');
+    const creditCardAccountIds = new Set(creditCardAccounts.map(acc => acc.id));
+    
+    // Get all expenses paid with a credit card
+    const creditCardCharges = state.appState.expenses.filter(i => 
+        creditCardAccountIds.has(i.payment_account_id)
+    );
+    
+    // === ⭐️ 2. Filter Main Expense Lists to EXCLUDE CC Charges ===
+    // This is critical for not double-counting.
     const recurringIncomes = state.appState.incomes.filter(i => i.interval !== 'one-time');
-    const recurringExpenses = state.appState.expenses.filter(i => i.interval !== 'one-time');
+    const recurringExpenses = state.appState.expenses.filter(i => 
+        i.interval !== 'one-time' && !creditCardAccountIds.has(i.payment_account_id)
+    );
     const oneTimeIncomes = state.appState.incomes.filter(i => i.interval === 'one-time');
-    const oneTimeExpenses = state.appState.expenses.filter(i => i.interval === 'one-time');
+    const oneTimeExpenses = state.appState.expenses.filter(i => 
+        i.interval === 'one-time' && !creditCardAccountIds.has(i.payment_account_id)
+    );
+    // === End of new/modified section ===
 
     let finalHTML = '<div class="grid-view-container">';
     let runningOverallNet = startingNetTotal;
@@ -309,22 +325,58 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
 
         const incomeData = generateRows(recurringIncomes, 'income');
         const expenseData = generateRows(recurringExpenses, 'expense');
+
+        // === ⭐️ 3. Generate Credit Card Sections ===
+        let creditCardSectionsHTML = '';
+        creditCardAccounts.forEach(cardAccount => {
+            // Find all charges (recurring or one-time) for this specific card
+            const chargesForThisCard = creditCardCharges.filter(
+                charge => charge.payment_account_id === cardAccount.id
+            );
+            
+            // We can reuse the same row-generation logic!
+            // We pass 'expense' as the type so the context menu (edit/delete) still works
+            const cardData = generateRows(chargesForThisCard, 'expense'); 
+            
+            // Only add a section if there are charges this month
+            // We check total > 0 OR if html has a row, to account for $0 edited charges
+            if (cardData.total > 0 || cardData.html.includes('<tr')) {
+                 creditCardSectionsHTML += `
+                    <tbody class="grid-group-creditcard">
+                        <tr class="grid-group-header"><td colspan="3">
+                            <div class="grid-header-content">
+                                <span>${cardAccount.name}</span>
+                                <button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}">+ Add</button>
+                            </div>
+                        </td></tr>
+                        ${cardData.html.replace('No recurring expenses this month.', 'No charges this month.')}
+                        <tr class="grid-total-row">
+                            <td colspan="2">Total Charges</td>
+                            <td>${formatCurrency(cardData.total)}</td>
+                        </tr>
+                    </tbody>
+                 `;
+            }
+        });
+        // === End of new section ===
+        
         const oneTimeData = generateOneTimeRows();
 
+        // === ⭐️ 4. Calculate Net Totals (UNCHANGED) ===
+        // This is correct because expenseData and oneTimeData.net were
+        // already filtered to exclude credit card charges.
         const monthlyNetTotal = (incomeData.total - expenseData.total) + oneTimeData.net;
         runningOverallNet += monthlyNetTotal;
-
-        // === ⭐️ MODIFIED LOGIC HERE ===
 
         // --- Calculate Banking Section ---
         const bankingMonthData = calculateAccountBalancesForMonth(monthDateUTC, runningAccountBalances);
         let bankingRowsHTML = '';
         
-        // 1. Render Account Balances
         if (state.appState.accounts.length === 0) {
              bankingRowsHTML = `<tr><td colspan="3">No accounts defined.</td></tr>`;
         } else {
-             state.appState.accounts.forEach(acc => {
+             // === ⭐️ MODIFIED: Filter out CCs from banking balance view ===
+             state.appState.accounts.filter(acc => acc.type !== 'credit_card').forEach(acc => {
                  const startBal = runningAccountBalances[acc.id] || 0;
                  const endBal = bankingMonthData.endingBalances[acc.id] || 0;
                  bankingRowsHTML += `
@@ -337,7 +389,6 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
              });
         }
 
-        // 2. Find and Render Transfers
         let transferRowsHTML = '';
         const allTransferOccurrences = [];
         state.appState.transfers.forEach(transfer => {
@@ -349,15 +400,12 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
         allTransferOccurrences.sort((a, b) => a.occDate.getUTCDate() - b.occDate.getUTCDate());
 
         if (allTransferOccurrences.length > 0) {
-            // Use the standard grid header class for the divider
             transferRowsHTML += '<tr class="grid-group-header"><td colspan="3">Monthly Transfers</td></tr>';
             
             allTransferOccurrences.forEach(({ transfer, occDate }) => {
                 const desc = transfer.description || 'Transfer';
                 const day = formatDay(occDate);
                 const dateString = occDate.toISOString().split('T')[0];
-
-                // Find status and check for edited amounts
                 const statusRecord = findTransactionStatus(transfer.id, 'transfer', occDate);
                 let statusClass = 'grid-banking-transfer-row row-pending';
                 if (statusRecord?.status === 'paid') statusClass = 'grid-banking-transfer-row row-paid';
@@ -371,7 +419,6 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
                 }
                 const amount = formatCurrency(displayAmount);
 
-                // Add all data attributes to the <tr> for the context menu
                 transferRowsHTML += `
                     <tr class="${statusClass}" 
                         data-item-id="${transfer.id}" 
@@ -387,21 +434,16 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
             });
         }
         
-        // 3. Combine account and transfer rows
         bankingRowsHTML += transferRowsHTML;
-        
-        // 4. Update running balances for next month
         runningAccountBalances = bankingMonthData.endingBalances;
         
-        // === END MODIFICATION ===
-
-
         const incomeTotalFormatted = formatCurrency(incomeData.total);
         const expenseTotalFormatted = formatCurrency(expenseData.total);
         const oneTimeNetFormatted = formatCurrency(oneTimeData.net);
         const monthlyNetTotalFormatted = formatCurrency(monthlyNetTotal);
         const overallNetTotalFormatted = formatCurrency(runningOverallNet);
 
+        // === ⭐️ 5. Inject new HTML into the final string ===
         finalHTML += `
             <div class="month-grid-container">
                 <h3 class="month-grid-header">${monthYear}</h3>
@@ -419,12 +461,13 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
                         <tr class="grid-total-row"><td colspan="2">Total Income</td><td>${incomeTotalFormatted}</td></tr>
                     </tbody>
                     <tbody class="grid-group-expense">
-                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><span>Expenses</span><button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}">+ Add</button></div></td></tr>
+                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><span>Expenses (Cash/Bank)</span><button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}">+ Add</button></div></td></tr>
                         ${expenseData.html}
                         <tr class="grid-total-row"><td colspan="2">Total Expenses</td><td>${expenseTotalFormatted}</td></tr>
                     </tbody>
-                    <tbody class="grid-group-onetime">
-                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><span>One-time</span><div class="grid-header-buttons"><button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}" data-interval="one-time">+ Income</button><button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}" data-interval="one-time">+ Expense</button></div></div></td></tr>
+                    
+                    ${creditCardSectionsHTML} <tbody class="grid-group-onetime">
+                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><span>One-time (Cash/Bank)</span><div class="grid-header-buttons"><button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}" data-interval="one-time">+ Income</button><button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}" data-interval="one-time">+ Expense</button></div></div></td></tr>
                         ${oneTimeData.html}
                         <tr class="grid-total-row"><td colspan="2">One-time Net</td><td>${oneTimeNetFormatted}</td></tr>
                     </tbody>

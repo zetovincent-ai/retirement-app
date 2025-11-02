@@ -151,13 +151,29 @@ export function showExpenseModal(expenseId, prefillData = null) {
     const expenseToEdit = isEditMode && Array.isArray(state.appState.expenses) ? state.appState.expenses.find(e => e.id === expenseId) : null;
     s.modalTitle.textContent = isEditMode ? 'Edit Expense' : 'Add New Expense';
 
+    // === ⭐️ MODIFIED: Separate accounts by type for <optgroup> ===
     const bankAccounts = state.appState.accounts.filter(acc => acc.type === 'checking' || acc.type === 'savings');
+    const creditCards = state.appState.accounts.filter(acc => acc.type === 'credit_card');
+
     let accountOptions = '<option value="">-- None --</option>';
+    
     if (bankAccounts.length > 0) {
+        accountOptions += '<optgroup label="Bank Accounts">';
         accountOptions += bankAccounts.map(acc => `<option value="${acc.id}">${acc.name}</option>`).join('');
-    } else {
-        accountOptions = '<option value="" disabled>-- No bank accounts defined --</option>';
+        accountOptions += '</optgroup>';
     }
+
+    if (creditCards.length > 0) {
+        accountOptions += '<optgroup label="Credit Cards">';
+        accountOptions += creditCards.map(acc => `<option value="${acc.id}">${acc.name}</option>`).join('');
+        accountOptions += '</optgroup>';
+    }
+
+    if (bankAccounts.length === 0 && creditCards.length === 0) {
+        accountOptions = '<option value="" disabled>-- No accounts defined --</option>';
+    }
+    // === END MODIFICATION ===
+
 
     s.modalBody.innerHTML = `
         <div class="form-group">
@@ -202,26 +218,22 @@ export function showExpenseModal(expenseId, prefillData = null) {
             <label for="modal-expense-date">Payment Start Date:</label>
             <input type="date" id="modal-expense-date" required>
         </div>
-        <div class="form-group"><label for="modal-expense-payment-account">Pay From Account:</label><select id="modal-expense-payment-account">${accountOptions}</select></div> <div id="advanced-loan-fields" style="display: none;">
+        <div class="form-group"><label for="modal-expense-payment-account">Pay From Account:</label><select id="modal-expense-payment-account">${accountOptions}</select></div> 
+        
+        <div id="advanced-loan-fields" style="display: none;">
             <hr class="divider">
             <h4>Loan Details (Optional)</h4>
              <div class="form-group"><label for="modal-loan-interest-rate">Interest Rate (%):</label><input type="number" id="modal-loan-interest-rate" placeholder="e.g., 6.5" min="0" step="0.001"></div>
              <div class="form-group"><label for="modal-loan-total-payments">Total Payments (Months):</label><input type="number" id="modal-loan-total-payments" placeholder="e.g., 360" min="1" step="1"></div>
              <div class="form-group"><label for="modal-loan-original-principal">Original Principal ($):</label><input type="number" id="modal-loan-original-principal" placeholder="e.g., 300000" min="0" step="0.01"></div>
         </div>
-        <div id="advanced-cc-fields" style="display: none;">
-             <hr class="divider">
-             <h4>Credit Card Details (Optional)</h4>
-             <div class="form-group"><label for="modal-cc-limit">Credit Limit ($):</label><input type="number" id="modal-cc-limit" placeholder="e.g., 10000" min="0" step="0.01"></div>
-             <div class="form-group"><label for="modal-cc-statement-day">Statement Closing Day:</label><input type="number" id="modal-cc-statement-day" placeholder="(1-31) e.g., 20" min="1" max="31" step="1"></div>
-             <div class="form-group"><label for="modal-cc-interest-rate">Interest Rate (APR %):</label><input type="number" id="modal-cc-interest-rate" placeholder="e.g., 21.99" min="0" step="0.01"></div>
-        </div>
-    `;
+        
+        `;
     const categorySelect = document.getElementById('modal-expense-category');
     const subTypeContainer = document.getElementById('sub-type-container');
     const subTypeSelect = document.getElementById('modal-expense-sub-type');
     const advancedLoanFields = document.getElementById('advanced-loan-fields');
-    const advancedCCFields = document.getElementById('advanced-cc-fields');
+    // const advancedCCFields = document.getElementById('advanced-cc-fields'); // ⭐️ REMOVED
     const paymentAmountInput = document.getElementById('modal-expense-amount');
     const loanInterestInput = document.getElementById('modal-loan-interest-rate');
     const loanTermInput = document.getElementById('modal-loan-total-payments');
@@ -245,12 +257,13 @@ export function showExpenseModal(expenseId, prefillData = null) {
         }
     }
 
+    // === ⭐️ MODIFIED: Simplified toggleAdvancedFields ===
     function toggleAdvancedFields() {
         const category = categorySelect.value;
         let subType = subTypeSelect.value;
         let showSubTypeDropdown = false;
         let showLoan = false;
-        let showCC = false;
+        // let showCC = false; // ⭐️ REMOVED
         if (category === 'Housing') {
             showSubTypeDropdown = true;
             if (subTypeSelect.innerHTML !== housingSubTypes) { subTypeSelect.innerHTML = housingSubTypes; }
@@ -259,12 +272,13 @@ export function showExpenseModal(expenseId, prefillData = null) {
             showSubTypeDropdown = true;
             if (subTypeSelect.innerHTML !== transportSubTypes) { subTypeSelect.innerHTML = transportSubTypes; }
             showLoan = (subType === 'Car Loan');
-        } else if (category === 'Credit Card') {
-            showCC = true;
-        }
+        } 
+        // else if (category === 'Credit Card') { // ⭐️ REMOVED
+        //     showCC = true;
+        // }
         subTypeContainer.style.display = showSubTypeDropdown ? 'grid' : 'none';
         advancedLoanFields.style.display = showLoan ? 'block' : 'none';
-        advancedCCFields.style.display = showCC ? 'block' : 'none';
+        // advancedCCFields.style.display = showCC ? 'block' : 'none'; // ⭐️ REMOVED
         if (showSubTypeDropdown) {
              const currentOptions = Array.from(subTypeSelect.options).map(opt => opt.value);
              if (!currentOptions.includes(subType)) {
@@ -303,11 +317,7 @@ export function showExpenseModal(expenseId, prefillData = null) {
                 document.getElementById('modal-loan-total-payments').value = advData.total_payments || '';
                 document.getElementById('modal-loan-original-principal').value = advData.original_principal || '';
              }
-             if (expenseToEdit.category === 'Credit Card') {
-                  document.getElementById('modal-cc-limit').value = advData.credit_limit || '';
-                  document.getElementById('modal-cc-statement-day').value = advData.statement_day || '';
-                  document.getElementById('modal-cc-interest-rate').value = advData.interest_rate ? (advData.interest_rate * 100).toFixed(2) : '';
-             }
+             // === ⭐️ REMOVED: Logic to populate CC fields ===
         }
          toggleAdvancedFields();
     } else if (prefillData) {
@@ -321,6 +331,7 @@ export function showExpenseModal(expenseId, prefillData = null) {
          toggleAdvancedFields();
      }
 
+    // === ⭐️ MODIFIED: Simplified Save logic ===
     state.setOnSave(async () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) { alert("You must be logged in to save data."); return; }
@@ -339,15 +350,8 @@ export function showExpenseModal(expenseId, prefillData = null) {
                  if (paymentsInput) advancedData.total_payments = parseInt(paymentsInput);
                  if (principalInput) advancedData.original_principal = parseFloat(principalInput);
              }
-        } else if (category === 'Credit Card') {
-             advancedData = { item_type: 'credit_card' };
-             const limitInput = document.getElementById('modal-cc-limit').value;
-             const statementDayInput = document.getElementById('modal-cc-statement-day').value;
-             const rateInput = document.getElementById('modal-cc-interest-rate').value;
-             if (limitInput) advancedData.credit_limit = parseFloat(limitInput);
-             if (statementDayInput) advancedData.statement_day = parseInt(statementDayInput);
-             if (rateInput) advancedData.interest_rate = parseFloat(rateInput) / 100.0;
-        }
+        } 
+        // === ⭐️ REMOVED: else if (category === 'Credit Card') block ===
 
         const formItem = {
             user_id: user.id,
@@ -367,10 +371,8 @@ export function showExpenseModal(expenseId, prefillData = null) {
              alert(`Please select a Sub-Type for the ${category} category.`);
              return;
         }
-        if (advancedData && advancedData.item_type === 'credit_card' && advancedData.statement_day && (advancedData.statement_day < 1 || advancedData.statement_day > 31)) {
-             alert("Statement Closing Day must be between 1 and 31.");
-             return;
-        }
+        // === ⭐️ REMOVED: CC statement day validation ===
+        
         let { error } = isEditMode
             ? await supabaseClient.from('expenses').update(formItem).eq('id', expenseId)
             : await supabaseClient.from('expenses').insert([formItem]).select();
@@ -386,6 +388,17 @@ export function showAccountModal(accountId) {
     const accountToEdit = isEditMode && Array.isArray(state.appState.accounts) ? state.appState.accounts.find(a => a.id === accountId) : null;
     s.modalTitle.textContent = isEditMode ? 'Edit Account' : 'Add New Account';
 
+    // === ⭐️ NEW: HTML for credit card fields ===
+    const ccFieldsHTML = `
+        <div id="advanced-cc-fields" class="form-group-stack" style="display: none;">
+             <hr class="divider">
+             <h4>Credit Card Details (Optional)</h4>
+             <div class="form-group"><label for="modal-cc-limit">Credit Limit ($):</label><input type="number" id="modal-cc-limit" placeholder="e.g., 10000" min="0" step="0.01"></div>
+             <div class="form-group"><label for="modal-cc-statement-day">Statement Closing Day:</label><input type="number" id="modal-cc-statement-day" placeholder="(1-31) e.g., 20" min="1" max="31" step="1"></div>
+             <div class="form-group"><label for="modal-cc-interest-rate">Interest Rate (APR %):</label><input type="number" id="modal-cc-interest-rate" placeholder="e.g., 21.99" min="0" step="0.01"></div>
+        </div>
+    `;
+
     s.modalBody.innerHTML = `
         <div class="form-group">
             <label for="modal-account-name">Account Name:</label>
@@ -398,7 +411,7 @@ export function showAccountModal(accountId) {
                 <option value="checking">Checking</option>
                 <option value="savings">Savings</option>
                 <option value="investment">Investment</option>
-            </select>
+                <option value="credit_card">Credit Card</option> </select>
         </div>
         <div class="form-group">
             <label for="modal-account-balance">Current Balance ($):</label>
@@ -408,44 +421,79 @@ export function showAccountModal(accountId) {
             <label for="modal-account-growth">Est. Annual Growth (%):</label>
             <input type="number" id="modal-account-growth" placeholder="5" min="0" step="0.01">
         </div>
-    `;
+        ${ccFieldsHTML} `;
 
     const typeSelect = document.getElementById('modal-account-type');
     const growthGroup = document.getElementById('growth-rate-group');
     const balanceInput = document.getElementById('modal-account-balance');
+    const ccFields = document.getElementById('advanced-cc-fields'); // ⭐️ ADDED
 
+    // === ⭐️ MODIFIED: Event listener to show/hide fields based on type ===
     typeSelect.addEventListener('change', () => {
-        growthGroup.style.display = typeSelect.value === 'investment' ? 'grid' : 'none';
+        const type = typeSelect.value;
+        growthGroup.style.display = type === 'investment' ? 'grid' : 'none';
+        ccFields.style.display = type === 'credit_card' ? 'block' : 'none';
     });
 
     if (isEditMode && accountToEdit) {
         document.getElementById('modal-account-name').value = accountToEdit.name || '';
         typeSelect.value = accountToEdit.type || '';
         balanceInput.value = accountToEdit.current_balance || '';
+        
         if (accountToEdit.type === 'investment') {
             document.getElementById('modal-account-growth').value = accountToEdit.growth_rate ? (accountToEdit.growth_rate * 100).toFixed(2) : '';
             growthGroup.style.display = 'grid';
         }
+        // === ⭐️ ADDED: Populate CC fields on edit ===
+        if (accountToEdit.type === 'credit_card' && accountToEdit.advanced_data) {
+             const advData = accountToEdit.advanced_data;
+             document.getElementById('modal-cc-limit').value = advData.credit_limit || '';
+             document.getElementById('modal-cc-statement-day').value = advData.statement_day || '';
+             document.getElementById('modal-cc-interest-rate').value = advData.interest_rate ? (advData.interest_rate * 100).toFixed(2) : '';
+             ccFields.style.display = 'block';
+        }
+
     } else {
          growthGroup.style.display = 'none';
+         ccFields.style.display = 'none';
     }
 
+    // === ⭐️ MODIFIED: Save logic ===
     state.setOnSave(async () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) { return; }
 
         const type = typeSelect.value;
         const growthRateInput = document.getElementById('modal-account-growth').value;
+        let advancedData = null; // ⭐️ ADDED
+
+        // === ⭐️ ADDED: Capture CC data ===
+        if (type === 'credit_card') {
+            advancedData = { item_type: 'credit_card' };
+            const limitInput = document.getElementById('modal-cc-limit').value;
+            const statementDayInput = document.getElementById('modal-cc-statement-day').value;
+            const rateInput = document.getElementById('modal-cc-interest-rate').value;
+            if (limitInput) advancedData.credit_limit = parseFloat(limitInput);
+            if (statementDayInput) advancedData.statement_day = parseInt(statementDayInput);
+            if (rateInput) advancedData.interest_rate = parseFloat(rateInput) / 100.0;
+            
+            if (advancedData.statement_day && (advancedData.statement_day < 1 || advancedData.statement_day > 31)) {
+                 alert("Statement Closing Day must be between 1 and 31.");
+                 return;
+            }
+        }
 
         const formItem = {
             user_id: user.id,
             name: document.getElementById('modal-account-name').value.trim(),
             type: type,
             current_balance: parseFloat(balanceInput.value),
-            growth_rate: (type === 'investment' && growthRateInput) ? parseFloat(growthRateInput) / 100.0 : null
+            growth_rate: (type === 'investment' && growthRateInput) ? parseFloat(growthRateInput) / 100.0 : null,
+            advanced_data: advancedData // ⭐️ ADDED
         };
 
-        if (!formItem.name || !formItem.type || isNaN(formItem.current_balance) || formItem.current_balance < 0) {
+        if (!formItem.name || !formItem.type || isNaN(formItem.current_balance)) {
+            // Note: Balance can be negative for credit cards, so removed < 0 check
             alert("Please fill out Name, Type, and a valid Balance.");
             return;
         }

@@ -100,6 +100,7 @@
     display: none;
 }
 
+
 .form-group {
     display: grid;
     grid-template-columns: 3fr 4fr; /* 1 part for label, 2 parts for input */
@@ -114,6 +115,20 @@
     text-align: left; /* Ensures labels are right-aligned within their column */
 }
 
+.form-group-stack {
+    display: block; /* Overrides the grid */
+    margin-bottom: 5px;
+}
+
+.form-group-stack .form-group {
+    /* Re-apply grid to the nested form-groups */
+    display: grid;
+    grid-template-columns: 3fr 4fr;
+    gap: 5px;
+    align-items: center;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
 
 /* === Auth Modal === */
 #user-status {

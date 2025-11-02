@@ -266,6 +266,10 @@ body.dark-mode .amortization-table tbody tr.edited-payment-row td {
 .month-grid-table tbody tr:not(.grid-group-header):hover {
     background-color: var(--background-color);
 }
+.grid-group-creditcard .grid-group-header td {
+    color: #9b59b6; /* A nice purple */
+    border-left: 4px solid #9b59b6;
+}
 
 
 /* === Grid Row Status Styles === */
