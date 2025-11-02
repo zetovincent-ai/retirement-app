@@ -681,7 +681,7 @@ export function showReconcileModal(accountId) {
         return;
     }
 
-    const formatCurrency = (num) = num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+   const formatCurrency = (num) => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     
     s.modalTitle.textContent = `Reconcile: ${account.name}`;
     s.modalBody.innerHTML = `
