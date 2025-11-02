@@ -1101,12 +1101,23 @@ export function renderEditsLog() {
     editedTransactions.sort((a, b) => new Date(a.occurrence_date) - new Date(b.occurrence_date));
 
     let logHTML = '<ul class="edits-log-list">';
+    // === ⭐️ FIX IS HERE ===
     const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    // === END FIX ===
 
     editedTransactions.forEach(edit => {
-        const parentItem = (edit.item_type === 'income' ? state.appState.incomes : state.appState.expenses)
-                           .find(item => item.id === edit.item_id);
-        const itemName = parentItem ? parentItem.name : 'Unknown Item';
+        let itemName = 'Unknown Item'; // Default
+
+        if (edit.item_type === 'transfer') {
+            itemName = 'Transfer'; // Use "Transfer" for all transfers
+        } else {
+            // Use existing logic for incomes and expenses
+            const parentList = (edit.item_type === 'income') ? state.appState.incomes : state.appState.expenses;
+            const parentItem = parentList.find(item => item.id === edit.item_id);
+            if (parentItem) {
+                itemName = parentItem.name;
+            }
+        }
         
         const date = parseUTCDate(edit.occurrence_date);
         const dateString = date ? date.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'Invalid Date';
