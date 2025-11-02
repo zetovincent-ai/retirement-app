@@ -220,6 +220,8 @@ function handleDocumentClick(event) {
 }
 
 async function setActiveChartView(viewId) {
+    if (viewId !== 'expensePie') { state.setExpenseChartDrillDown(false); }
+    
     state.setActiveChartView(viewId);
     s.chartViewButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.view === viewId);

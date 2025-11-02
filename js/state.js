@@ -23,6 +23,7 @@ export let loanChartSelections = {
     loans: [],
     timeframe: 10
 };
+export let expenseChartDrillDown = false;
 
 // We also provide "setter" functions for state variables
 // that other modules will need to modify.
@@ -59,4 +60,7 @@ export function setLoanChartInstance(instance) {
 }
 export function setLoanChartSelections(selections) {
     loanChartSelections = selections;
+}
+export function setExpenseChartDrillDown(isDrilled) {
+    expenseChartDrillDown = isDrilled;
 }

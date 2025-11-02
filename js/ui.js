@@ -748,12 +748,52 @@ export async function renderExpenseChart(isExpandedView = false) {
     if (!dashboardIsExpanded && isExpandedView) return;
     if (dashboardIsExpanded && !isExpandedView) return;
 
+    // === ⭐️ 1. Determine Chart Data & State ===
+    const creditCardAccountIds = new Set(state.appState.accounts.filter(acc => acc.type === 'credit_card').map(acc => acc.id));
+    let chartTitle = '';
+    let chartDataExpenses;
+    let clickHandler;
+
+    if (state.expenseChartDrillDown) {
+        // --- Drilled-In View: Credit Card Spending ---
+        chartTitle = 'Credit Card Spending by Category (Click to go back)';
+        chartDataExpenses = state.appState.expenses.filter(exp => 
+            creditCardAccountIds.has(exp.payment_account_id)
+        );
+        
+        // Clicking anywhere on this chart goes back
+        clickHandler = () => {
+            state.setExpenseChartDrillDown(false);
+            renderExpenseChart(true); // Re-render in the expanded view
+        };
+
+    } else {
+        // --- Top-Level View: Cash Flow ---
+        chartTitle = 'Monthly Expenses (Cash Flow)';
+        chartDataExpenses = state.appState.expenses.filter(exp => 
+            !creditCardAccountIds.has(exp.payment_account_id)
+        );
+        
+        // Clicking a slice checks if it's the "Credit Card" (payment) slice
+        clickHandler = (event, elements) => {
+            if (elements && elements.length > 0) {
+                const clickedElement = elements[0];
+                const chart = clickedElement.element.$context.chart;
+                const label = chart.data.labels[clickedElement.index];
+                
+                if (label === 'Credit Card') {
+                    state.setExpenseChartDrillDown(true);
+                    renderExpenseChart(true); // Re-render in the expanded view
+                }
+            }
+        };
+    }
+
+    // === ⭐️ 2. Calculate Totals (Same as before, but with filtered data) ===
     const categoryTotals = {};
-    if (state.appState.expenses && Array.isArray(state.appState.expenses)) {
-        // We need calculateMonthlyTotal from the calculations module
-        // This await is why the function must be async
+    if (chartDataExpenses && Array.isArray(chartDataExpenses)) {
         const { calculateMonthlyTotal } = await import('./calculations.js'); 
-        state.appState.expenses.forEach(expense => {
+        chartDataExpenses.forEach(expense => {
             if (!expense || typeof expense.amount !== 'number' || typeof expense.category !== 'string') {
                 console.warn("Skipping invalid expense item for chart:", expense);
                 return;
@@ -768,6 +808,7 @@ export async function renderExpenseChart(isExpandedView = false) {
     const labels = Object.keys(categoryTotals);
     const data = Object.values(categoryTotals);
 
+    // === ⭐️ 3. Destroy & Re-create Chart ===
     if (state.expenseChartInstance && state.expenseChartInstance.canvas === canvasElement) {
         state.expenseChartInstance.destroy();
         state.setExpenseChartInstance(null);
@@ -780,6 +821,14 @@ export async function renderExpenseChart(isExpandedView = false) {
     ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
     if (labels.length === 0) {
+        // Draw "No Data" message on the canvas
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '16px Arial';
+        ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-color') || '#333';
+        ctx.fillText('No data to display for this view', canvasElement.width / 2, canvasElement.height / 2);
+        ctx.restore();
         console.log("No expense data to render chart.");
         return;
     }
@@ -793,14 +842,28 @@ export async function renderExpenseChart(isExpandedView = false) {
                    datasets: [{
                         label: 'Expenses by Category',
                         data: data,
-                        backgroundColor: ['#3498db', '#e74c3c', '#9b59b6', '#f1c40f', '#2ecc71', '#1abc9c', '#e67e22', '#95a56'],
+                        backgroundColor: ['#3498db', '#e74c3c', '#9b59b6', '#f1c40f', '#2ecc71', '#1abc9c', '#e67e22', '#95a5a6'],
                         hoverOffset: 4
                    }]
               },
               options: {
                    responsive: true,
                    maintainAspectRatio: false,
+                   // ⭐️ ADDED: onClick handler ⭐️
+                   onClick: clickHandler,
                    plugins: {
+                        // ⭐️ ADDED: Chart Title ⭐️
+                        title: {
+                            display: true,
+                            text: chartTitle,
+                            font: {
+                                size: 16
+                            },
+                            padding: {
+                                top: 10,
+                                bottom: 10
+                            }
+                        },
                         legend: {
                              position: 'top',
                         },
@@ -810,10 +873,7 @@ export async function renderExpenseChart(isExpandedView = false) {
                                        let label = context.label || '';
                                        if (label) { label += ': '; }
                                        if (context.parsed !== null) {
-                                            // === ⭐️ FIX IS HERE ===
-                                            // It should be currency: 'USD' not 'USD'
                                             label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
-                                            // === END FIX ===
                                        }
                                        return label;
                                   }
