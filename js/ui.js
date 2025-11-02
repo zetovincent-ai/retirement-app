@@ -840,7 +840,8 @@ export function renderAccountsList() {
         return;
     }
 
-    const groupedAccounts = { checking: [], savings: [], investment: [] };
+    // === ⭐️ MODIFIED: Added 'credit_card' array ===
+    const groupedAccounts = { checking: [], savings: [], investment: [], credit_card: [] };
     state.appState.accounts.forEach(acc => {
         if (groupedAccounts[acc.type]) {
             groupedAccounts[acc.type].push(acc);
@@ -855,9 +856,16 @@ export function renderAccountsList() {
                 const formattedBalance = acc.current_balance.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
                 const growthText = acc.type === 'investment' && acc.growth_rate ? ` (${(acc.growth_rate * 100).toFixed(1)}% growth)` : '';
 
+                // === ⭐️ MODIFIED: Better text for type ===
+                let typeText = acc.type;
+                if (acc.type === 'credit_card') typeText = 'Credit Card';
+                if (acc.type === 'checking') typeText = 'Checking';
+                if (acc.type === 'savings') typeText = 'Savings';
+                if (acc.type === 'investment') typeText = 'Investment';
+
                 li.innerHTML = `
                     <div class="item-details">
-                        <strong>${acc.name}</strong> (${acc.type})${growthText}<br>
+                        <strong>${acc.name}</strong> (${typeText})${growthText}<br>
                         <span>Balance: ${formattedBalance}</span>
                     </div>
                     <div class="item-controls">
@@ -872,6 +880,7 @@ export function renderAccountsList() {
     renderGroup(groupedAccounts.checking, 'Checking');
     renderGroup(groupedAccounts.savings, 'Savings');
     renderGroup(groupedAccounts.investment, 'Investment');
+    renderGroup(groupedAccounts.credit_card, 'Credit Cards'); // === ⭐️ ADDED THIS LINE ===
 }
 
 export function renderTransfersList() {
