@@ -6,7 +6,7 @@ import * as s from './selectors.js';
 import * as state from './state.js';
 import { supabaseClient } from './supabase.js';
 import { fetchData, getDynamicAmortization } from './data.js';
-import { calculateAmortization, parseUTCDate } from './calculations.js';
+import { calculateAmortization, parseUTCDate, getOccurrencesInMonth } from './calculations.js';
 
 // --- Notification Functions ---
 
@@ -735,7 +735,7 @@ export function renderList(items, listElement) {
     });
 }
 
-export async function renderExpenseChart(isExpandedView = false) {
+export function renderExpenseChart(isExpandedView = false) {
     const canvasElement = isExpandedView ? s.expandedExpenseChartCanvas : s.expenseChartCanvas;
     const containerElement = isExpandedView ? s.expandedChartContainer : s.summaryChartContainer;
 
@@ -748,7 +748,7 @@ export async function renderExpenseChart(isExpandedView = false) {
     if (!dashboardIsExpanded && isExpandedView) return;
     if (dashboardIsExpanded && !isExpandedView) return;
 
-    // === ⭐️ 1. Determine Chart Data & State ===
+    // === ⭐️ 1. Determine Chart Data & State (Same as before) ===
     const creditCardAccountIds = new Set(state.appState.accounts.filter(acc => acc.type === 'credit_card').map(acc => acc.id));
     let chartTitle = '';
     let chartDataExpenses;
@@ -756,12 +756,11 @@ export async function renderExpenseChart(isExpandedView = false) {
 
     if (state.expenseChartDrillDown) {
         // --- Drilled-In View: Credit Card Spending ---
-        chartTitle = 'Credit Card Spending by Category (Click to go back)';
+        chartTitle = 'Credit Card Spending (Current Month) (Click to go back)'; // ⭐️ Title updated
         chartDataExpenses = state.appState.expenses.filter(exp => 
             creditCardAccountIds.has(exp.payment_account_id)
         );
-        
-        // Clicking anywhere on this chart goes back
+
         clickHandler = () => {
             state.setExpenseChartDrillDown(false);
             renderExpenseChart(true); // Re-render in the expanded view
@@ -769,18 +768,17 @@ export async function renderExpenseChart(isExpandedView = false) {
 
     } else {
         // --- Top-Level View: Cash Flow ---
-        chartTitle = 'Monthly Expenses (Cash Flow)';
+        chartTitle = 'Monthly Expenses (Cash Flow - Current Month)'; // ⭐️ Title updated
         chartDataExpenses = state.appState.expenses.filter(exp => 
             !creditCardAccountIds.has(exp.payment_account_id)
         );
-        
-        // Clicking a slice checks if it's the "Credit Card" (payment) slice
+
         clickHandler = (event, elements) => {
             if (elements && elements.length > 0) {
                 const clickedElement = elements[0];
                 const chart = clickedElement.element.$context.chart;
                 const label = chart.data.labels[clickedElement.index];
-                
+
                 if (label === 'Credit Card') {
                     state.setExpenseChartDrillDown(true);
                     renderExpenseChart(true); // Re-render in the expanded view
@@ -789,26 +787,41 @@ export async function renderExpenseChart(isExpandedView = false) {
         };
     }
 
-    // === ⭐️ 2. Calculate Totals (Same as before, but with filtered data) ===
+    // === ⭐️ 2. Calculate Totals (REPLACED LOGIC) ===
     const categoryTotals = {};
+    const currentDate = new Date();
+    const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
+
     if (chartDataExpenses && Array.isArray(chartDataExpenses)) {
-        const { calculateMonthlyTotal } = await import('./calculations.js'); 
+        // ⭐️ We no longer use calculateMonthlyTotal
+
         chartDataExpenses.forEach(expense => {
             if (!expense || typeof expense.amount !== 'number' || typeof expense.category !== 'string') {
                 console.warn("Skipping invalid expense item for chart:", expense);
                 return;
             }
-            const monthlyAmount = calculateMonthlyTotal([expense]);
-            if (!categoryTotals[expense.category]) {
-                categoryTotals[expense.category] = 0;
+
+            // === ⭐️ NEW LOGIC ===
+            // Find all occurrences of this expense *in the current month*
+            const occurrences = getOccurrencesInMonth(expense, currentMonthDateUTC);
+
+            if (occurrences.length > 0) {
+                if (!categoryTotals[expense.category]) {
+                    categoryTotals[expense.category] = 0;
+                }
+                // Sum the amount for each occurrence this month
+                // Note: We don't check for edited amounts here, just the base amount for the pie chart.
+                occurrences.forEach(occ => {
+                    categoryTotals[expense.category] += expense.amount;
+                });
             }
-            categoryTotals[expense.category] += monthlyAmount;
+            // === END NEW LOGIC ===
         });
     }
     const labels = Object.keys(categoryTotals);
     const data = Object.values(categoryTotals);
 
-    // === ⭐️ 3. Destroy & Re-create Chart ===
+    // === ⭐️ 3. Destroy & Re-create Chart (Same as before) ===
     if (state.expenseChartInstance && state.expenseChartInstance.canvas === canvasElement) {
         state.expenseChartInstance.destroy();
         state.setExpenseChartInstance(null);
@@ -821,15 +834,14 @@ export async function renderExpenseChart(isExpandedView = false) {
     ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
     if (labels.length === 0) {
-        // Draw "No Data" message on the canvas
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.font = '16px Arial';
         ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-color') || '#333';
-        ctx.fillText('No data to display for this view', canvasElement.width / 2, canvasElement.height / 2);
+        ctx.fillText('No data to display for this month', canvasElement.width / 2, canvasElement.height / 2); // ⭐️ Text updated
         ctx.restore();
-        console.log("No expense data to render chart.");
+        console.log("No expense data to render chart for current month.");
         return;
     }
 
@@ -849,10 +861,8 @@ export async function renderExpenseChart(isExpandedView = false) {
               options: {
                    responsive: true,
                    maintainAspectRatio: false,
-                   // ⭐️ ADDED: onClick handler ⭐️
                    onClick: clickHandler,
                    plugins: {
-                        // ⭐️ ADDED: Chart Title ⭐️
                         title: {
                             display: true,
                             text: chartTitle,

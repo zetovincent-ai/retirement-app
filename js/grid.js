@@ -159,7 +159,7 @@ export async function renderActiveDashboardContent() {
     } else if (state.activeDashboardTab === 'charts') {
         
         if (state.activeChartView === 'expensePie') {
-            await ui.renderExpenseChart(true); 
+            ui.renderExpenseChart(true); 
         } else if (state.activeChartView === 'loanChart') {
             // === ⭐️ MODIFIED LOGIC: No dynamic import ===
             try {

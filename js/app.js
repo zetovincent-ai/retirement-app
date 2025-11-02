@@ -221,7 +221,7 @@ function handleDocumentClick(event) {
 
 async function setActiveChartView(viewId) {
     if (viewId !== 'expensePie') { state.setExpenseChartDrillDown(false); }
-    
+
     state.setActiveChartView(viewId);
     s.chartViewButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.view === viewId);
@@ -236,8 +236,8 @@ async function setActiveChartView(viewId) {
         s.loanChartContent.style.display = 'block';
     }
 
-    // Call the main render function and AWAIT it
-    await grid.renderActiveDashboardContent();
+    // Call the main render function
+    grid.renderActiveDashboardContent();
 }
 
 // === INITIALIZATION ===
