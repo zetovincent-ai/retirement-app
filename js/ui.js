@@ -750,9 +750,8 @@ export function showReconcileModal(accountId) {
                     account_id: accountId,
                     old_balance: oldBalance,
                     new_balance: newBalance,
-                    adjustment: adjustment
-                    // user_id will be set by default policy if you have one, 
-                    // or you can add it here if needed: user_id: user.id
+                    adjustment: adjustment,
+                    user_id: user.id // ⭐️ ADDED THIS LINE ⭐️
                 });
             
             if (logError) throw logError;
