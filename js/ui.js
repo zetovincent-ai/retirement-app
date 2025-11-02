@@ -674,6 +674,103 @@ export function showAmortizationModal(expenseId) {
     openModal();
 }
 
+export function showReconcileModal(accountId) {
+    const account = state.appState.accounts.find(a => a.id === accountId);
+    if (!account) {
+        showNotification("Could not find the account to reconcile.", "error");
+        return;
+    }
+
+    const formatCurrency = (num) = num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    
+    s.modalTitle.textContent = `Reconcile: ${account.name}`;
+    s.modalBody.innerHTML = `
+        <p>Enter the actual current balance from your bank or institution to update the balance in this app.</p>
+        <div class="form-group">
+            <label>Current Balance (in App):</label>
+            <input type="text" id="modal-reconcile-old" value="${formatCurrency(account.current_balance)}" readonly>
+        </div>
+        <div class="form-group">
+            <label for="modal-reconcile-new">Actual Balance (from Bank):</label>
+            <input type="number" id="modal-reconcile-new" placeholder="e.g., 5280.50" step="0.01" required>
+        </div>
+        <div class="form-group">
+            <label>Adjustment:</label>
+            <input type="text" id="modal-reconcile-adjustment" value="$0.00" readonly>
+        </div>
+    `;
+
+    const newBalanceInput = document.getElementById('modal-reconcile-new');
+    const adjustmentInput = document.getElementById('modal-reconcile-adjustment');
+
+    // Add listener to auto-calculate the adjustment
+    newBalanceInput.addEventListener('input', () => {
+        const newBalance = parseFloat(newBalanceInput.value) || 0;
+        const adjustment = newBalance - account.current_balance;
+        adjustmentInput.value = formatCurrency(adjustment);
+    });
+
+    // Set the save function
+    state.setOnSave(async () => {
+        const newBalanceString = newBalanceInput.value;
+        if (!newBalanceString) {
+            alert("Please enter the actual balance.");
+            return;
+        }
+
+        const newBalance = parseFloat(newBalanceString);
+        if (isNaN(newBalance)) {
+            alert("Please enter a valid number for the balance.");
+            return;
+        }
+        
+        const oldBalance = account.current_balance;
+        const adjustment = newBalance - oldBalance;
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) {
+            showNotification("You must be logged in.", "error");
+            return;
+        }
+
+        console.log(`Reconciling account ${accountId}. Old: ${oldBalance}, New: ${newBalance}, Adj: ${adjustment}`);
+
+        try {
+            // --- Step 1: Update the account balance ---
+            const { error: updateError } = await supabaseClient
+                .from('accounts')
+                .update({ current_balance: newBalance })
+                .eq('id', accountId);
+
+            if (updateError) throw updateError;
+
+            // --- Step 2: Log the reconciliation ---
+            const { error: logError } = await supabaseClient
+                .from('reconciliation_log')
+                .insert({
+                    account_id: accountId,
+                    old_balance: oldBalance,
+                    new_balance: newBalance,
+                    adjustment: adjustment
+                    // user_id will be set by default policy if you have one, 
+                    // or you can add it here if needed: user_id: user.id
+                });
+            
+            if (logError) throw logError;
+
+            // --- Step 3: Success ---
+            showNotification("Account reconciled successfully!", "success");
+            closeModal();
+            await fetchData(); // Refresh all data
+
+        } catch (error) {
+            console.error("Error during reconciliation:", error);
+            showNotification(`Error: ${error.message}`, "error");
+        }
+    });
+
+    openModal();
+}
+
 // --- List & Chart Rendering Functions ---
 
 export function renderList(items, listElement) {
@@ -999,7 +1096,6 @@ export function renderAccountsList() {
         return;
     }
 
-    // === ⭐️ MODIFIED: Added 'credit_card' array ===
     const groupedAccounts = { checking: [], savings: [], investment: [], credit_card: [] };
     state.appState.accounts.forEach(acc => {
         if (groupedAccounts[acc.type]) {
@@ -1015,7 +1111,6 @@ export function renderAccountsList() {
                 const formattedBalance = acc.current_balance.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
                 const growthText = acc.type === 'investment' && acc.growth_rate ? ` (${(acc.growth_rate * 100).toFixed(1)}% growth)` : '';
 
-                // === ⭐️ MODIFIED: Better text for type ===
                 let typeText = acc.type;
                 if (acc.type === 'credit_card') typeText = 'Credit Card';
                 if (acc.type === 'checking') typeText = 'Checking';
@@ -1028,6 +1123,7 @@ export function renderAccountsList() {
                         <span>Balance: ${formattedBalance}</span>
                     </div>
                     <div class="item-controls">
+                        <button class="reconcile-btn btn-secondary" data-id="${acc.id}" data-type="account">Reconcile</button>
                         <button class="edit-btn" data-id="${acc.id}" data-type="account">Edit</button>
                         <button class="delete-btn" data-id="${acc.id}" data-type="account">X</button>
                     </div>`;
@@ -1039,7 +1135,7 @@ export function renderAccountsList() {
     renderGroup(groupedAccounts.checking, 'Checking');
     renderGroup(groupedAccounts.savings, 'Savings');
     renderGroup(groupedAccounts.investment, 'Investment');
-    renderGroup(groupedAccounts.credit_card, 'Credit Cards'); // === ⭐️ ADDED THIS LINE ===
+    renderGroup(groupedAccounts.credit_card, 'Credit Cards');
 }
 
 export function renderTransfersList() {

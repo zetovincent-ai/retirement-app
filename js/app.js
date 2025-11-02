@@ -79,6 +79,13 @@ async function handleBankingListClick(event) {
                  await data.fetchData(); 
              }
         }
+    // === ⭐️ ADDED THIS BLOCK ⭐️ ===
+    } else if (target.classList.contains('reconcile-btn')) {
+        console.log(`Reconcile ${type} ID ${id}`);
+        if (type === 'account') {
+            ui.showReconcileModal(id);
+        }
+    // === END NEW BLOCK ===
     }
 }
 
