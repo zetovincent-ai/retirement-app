@@ -662,3 +662,52 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
 .checkbox-item input {
     cursor: pointer;
 }
+
+/* === Chart Details List === */
+
+#expanded-expense-details {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--background-color);
+    padding: 1rem;
+    max-height: 400px; /* Same as pie chart height */
+    overflow-y: auto;
+    display: none; /* Will be toggled by JS */
+}
+
+#expense-details-back-btn {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+#expense-details-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.expense-details-entry {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.expense-details-entry:last-child {
+    border-bottom: none;
+}
+
+.expense-details-name {
+    font-weight: 500;
+}
+
+.expense-details-date {
+    color: var(--secondary-btn-bg);
+}
+
+.expense-details-amount {
+    font-weight: bold;
+    color: var(--net-total-color);
+}

@@ -220,7 +220,10 @@ function handleDocumentClick(event) {
 }
 
 async function setActiveChartView(viewId) {
-    if (viewId !== 'expensePie') { state.setExpenseChartDrillDown(false); }
+    if (viewId !== 'expensePie') { 
+        state.setExpenseChartDrillDown(false); 
+        state.setExpenseChartDetailCategory(null); // ⭐️ ADD THIS LINE
+    }
 
     state.setActiveChartView(viewId);
     s.chartViewButtons.forEach(btn => {

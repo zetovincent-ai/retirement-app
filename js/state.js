@@ -24,6 +24,7 @@ export let loanChartSelections = {
     timeframe: 10
 };
 export let expenseChartDrillDown = false;
+export let expenseChartDetailCategory = null;
 
 // We also provide "setter" functions for state variables
 // that other modules will need to modify.
@@ -63,4 +64,7 @@ export function setLoanChartSelections(selections) {
 }
 export function setExpenseChartDrillDown(isDrilled) {
     expenseChartDrillDown = isDrilled;
+}
+export function setExpenseChartDetailCategory(category) {
+    expenseChartDetailCategory = category;
 }

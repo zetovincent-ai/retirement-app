@@ -738,9 +738,12 @@ export function renderList(items, listElement) {
 export function renderExpenseChart(isExpandedView = false) {
     const canvasElement = isExpandedView ? s.expandedExpenseChartCanvas : s.expenseChartCanvas;
     const containerElement = isExpandedView ? s.expandedChartContainer : s.summaryChartContainer;
+    
+    // ⭐️ NEW ⭐️: Get the new details list container
+    const detailsElement = s.expandedChartContainer.querySelector('#expanded-expense-details');
 
-    if (!canvasElement || !containerElement) {
-         console.warn(`Canvas or container not found for ${isExpandedView ? 'expanded' : 'summary'} chart view.`);
+    if (!canvasElement || !containerElement || (isExpandedView && !detailsElement)) {
+         console.warn(`Chart/container elements not found for ${isExpandedView ? 'expanded' : 'summary'} view.`);
          return;
     }
 
@@ -748,80 +751,166 @@ export function renderExpenseChart(isExpandedView = false) {
     if (!dashboardIsExpanded && isExpandedView) return;
     if (dashboardIsExpanded && !isExpandedView) return;
 
-    // === ⭐️ 1. Determine Chart Data & State (Same as before) ===
+    // === ⭐️ 1. Get State & Date ⭐️ ===
     const creditCardAccountIds = new Set(state.appState.accounts.filter(acc => acc.type === 'credit_card').map(acc => acc.id));
+    const currentDate = new Date();
+    const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
+    const formatCurrency = (num) => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    
+    // === ⭐️ 2. Check if we are in "Details List" mode ⭐️ ===
+    if (isExpandedView && state.expenseChartDetailCategory !== null) {
+        // --- RENDER DETAILS LIST ---
+        console.log(`Rendering details list for category: ${state.expenseChartDetailCategory}`);
+        
+        // Hide canvas, show details list
+        canvasElement.style.display = 'none';
+        detailsElement.style.display = 'block';
+
+        // 1. Get the correct list of expenses
+        let expensePool;
+        if (state.expenseChartDrillDown) {
+            // We are drilled into CCs, so get CC charges
+            expensePool = state.appState.expenses.filter(exp => creditCardAccountIds.has(exp.payment_account_id));
+        } else {
+            // We are on cash flow, so get non-CC expenses
+            expensePool = state.appState.expenses.filter(exp => !creditCardAccountIds.has(exp.payment_account_id));
+        }
+
+        // 2. Filter that list by the chosen category
+        const categoryExpenses = expensePool.filter(exp => exp.category === state.expenseChartDetailCategory);
+
+        // 3. Find all occurrences in the current month
+        let listHTML = '';
+        let total = 0;
+        const allOccurrences = [];
+
+        categoryExpenses.forEach(item => {
+            const occurrences = getOccurrencesInMonth(item, currentMonthDateUTC);
+            occurrences.forEach(date => {
+                allOccurrences.push({ item, date });
+                total += item.amount; // Note: We use base amount for this list
+            });
+        });
+        
+        allOccurrences.sort((a, b) => a.date.getUTCDate() - b.date.getUTCDate());
+
+        // 4. Build HTML
+        if (allOccurrences.length > 0) {
+            allOccurrences.forEach(({ item, date }) => {
+                listHTML += `
+                    <li class="expense-details-entry">
+                        <div>
+                            <span class="expense-details-name">${item.name}</span><br>
+                            <span class="expense-details-date">
+                                ${date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })}
+                                (${item.interval})
+                            </span>
+                        </div>
+                        <span class="expense-details-amount">${formatCurrency(item.amount)}</span>
+                    </li>
+                `;
+            });
+        } else {
+            listHTML = '<li>No specific charges found for this category this month.</li>';
+        }
+
+        detailsElement.innerHTML = `
+            <button id="expense-details-back-btn" class="btn-secondary">← Back to Chart</button>
+            <h3>${state.expenseChartDetailCategory}</h3>
+            <p>Total: ${formatCurrency(total)}</p>
+            <ul id="expense-details-list">
+                ${listHTML}
+            </ul>
+        `;
+
+        // 5. Add listener for the new "Back" button
+        detailsElement.querySelector('#expense-details-back-btn').addEventListener('click', () => {
+            state.setExpenseChartDetailCategory(null); // Go back to chart
+            renderExpenseChart(isExpandedView); // Re-render
+        });
+        
+        return; // Stop here, we are done
+    }
+
+    // === ⭐️ 3. RENDER PIE CHART ⭐️ ===
+    // If we got here, it means we are rendering a pie chart.
+    
+    // Hide details list, show canvas
+    if (isExpandedView) {
+        canvasElement.style.display = 'block';
+        detailsElement.style.display = 'none';
+    }
+    
     let chartTitle = '';
     let chartDataExpenses;
     let clickHandler;
 
     if (state.expenseChartDrillDown) {
         // --- Drilled-In View: Credit Card Spending ---
-        chartTitle = 'Credit Card Spending (Current Month) (Click to go back)'; // ⭐️ Title updated
+        chartTitle = 'Credit Card Spending (Current Month) (Click slice for details, empty space to go back)';
         chartDataExpenses = state.appState.expenses.filter(exp => 
             creditCardAccountIds.has(exp.payment_account_id)
         );
-
-        clickHandler = () => {
-            state.setExpenseChartDrillDown(false);
-            renderExpenseChart(true); // Re-render in the expanded view
+        
+        clickHandler = (event, elements) => {
+            if (elements && elements.length > 0) {
+                // Clicked a slice - go to details list
+                const label = elements[0].element.$context.chart.data.labels[elements[0].index];
+                state.setExpenseChartDetailCategory(label);
+            } else {
+                // Clicked empty space - go back
+                state.setExpenseChartDrillDown(false);
+            }
+            renderExpenseChart(true); // Re-render
         };
 
     } else {
         // --- Top-Level View: Cash Flow ---
-        chartTitle = 'Monthly Expenses (Cash Flow - Current Month)'; // ⭐️ Title updated
+        chartTitle = 'Monthly Expenses (Cash Flow - Current Month) (Click slice for details)';
         chartDataExpenses = state.appState.expenses.filter(exp => 
             !creditCardAccountIds.has(exp.payment_account_id)
         );
-
+        
         clickHandler = (event, elements) => {
             if (elements && elements.length > 0) {
-                const clickedElement = elements[0];
-                const chart = clickedElement.element.$context.chart;
-                const label = chart.data.labels[clickedElement.index];
-
+                const label = elements[0].element.$context.chart.data.labels[elements[0].index];
+                
                 if (label === 'Credit Card') {
+                    // Clicked "Credit Card" - drill down
                     state.setExpenseChartDrillDown(true);
-                    renderExpenseChart(true); // Re-render in the expanded view
+                } else {
+                    // Clicked any other slice - go to details
+                    state.setExpenseChartDetailCategory(label);
                 }
+                renderExpenseChart(true); // Re-render
             }
         };
     }
 
-    // === ⭐️ 2. Calculate Totals (REPLACED LOGIC) ===
+    // === ⭐️ 4. Calculate Totals (Same as before) ⭐️ ===
     const categoryTotals = {};
-    const currentDate = new Date();
-    const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
-
     if (chartDataExpenses && Array.isArray(chartDataExpenses)) {
-        // ⭐️ We no longer use calculateMonthlyTotal
-
         chartDataExpenses.forEach(expense => {
             if (!expense || typeof expense.amount !== 'number' || typeof expense.category !== 'string') {
                 console.warn("Skipping invalid expense item for chart:", expense);
                 return;
             }
-
-            // === ⭐️ NEW LOGIC ===
-            // Find all occurrences of this expense *in the current month*
             const occurrences = getOccurrencesInMonth(expense, currentMonthDateUTC);
-
+            
             if (occurrences.length > 0) {
                 if (!categoryTotals[expense.category]) {
                     categoryTotals[expense.category] = 0;
                 }
-                // Sum the amount for each occurrence this month
-                // Note: We don't check for edited amounts here, just the base amount for the pie chart.
                 occurrences.forEach(occ => {
                     categoryTotals[expense.category] += expense.amount;
                 });
             }
-            // === END NEW LOGIC ===
         });
     }
     const labels = Object.keys(categoryTotals);
     const data = Object.values(categoryTotals);
 
-    // === ⭐️ 3. Destroy & Re-create Chart (Same as before) ===
+    // === ⭐️ 5. Destroy & Re-create Chart (Same as before) ⭐️ ===
     if (state.expenseChartInstance && state.expenseChartInstance.canvas === canvasElement) {
         state.expenseChartInstance.destroy();
         state.setExpenseChartInstance(null);
@@ -839,7 +928,7 @@ export function renderExpenseChart(isExpandedView = false) {
         ctx.textBaseline = 'middle';
         ctx.font = '16px Arial';
         ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-color') || '#333';
-        ctx.fillText('No data to display for this month', canvasElement.width / 2, canvasElement.height / 2); // ⭐️ Text updated
+        ctx.fillText('No data to display for this month', canvasElement.width / 2, canvasElement.height / 2);
         ctx.restore();
         console.log("No expense data to render chart for current month.");
         return;
