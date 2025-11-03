@@ -15,7 +15,8 @@ export async function fetchData() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
          console.log("No user logged in for fetchData, clearing local state.");
-         state.setAppState({ incomes: [], expenses: [], transactions: [], accounts: [], transfers: [] }); // Clear all
+         // ⭐️ ADDED reconciliation_log here
+         state.setAppState({ incomes: [], expenses: [], transactions: [], accounts: [], transfers: [], reconciliation_log: [] });
          renderAll();
          return;
     }
@@ -27,13 +28,17 @@ export async function fetchData() {
         { data: expenses, error: expensesError },
         { data: transactions, error: transactionsError },
         { data: accounts, error: accountsError },
-        { data: transfers, error: transfersError }
+        { data: transfers, error: transfersError },
+        // ⭐️ ADDED this promise
+        { data: reconciliation_log, error: reconciliationError } 
     ] = await Promise.all([
         supabaseClient.from('incomes').select('*').eq('user_id', user.id),
         supabaseClient.from('expenses').select('*').eq('user_id', user.id),
         supabaseClient.from('transaction_log').select('*').eq('user_id', user.id),
         supabaseClient.from('accounts').select('*').eq('user_id', user.id),
-        supabaseClient.from('transfers').select('*').eq('user_id', user.id)
+        supabaseClient.from('transfers').select('*').eq('user_id', user.id),
+        // ⭐️ ADDED this line
+        supabaseClient.from('reconciliation_log').select('*').eq('user_id', user.id)
     ]);
 
     let newAppState = { ...state.appState };
@@ -52,6 +57,11 @@ export async function fetchData() {
 
     if (transfersError) console.error('Error fetching transfers:', transfersError);
     else newAppState.transfers = transfers || [];
+
+    // ⭐️ ADDED this block
+    if (reconciliationError) console.error('Error fetching reconciliation_log:', reconciliationError);
+    else newAppState.reconciliation_log = reconciliation_log || [];
+    // ===
 
     state.setAppState(newAppState);
 

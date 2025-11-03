@@ -159,17 +159,19 @@ export async function renderActiveDashboardContent() {
     } else if (state.activeDashboardTab === 'charts') {
         
         if (state.activeChartView === 'expensePie') {
-            ui.renderExpenseChart(true); 
+             ui.renderExpenseChart(true);
         } else if (state.activeChartView === 'loanChart') {
-            // === ⭐️ MODIFIED LOGIC: No dynamic import ===
             try {
                 loanChart.initializeLoanChart();
             } catch (err) {
                 console.error("Failed to initialize loan chart:", err);
                 ui.showNotification("Error loading loan chart. Check console.", "error");
             }
-            // === END MODIFICATION ===
+        // === ⭐️ ADDED THIS BLOCK ⭐️ ===
+        } else if (state.activeChartView === 'reconciliationView') {
+            ui.renderReconciliationList(); // Call the new function
         }
+        // === END NEW BLOCK ===
     }
 }
 

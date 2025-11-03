@@ -229,7 +229,7 @@ function handleDocumentClick(event) {
 async function setActiveChartView(viewId) {
     if (viewId !== 'expensePie') { 
         state.setExpenseChartDrillDown(false); 
-        state.setExpenseChartDetailCategory(null); // ⭐️ ADD THIS LINE
+        state.setExpenseChartDetailCategory(null);
     }
 
     state.setActiveChartView(viewId);
@@ -237,13 +237,20 @@ async function setActiveChartView(viewId) {
         btn.classList.toggle('active', btn.dataset.view === viewId);
     });
 
+    // === ⭐️ MODIFIED: Now handles 3 views ===
     // Show/hide the correct chart container
     if (viewId === 'expensePie') {
         s.expensePieChartContainer.style.display = 'block';
         s.loanChartContent.style.display = 'none';
+        s.reconciliationViewContent.style.display = 'none'; // ⭐️ ADDED
     } else if (viewId === 'loanChart') {
         s.expensePieChartContainer.style.display = 'none';
         s.loanChartContent.style.display = 'block';
+        s.reconciliationViewContent.style.display = 'none'; // ⭐️ ADDED
+    } else if (viewId === 'reconciliationView') { // ⭐️ ADDED BLOCK
+        s.expensePieChartContainer.style.display = 'none';
+        s.loanChartContent.style.display = 'none';
+        s.reconciliationViewContent.style.display = 'block';
     }
 
     // Call the main render function

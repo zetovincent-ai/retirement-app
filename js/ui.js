@@ -1230,3 +1230,58 @@ export function renderEditsLog() {
     logHTML += '</ul>';
     logContent.innerHTML = logHTML;
 }
+
+/** 
+* Renders the reconciliation log into its container.
+ */
+export function renderReconciliationList() {
+    if (!s.reconciliationViewContent) return;
+
+    const logs = state.appState.reconciliation_log;
+    
+    if (!logs || logs.length === 0) {
+        s.reconciliationViewContent.innerHTML = '<h3>Reconciliation Log</h3><p>No reconciliations found.</p>';
+        return;
+    }
+
+    // Sort by date, newest first
+    logs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    const formatCurrency = (num) => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    
+    let logHTML = '<ul class="reconciliation-log-list">';
+
+    logs.forEach(log => {
+        const account = state.appState.accounts.find(a => a.id === log.account_id);
+        const accountName = account ? account.name : 'Unknown Account';
+        
+        // Supabase gives a full timestamp, so we can use new Date()
+        const date = new Date(log.created_at);
+        const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        
+        const adjAmount = log.adjustment || 0;
+        const adjClass = adjAmount >= 0 ? 'recon-positive' : 'recon-negative';
+        const adjSign = adjAmount >= 0 ? '+' : '';
+
+        logHTML += `
+            <li class="reconciliation-log-entry">
+                <div>
+                    <span class="recon-account-name">${accountName}</span><br>
+                    <span class="recon-date">${dateString}</span>
+                </div>
+                <div class="recon-details">
+                    <span class="recon-amount ${adjClass}">${adjSign}${formatCurrency(adjAmount)}</span>
+                    <span class="recon-balance">New Balance: ${formatCurrency(log.new_balance)}</span>
+                </div>
+            </li>
+        `;
+    });
+
+    logHTML += '</ul>';
+    
+    s.reconciliationViewContent.innerHTML = `
+        <h3>Reconciliation Log</h3>
+        <p>A history of all manual balance adjustments.</p>
+        ${logHTML}
+    `;
+}

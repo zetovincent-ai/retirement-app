@@ -53,8 +53,9 @@
                         <button class="view-btn" data-view="yearly">Yearly Summary</button> 
                     </div>
                     <div class="view-group" data-tab-group="charts" style="display: none;">
-                         <button class="view-btn" data-view="expensePie">Expenses</button>
-                         <button class="view-btn active" data-view="loanChart">Loans</button>
+                         <button class="view-btn active" data-view="expensePie">Expenses</button>
+                         <button class="view-btn" data-view="loanChart">Loans</button>
+                         <button class="view-btn" data-view="reconciliationView">Reconciliations</button>
                     </div>
                 </div>
                 <div class="dashboard-content-area">
@@ -102,7 +103,9 @@
                                 <canvas id="loan-chart-canvas"></canvas>
                             </div>
                          </div>
-                         </div>
+                         <div id="reconciliation-view-content" class="chart-container-wrapper" style="display: none;">
+                        </div>
+                    </div>
                 </div>
             </div> 
 

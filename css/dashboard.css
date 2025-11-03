@@ -711,3 +711,73 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     font-weight: bold;
     color: var(--net-total-color);
 }
+
+/* === Reconciliation Log View === */
+
+#reconciliation-view-content {
+    padding: 1rem;
+    max-width: 800px;
+    margin: 0 auto; /* Center the list container */
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--background-color);
+}
+
+#reconciliation-view-content h3 {
+    margin-bottom: 0.5rem;
+}
+#reconciliation-view-content p {
+    margin-bottom: 1.5rem;
+}
+
+.reconciliation-log-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.reconciliation-log-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+.reconciliation-log-entry:last-child {
+    border-bottom: none;
+}
+
+.recon-account-name {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.recon-date {
+    font-size: 0.85rem;
+    color: var(--secondary-btn-bg);
+}
+
+.recon-details {
+    text-align: right;
+}
+
+.recon-amount {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.recon-balance {
+    font-size: 0.85rem;
+    color: var(--text-color);
+    display: block; /* Puts it on its own line */
+}
+
+.recon-positive {
+    color: var(--income-total-color);
+}
+
+.recon-negative {
+    color: var(--expense-total-color);
+}

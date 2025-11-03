@@ -50,4 +50,5 @@ export const expensePieChartContainer = document.getElementById('expense-pie-cha
 export const loanChartContent = document.getElementById('loan-chart-content');
 export const loanChartCanvas = document.getElementById('loan-chart-canvas');
 export const loanChartSelectContainer = document.getElementById('loan-chart-select-container');
+export const reconciliationViewContent = document.getElementById('reconciliation-view-content');
 export const loanTimeframeSelect = document.getElementById('loan-timeframe-select');
