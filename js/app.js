@@ -301,11 +301,18 @@ document.addEventListener('DOMContentLoaded', () => {
             s.summaryChartContainer.style.display = 'none';
             s.expandedDashboardContent.style.display = 'flex';
             grid.setActiveDashboardTab(state.activeDashboardTab);
+            
+            // ⭐️ ADD THIS LINE ⭐️
+            s.toggleDashboardBtn.textContent = 'Close Dashboard';
+
         } else {
             s.dashboardSummary.style.display = 'block';
             s.summaryChartContainer.style.display = 'none';
             s.expandedDashboardContent.style.display = 'none';
             s.tabContents.forEach(content => content.classList.remove('active')); 
+            
+            // ⭐️ ADD THIS LINE ⭐️
+            s.toggleDashboardBtn.textContent = 'Grids & Charts';
         }
     });
 
