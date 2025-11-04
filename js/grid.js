@@ -613,7 +613,7 @@ export function renderYearlySummaryTable(numYears, isRestoring = false) {
  */
 function getHistoricYears() {
     const allItems = [...state.appState.incomes, ...state.appState.expenses];
-    if (allItems.length === 0) return [];
+    if (allItems.length === 0) return [new Date().getFullYear()]; // ⭐️ Return current year if no data
 
     let minYear = new Date().getFullYear();
     allItems.forEach(item => {
@@ -628,11 +628,12 @@ function getHistoricYears() {
 
     const currentYear = new Date().getFullYear();
     const years = [];
-    // Loop from the earliest year found up to *last* year
-    for (let y = minYear; y < currentYear; y++) {
+    
+    // === ⭐️ FIX IS HERE: Use <= to include the current year ===
+    for (let y = minYear; y <= currentYear; y++) {
         years.push(y);
     }
-    return years.sort((a, b) => b - a); // Sort descending (e.g., 2024, 2023, 2022)
+    return years.sort((a, b) => b - a); // Sort descending (e.g., 2025, 2024, 2023)
 }
 
 /**
