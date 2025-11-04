@@ -127,19 +127,27 @@ export function setActiveGridView(viewId) {
         state.setLastOpenYear(null);
         console.log("State cleared: Switched away from yearly view");
     }
-    
+
     state.setActiveGridView(viewId);
     s.gridViewButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.view === viewId);
     });
 
+    // === ⭐️ MODIFIED FOR 3 PANELS ⭐️ ===
     if (viewId === 'yearly') {
         s.gridMonthlyContent.style.display = 'none';
         s.gridYearlyContent.style.display = 'flex';
-    } else {
+        s.gridHistoricContent.style.display = 'none';
+    } else if (viewId === 'historic') {
+        s.gridMonthlyContent.style.display = 'none';
+        s.gridYearlyContent.style.display = 'none';
+        s.gridHistoricContent.style.display = 'flex';
+    } else { // '2m' or '6m'
         s.gridMonthlyContent.style.display = 'flex';
         s.gridYearlyContent.style.display = 'none';
+        s.gridHistoricContent.style.display = 'none';
     }
+    // === END MODIFICATION ===
 
     renderActiveDashboardContent();
 }
@@ -152,6 +160,8 @@ export async function renderActiveDashboardContent() {
     if (state.activeDashboardTab === 'grids') {
         if (state.activeGridView === 'yearly') {
             renderYearlyConfigUI();
+        } else if (state.activeGridView === 'historic') { // ⭐️ ADDED BLOCK
+            renderHistoricConfigUI();
         } else {
             const months = (state.activeGridView === '6m') ? 6 : 2;
             s.gridMonthlyContent.innerHTML = renderGridView(months, new Date(), 0, null);
@@ -596,6 +606,59 @@ export function renderYearlySummaryTable(numYears, isRestoring = false) {
          state.setLastNumYears(numYears);
          console.log(`State maintained (restoring): lastNumYears=${state.lastNumYears}, lastOpenYear=${state.lastOpenYear}`);
     }
+}
+
+/**
+ * Finds all unique past years from the data to populate the Historic view.
+ */
+function getHistoricYears() {
+    const allItems = [...state.appState.incomes, ...state.appState.expenses];
+    if (allItems.length === 0) return [];
+
+    let minYear = new Date().getFullYear();
+    allItems.forEach(item => {
+        const itemDate = calc.parseUTCDate(item.start_date);
+        if (itemDate) {
+            const itemYear = itemDate.getUTCFullYear();
+            if (itemYear < minYear) {
+                minYear = itemYear;
+            }
+        }
+    });
+
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    // Loop from the earliest year found up to *last* year
+    for (let y = minYear; y < currentYear; y++) {
+        years.push(y);
+    }
+    return years.sort((a, b) => b - a); // Sort descending (e.g., 2024, 2023, 2022)
+}
+
+/**
+ * Renders the UI for selecting a historic year to review.
+ */
+export function renderHistoricConfigUI() {
+    const historicYears = getHistoricYears();
+    let buttonsHTML = '';
+
+    if (historicYears.length > 0) {
+        buttonsHTML = historicYears.map(year => 
+            `<button class="btn-link" data-historic-year="${year}">${year}</button>`
+        ).join('<br>'); // Simple list of buttons
+    } else {
+        buttonsHTML = '<p>No historic data found (from years prior to this one).</p>';
+    }
+
+    s.gridHistoricYearPanel.innerHTML = `
+        <h3>Historic Review</h3>
+        <p>Select a year to review:</p>
+        <div class="historic-year-list">
+            ${buttonsHTML}
+        </div>
+    `;
+
+    s.gridHistoricDetailContent.innerHTML = '<p>Click a year in the list to see the 12-month review.</p>';
 }
 
 export function calculateAccountBalancesForMonth(monthDateUTC, startingBalances) {

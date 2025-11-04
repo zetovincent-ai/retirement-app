@@ -440,13 +440,15 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     overflow: hidden;
 }
 
-#grid-yearly-content {
+#grid-yearly-content,
+#grid-historic-content {
     flex-direction: row; 
     gap: 1rem;
     height: 100%;
 }
 
-#grid-yearly-summary-panel {
+#grid-yearly-summary-panel,
+#grid-historic-year-panel {
     flex-shrink: 0;
     width: 425px;
     height: 100%;
@@ -457,7 +459,8 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     background-color: var(--background-color); 
 }
 
-#grid-detail-content {
+#grid-detail-content,
+#grid-historic-detail-content {
     flex-grow: 1; 
     height: 100%;
     overflow: auto; 

@@ -136,7 +136,21 @@ function handleGridContentClick(event) {
         return;
     }
 
-    // 4. Handle "Add Item" click (from monthly grid)
+    // 4. Handle click on a "Historic Year" button (btn-link)
+    const historicYearButton = target.closest('.btn-link[data-historic-year]');
+    if (historicYearButton) {
+        const clickedYear = parseInt(historicYearButton.dataset.year, 10);
+        if (isNaN(clickedYear)) return;
+
+        // Render a 12-month grid starting Jan 1st of that year
+        const startDate = new Date(Date.UTC(clickedYear, 0, 1));
+        
+        // We pass 0 and null for starting balances, as it's a historic review
+        s.gridHistoricDetailContent.innerHTML = grid.renderGridView(12, startDate, 0, null);
+        return;
+    }
+    
+    // 5. Handle "Add Item" click (from monthly grid)
     const addButton = target.closest('[data-action="add-grid-item"]');
     if (addButton) {
         const prefillData = {
