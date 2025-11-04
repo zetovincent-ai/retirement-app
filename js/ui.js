@@ -779,15 +779,31 @@ export function renderList(items, listElement) {
          listElement.innerHTML = `<li>No ${listType}s added yet.</li>`;
          return;
     }
+
+    // === ⭐️ NEW LOGIC START ===
+    const currentDate = new Date();
+    const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
+
+    // Filter for items that have an occurrence in the current month
+    const currentItems = items.filter(item => {
+        return getOccurrencesInMonth(item, currentMonthDateUTC).length > 0;
+    });
+
+    if (currentItems.length === 0) {
+        listElement.innerHTML = `<li>No ${listType}s for the current month.</li>`;
+        return;
+    }
+    // === NEW LOGIC END ===
     
-    items.sort((a, b) => {
+    // Sort and render the filtered list
+    currentItems.sort((a, b) => {
         if (a.start_date && b.start_date) return new Date(b.start_date) - new Date(a.start_date);
         if (a.start_date) return -1;
         if (b.start_date) return 1;
         return 0;
     });
 
-    items.forEach(item => {
+    currentItems.forEach(item => {
         if (!item || item.id === undefined || item.id === null) { console.warn("Skipping rendering invalid item:", item); return; }
         const li = document.createElement('li');
         const formattedAmount = typeof item.amount === 'number' ? item.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : 'N/A';
@@ -796,8 +812,11 @@ export function renderList(items, listElement) {
         let dateText = '';
         if (item.start_date) {
             try {
-                const date = new Date(item.start_date + 'T00:00:00'); 
-                dateText = ` (Starts: ${date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })})`;
+                // Get all occurrences this month to display
+                const occurrences = getOccurrencesInMonth(item, currentMonthDateUTC);
+                const days = occurrences.map(d => d.getUTCDate()).join(', ');
+                dateText = ` (Day: ${days})`;
+
             } catch (e) {
                 console.warn(`Invalid date format for item ${item.id}: ${item.start_date}`);
                 dateText = ' (Invalid Date)';
@@ -1139,12 +1158,27 @@ export function renderAccountsList() {
 
 export function renderTransfersList() {
     s.transferList.innerHTML = '';
-    const recurringTransfers = state.appState.transfers.filter(t => t.interval !== 'one-time');
+    const allRecurringTransfers = state.appState.transfers.filter(t => t.interval !== 'one-time');
 
-    if (!recurringTransfers || recurringTransfers.length === 0) {
+    if (!allRecurringTransfers || allRecurringTransfers.length === 0) {
         s.transferList.innerHTML = `<li>No recurring transfers added yet.</li>`;
         return;
     }
+
+    // === ⭐️ NEW LOGIC START ===
+    const currentDate = new Date();
+    const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
+
+    // Filter for transfers that have an occurrence in the current month
+    const recurringTransfers = allRecurringTransfers.filter(item => {
+        return getOccurrencesInMonth(item, currentMonthDateUTC).length > 0;
+    });
+
+    if (recurringTransfers.length === 0) {
+        s.transferList.innerHTML = `<li>No recurring transfers for the current month.</li>`;
+        return;
+    }
+    // === NEW LOGIC END ===
 
     recurringTransfers.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 
@@ -1157,12 +1191,12 @@ export function renderTransfersList() {
         const toName = toAcc ? toAcc.name : 'Unknown';
 
         let dateText = '';
-        if (transfer.start_date) {
-             try {
-                 const date = new Date(transfer.start_date + 'T00:00:00');
-                 dateText = ` (Starts: ${date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })})`;
-             } catch (e) { dateText = ' (Invalid Date)'; }
-        }
+        try {
+            // Get all occurrences this month to display
+            const occurrences = getOccurrencesInMonth(transfer, currentMonthDateUTC);
+            const days = occurrences.map(d => d.getUTCDate()).join(', ');
+            dateText = ` (Day: ${days})`;
+        } catch (e) { dateText = ' (Invalid Date)'; }
 
         const li = document.createElement('li');
         li.innerHTML = `
