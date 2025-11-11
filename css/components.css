@@ -327,3 +327,22 @@ input:checked + .slider:before {
     margin-top: 0.5rem;
     padding-top: 0.5rem;
 }
+
+.form-group-checkbox {
+    display: grid;
+    grid-template-columns: 1fr 12fr; /* Small column for checkbox, large for label */
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.form-group-checkbox label {
+    font-weight: bold;
+    text-align: left;
+    margin-bottom: 0; /* Override any default */
+}
+
+.form-group-checkbox input {
+    width: auto; /* Let checkbox be its natural size */
+    justify-self: center; /* Center it in its small column */
+}

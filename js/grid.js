@@ -66,10 +66,13 @@ export function renderAll() {
 // --- Dashboard Component Renders ---
 
 function renderDashboard(){
+    const format = num => num.toLocaleString('en-US',{style:'currency',currency:'USD'});
+
+    // --- 1. Monthly Summary (Existing) ---
     const totalMonthlyIncome = calc.calculateMonthlyTotal(state.appState.incomes);
     const totalMonthlyExpenses = calc.calculateMonthlyTotal(state.appState.expenses);
     const netMonthly = totalMonthlyIncome - totalMonthlyExpenses;
-    const format = num => num.toLocaleString('en-US',{style:'currency',currency:'USD'});
+    
     s.dashboardSummary.innerHTML=`
         <div class="summary-item">
             <h3 class="income-total">Total Monthly Income</h3>
@@ -82,7 +85,63 @@ function renderDashboard(){
         <div class="summary-item net-total">
             <h3>Net Monthly Balance</h3>
             <p>${format(netMonthly)}</p>
-        </div>`
+        </div>`;
+    
+    // --- 2. Forecast Summary (New) ---
+    
+    // A. Net Worth
+    const netWorth = state.appState.accounts.reduce((total, acc) => {
+        if (acc.type === 'credit_card') {
+            return total - acc.current_balance; // Subtract CC balances
+        }
+        return total + acc.current_balance; // Add all others
+    }, 0);
+
+    // B. Estimated AGI
+    // Define incomes that are *NOT* part of AGI (contributions or non-taxable)
+    const nonAgiIncomeTypes = [
+        'Investment Contribution', 
+        'TSP', 
+        'TSP Supplement', 
+        'Social Security', 
+        'Investment' // Dividends are taxed differently, exclude from simple AGI
+    ];
+
+    const annualTaxableIncome = calc.calculateAnnualTotal(
+        state.appState.incomes,
+        item => !nonAgiIncomeTypes.includes(item.type) // Filter function
+    );
+    
+    // C. Estimated MAGI
+    const annualMagiAddBacks = calc.calculateAnnualTotal(
+        state.appState.expenses,
+        item => item.advanced_data && item.advanced_data.is_magi_addback === true
+    );
+    
+    const estimatedMagi = annualTaxableIncome + annualMagiAddBacks;
+    
+    // D. Render to the new div
+    const forecastDiv = document.getElementById('dashboard-forecast');
+    if (forecastDiv) { // Check if it exists
+        forecastDiv.innerHTML = `
+            <div class="summary-item">
+                <h3>Est. Net Worth</h3>
+                <p>${format(netWorth)}</p>
+            </div>
+            <div class="summary-item">
+                <h3>Est. Annual AGI</h3>
+                <p>${format(annualTaxableIncome)}</p>
+            </div>
+            <div class="summary-item">
+                <h3>Est. Annual MAGI</h3>
+                <p>${format(estimatedMagi)}</p>
+            </div>
+            <div class="summary-item net-total">
+                <h3>MAGI Add-Backs</h3>
+                <p>${format(annualMagiAddBacks)}</p>
+            </div>
+        `;
+    }
 }
 
 export function renderIncomes(){

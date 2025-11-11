@@ -18,6 +18,42 @@ export function parseUTCDate(dateString) {
     return date;
 }
 
+/**
+ * Calculates a total annual value for a list of items.
+ * @param {Array} items - An array of income or expense items.
+ * A filter function to apply to the list before summing.
+ * @param {Function} [filterFn=null]
+ * @returns {number} The total annual amount.
+ */
+export function calculateAnnualTotal(items, filterFn = null) {
+    if (!items) return 0;
+
+    const itemsToSum = filterFn ? items.filter(filterFn) : items;
+
+    return itemsToSum.reduce((total, item) => {
+        if (!item || typeof item.amount !== 'number' || item.amount < 0) return total;
+        
+        switch (item.interval) {
+            case 'monthly':
+                return total + (item.amount * 12);
+            case 'annually':
+                return total + item.amount;
+            case 'bi-annual':
+                return total + (item.amount * 2);
+            case 'quarterly':
+                return total + (item.amount * 4);
+            case 'bi-weekly':
+                return total + (item.amount * 26);
+            case 'weekly':
+                return total + (item.amount * 52);
+            case 'one-time':
+                return total + item.amount; // Include one-time amounts
+            default:
+                return total;
+        }
+    }, 0);
+}
+
 export function calculateMonthlyTotal(items){
     if(!items)return 0;
     return items.reduce((total,item)=>{
