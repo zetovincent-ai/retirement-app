@@ -462,11 +462,23 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
     background-color: var(--background-color); 
 }
 
-#grid-detail-content,
+#grid-detail-content {
+    flex-grow: 1; 
+    height: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+
+    /* ⭐️ ADDED: Flips this container (and its scrollbar) too */
+    overflow-x: auto;
+    overflow-y: hidden;
+    transform: rotate(180deg);
+}
+
 #grid-historic-detail-content {
     flex-grow: 1; 
     height: 100%;
-    overflow: auto; 
+    overflow: auto; /* This one remains normal */
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 1rem;
