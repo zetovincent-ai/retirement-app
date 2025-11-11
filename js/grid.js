@@ -85,11 +85,11 @@ function renderDashboard(){
         </div>`
 }
 
-function renderIncomes(){
+export function renderIncomes(){
     ui.renderList(state.appState.incomes, s.incomeList);
 }
 
-function renderExpenses(){
+export function renderExpenses(){
     ui.renderList(state.appState.expenses, s.expenseList);
 }
 
