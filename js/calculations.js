@@ -22,8 +22,10 @@ export function calculateMonthlyTotal(items){
     if(!items)return 0;
     return items.reduce((total,item)=>{
         if(!item||typeof item.amount!=='number'||item.amount<0)return total;
-        switch(item.interval){case'monthly':return total+item.amount;
+        switch(item.interval){
+            case'monthly':return total+item.amount;
             case'annually':return total+(item.amount/12);
+            case'bi-annual':return total+(item.amount/6); // 2 payments / 12 months
             case'quarterly':return total+(item.amount/3);
             case'bi-weekly':return total+((item.amount*26)/12);
             case'weekly':return total+((item.amount*52)/12);
@@ -186,6 +188,22 @@ export function getOccurrencesInMonth(item, monthDate) {
                         occurrences.push(potentialDate);
                     }
                 }
+            }
+            break;
+
+        case 'bi-annual':
+            // Check if this month is the start month OR 6 months after the start month
+            const startMonth = itemStartDate.getUTCMonth();
+            const secondMonth = (startMonth + 6) % 12;
+            
+            if ((targetMonth === startMonth || targetMonth === secondMonth) && itemStartDate <= monthEnd) {
+                 const potentialDate = new Date(Date.UTC(targetYear, targetMonth, itemStartDayOfMonth));
+                 if (potentialDate.getUTCMonth() === targetMonth && potentialDate >= itemStartDate) {
+                    // --- NEW: Check if this date is before the payoff date ---
+                    if (!payoffDate || potentialDate < payoffDate) {
+                        occurrences.push(potentialDate);
+                    }
+                 }
             }
             break;
 

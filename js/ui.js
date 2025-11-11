@@ -94,7 +94,14 @@ export function showIncomeModal(incomeId, prefillData = null) {
         <div class="form-group"><label for="modal-income-date">Payment Start Date:</label><input type="date" id="modal-income-date" required></div>
         <div class="form-group"><label for="modal-income-deposit-account">Deposit To Account:</label><select id="modal-income-deposit-account">${accountOptions}</select></div> `;
 
-    document.getElementById('modal-income-interval').innerHTML = `<option value="monthly">Monthly</option><option value="annually">Annually</option><option value="quarterly">Quarterly</option><option value="bi-weekly">Bi-Weekly</option><option value="one-time">One-time</option>`;
+    document.getElementById('modal-income-interval').innerHTML = `
+        <option value="monthly">Monthly</option>
+        <option value="bi-annual">Bi-annual</option>
+        <option value="annually">Annually</option>
+        <option value="quarterly">Quarterly</option>
+        <option value="bi-weekly">Bi-Weekly</option>
+        <option value="one-time">One-time</option>
+    `;
     document.getElementById('modal-income-type').innerHTML = `<option value="">-- Select a Type --</option><option value="Pension">Pension</option><option value="TSP">TSP</option><option value="TSP Supplement">TSP Supplement</option><option value="Social Security">Social Security</option><option value="Investment">Investment Dividend</option><option value="Other">Other</option>`;
 
     if (isEditMode && incomeToEdit) {
@@ -203,6 +210,7 @@ export function showExpenseModal(expenseId, prefillData = null) {
             <label for="modal-expense-interval">Payment Interval:</label>
             <select id="modal-expense-interval" required>
                 <option value="monthly">Monthly</option>
+                <option value="bi-annual">Bi-annual</option>
                 <option value="annually">Annually</option>
                 <option value="quarterly">Quarterly</option>
                 <option value="bi-weekly">Bi-Weekly</option>
@@ -546,6 +554,7 @@ export function showTransferModal(transferId) {
             <label for="modal-transfer-interval">Interval:</label>
             <select id="modal-transfer-interval" required>
                 <option value="monthly">Monthly</option>
+                <option value="bi-annual">Bi-annual</option>
                 <option value="quarterly">Quarterly</option>
                 <option value="annually">Annually</option>
                 <option value="one-time">One-time</option>
