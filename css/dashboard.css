@@ -193,7 +193,8 @@ body.dark-mode .amortization-table tbody tr.edited-payment-row td {
     display: flex;
     flex-direction: row; /* Lay out months side-by-side */
     gap: 1.5rem;
-    padding-bottom: 1rem; /* Space for scrollbar */
+    padding-top: 1rem; /* Space for scrollbar */
+    transform: rotate(180deg); /* Invert container to have scrollbar on top */
 }
 
 .month-grid-container {
@@ -437,7 +438,9 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
 
 #grid-monthly-content {
     flex-direction: column; 
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    transform: rotate(180deg);
 }
 
 #grid-yearly-content,
