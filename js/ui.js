@@ -102,7 +102,18 @@ export function showIncomeModal(incomeId, prefillData = null) {
         <option value="bi-weekly">Bi-Weekly</option>
         <option value="one-time">One-time</option>
     `;
-    document.getElementById('modal-income-type').innerHTML = `<option value="">-- Select a Type --</option><option value="Pension">Pension</option><option value="TSP">TSP</option><option value="TSP Supplement">TSP Supplement</option><option value="Social Security">Social Security</option><option value="Investment">Investment Dividend</option><option value="Other">Other</option>`;
+    
+    // ⭐️ UPDATED THIS LIST ⭐️
+    document.getElementById('modal-income-type').innerHTML = `
+        <option value="">-- Select a Type --</option>
+        <option value="Regular Pay">Regular Pay</option>
+        <option value="Pension">Pension</option>
+        <option value="TSP">TSP</option>
+        <option value="TSP Supplement">TSP Supplement</option>
+        <option value="Social Security">Social Security</option>
+        <option value="Investment">Investment Dividend</option>
+        <option value="Other">Other</option>
+    `;
 
     if (isEditMode && incomeToEdit) {
         document.getElementById('modal-income-type').value = incomeToEdit.type || '';
