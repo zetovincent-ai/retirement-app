@@ -784,3 +784,23 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
 .recon-negative {
     color: var(--expense-total-color);
 }
+
+/* === Grid Horizontal Scroll Flipper === */
+
+.grid-scroll-flipper {
+    /* This container does the horizontal scroll */
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    /* Flips the container and its scrollbar */
+    transform: rotate(180deg);
+}
+
+.grid-scroll-flipper > .grid-view-container {
+    /* Flips the content *back* so it's right-side-up */
+    transform: rotate(180deg);
+
+    /* Add padding to the top for the new scrollbar */
+    padding-top: 1rem;
+    padding-bottom: 0; /* Remove old bottom padding */
+}

@@ -217,7 +217,7 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
     );
     // === End of new/modified section ===
 
-    let finalHTML = '<div class="grid-view-container">';
+    let finalHTML = '<div class="grid-scroll-flipper"><div class="grid-view-container">';
     let runningOverallNet = startingNetTotal;
 
     let runningAccountBalances;
@@ -492,7 +492,7 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
         `;
     });
 
-    finalHTML += '</div>';
+    finalHTML += '</div></div>';
     return finalHTML;
 }
 
