@@ -675,7 +675,13 @@ export function calculateAccountBalancesForMonth(monthDateUTC, startingBalances)
 
     state.appState.accounts.forEach(acc => {
         if (acc.type === 'investment' && acc.growth_rate && acc.growth_rate > 0) {
-            const monthlyGrowthRate = acc.growth_rate / 12;
+            
+            // === ⭐️ FIX IS HERE ⭐️ ===
+            // Old logic (incorrect): const monthlyGrowthRate = acc.growth_rate / 12;
+            // New logic: Find the monthly rate that compounds to the annual rate.
+            const monthlyGrowthRate = Math.pow(1 + acc.growth_rate, 1 / 12) - 1;
+            // === END FIX ===
+
             const growthAmount = (endingBalances[acc.id] || 0) * monthlyGrowthRate;
             endingBalances[acc.id] = (endingBalances[acc.id] || 0) + growthAmount;
             deltas[acc.id].growth += growthAmount;
