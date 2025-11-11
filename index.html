@@ -120,21 +120,30 @@
         </section>
         <section id="income-section" class="app-section">
             <div class="section-header"><h2>Income Sources</h2></div>
-            <div class="section-controls"><button id="show-income-modal-btn" class="btn-primary">Add Income</button></div>
+            <div class="section-controls">
+                <button id="show-income-modal-btn" class="btn-primary">Add Income</button>
+                <button id="toggle-income-list-view" class="btn-secondary" data-type="income">Show All</button>
+            </div>
             <hr class="divider">
-            <div id="income-list-container"><h3>Current Incomes</h3><ul id="income-list" class="item-list"></ul></div>
+            <div id="income-list-container"><h3>Incomes List</h3><ul id="income-list" class="item-list"></ul></div>
         </section>
+        
         <section id="expenses-section" class="app-section">
             <div class="section-header"><h2>Expense Log</h2></div>
-            <div class="section-controls"><button id="show-expense-modal-btn" class="btn-primary">Add Expense</button></div>
+            <div class="section-controls">
+                <button id="show-expense-modal-btn" class="btn-primary">Add Expense</button>
+                <button id="toggle-expense-list-view" class="btn-secondary" data-type="expense">Show All</button>
+            </div>
             <hr class="divider">
-            <div id="expense-list-container"><h3>Current Expenses</h3><ul id="expense-list" class="item-list"></ul></div>
+            <div id="expense-list-container"><h3>Expenses List</h3><ul id="expense-list" class="item-list"></ul></div>
         </section>
+        
         <section id="banking-section" class="app-section">
             <div class="section-header"><h2>Banking & Investment</h2></div>
             <div class="section-controls">
                 <button id="show-account-modal-btn" class="btn-primary">Add Account</button>
                 <button id="show-transfer-modal-btn" class="btn-primary">Add Transfer</button>
+                <button id="toggle-transfer-list-view" class="btn-secondary" data-type="transfer">Show All</button>
             </div>
             <hr class="divider">
             <div id="banking-list-container">

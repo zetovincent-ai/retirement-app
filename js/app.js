@@ -277,6 +277,40 @@ async function setActiveChartView(viewId) {
     // Call the main render function
     grid.renderActiveDashboardContent();
 }
+/**
+ * Handles the logic for toggling a list view between 'current' and 'all'.
+ * @param {HTMLElement} target - The button element that was clicked.
+ * @param {'income' | 'expense' | 'transfer'} type - The type of list.
+ * @param {Function} renderFn - The function to call to re-render the list.
+ */
+function toggleListAndRender(target, type, renderFn) {
+    const currentMode = state.listDisplayMode[type];
+    const newMode = (currentMode === 'current') ? 'all' : 'current';
+    
+    const newDisplayMode = { ...state.listDisplayMode, [type]: newMode };
+    state.setListDisplayMode(newDisplayMode);
+    
+    target.textContent = (newMode === 'all') ? 'Show Current' : 'Show All';
+    renderFn();
+}
+
+function handleIncomeListViewToggle(event) {
+    if (event.target.id === 'toggle-income-list-view') {
+        toggleListAndRender(event.target, 'income', grid.renderIncomes);
+    }
+}
+
+function handleExpenseListViewToggle(event) {
+    if (event.target.id === 'toggle-expense-list-view') {
+        toggleListAndRender(event.target, 'expense', grid.renderExpenses);
+    }
+}
+
+function handleTransferListViewToggle(event) {
+    if (event.target.id === 'toggle-transfer-list-view') {
+        toggleListAndRender(event.target, 'transfer', ui.renderTransfersList);
+    }
+}
 
 // === INITIALIZATION ===
 
@@ -312,6 +346,11 @@ document.addEventListener('DOMContentLoaded', () => {
     s.expenseList.addEventListener('click', handleListClick);
     s.bankingSection.addEventListener('click', handleBankingListClick);
 
+    // listen on the parent section to catch the button click
+    s.incomeList.closest('.app-section').addEventListener('click', handleIncomeListViewToggle);
+    s.expenseList.closest('.app-section').addEventListener('click', handleExpenseListViewToggle);
+    s.bankingSection.addEventListener('click', handleTransferListViewToggle);
+
     // Dashboard
     s.toggleDashboardBtn.addEventListener('click', () => {
         const isExpanding = !s.mainContainer.classList.contains('dashboard-expanded');
@@ -322,8 +361,6 @@ document.addEventListener('DOMContentLoaded', () => {
             s.summaryChartContainer.style.display = 'none';
             s.expandedDashboardContent.style.display = 'flex';
             grid.setActiveDashboardTab(state.activeDashboardTab);
-            
-            // ⭐️ ADD THIS LINE ⭐️
             s.toggleDashboardBtn.textContent = 'Close Dashboard';
 
         } else {
@@ -331,8 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
             s.summaryChartContainer.style.display = 'none';
             s.expandedDashboardContent.style.display = 'none';
             s.tabContents.forEach(content => content.classList.remove('active')); 
-            
-            // ⭐️ ADD THIS LINE ⭐️
             s.toggleDashboardBtn.textContent = 'Grids & Charts';
         }
     });

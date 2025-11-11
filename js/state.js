@@ -26,6 +26,11 @@ export let loanChartSelections = {
 };
 export let expenseChartDrillDown = false;
 export let expenseChartDetailCategory = null;
+export let listDisplayMode = {
+    income: 'current',
+    expense: 'current',
+    transfer: 'current'
+};
 
 // We also provide "setter" functions for state variables
 // that other modules will need to modify.
@@ -68,4 +73,7 @@ export function setExpenseChartDrillDown(isDrilled) {
 }
 export function setExpenseChartDetailCategory(category) {
     expenseChartDetailCategory = category;
+}
+export function setListDisplayMode(mode) {
+    listDisplayMode = mode;
 }

@@ -784,44 +784,58 @@ export function showReconcileModal(accountId) {
 export function renderList(items, listElement) {
     listElement.innerHTML = '';
     const listType = listElement.id.includes('income') ? 'income' : 'expense';
-    if (!items || items.length === 0) {
-         listElement.innerHTML = `<li>No ${listType}s added yet.</li>`;
-         return;
+
+    let itemsToRender = [];
+    const isAllView = state.listDisplayMode[listType] === 'all';
+
+    if (isAllView) {
+        // --- "All" View Logic ---
+        itemsToRender = [...items]; // Use all items
+    } else {
+        // --- "Current" View Logic (existing logic) ---
+        const currentDate = new Date();
+        const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
+
+        itemsToRender = items.filter(item => {
+            return getOccurrencesInMonth(item, currentMonthDateUTC).length > 0;
+        });
     }
-
-    // === ⭐️ NEW LOGIC START ===
-    const currentDate = new Date();
-    const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
-
-    // Filter for items that have an occurrence in the current month
-    const currentItems = items.filter(item => {
-        return getOccurrencesInMonth(item, currentMonthDateUTC).length > 0;
-    });
-
-    if (currentItems.length === 0) {
-        listElement.innerHTML = `<li>No ${listType}s for the current month.</li>`;
+    
+    if (itemsToRender.length === 0) {
+        listElement.innerHTML = `<li>No ${listType}s for this view.</li>`;
         return;
     }
-    // === NEW LOGIC END ===
     
     // Sort and render the filtered list
-    currentItems.sort((a, b) => {
+    itemsToRender.sort((a, b) => {
         if (a.start_date && b.start_date) return new Date(b.start_date) - new Date(a.start_date);
         if (a.start_date) return -1;
         if (b.start_date) return 1;
         return 0;
     });
 
-    currentItems.forEach(item => {
+    itemsToRender.forEach(item => {
         if (!item || item.id === undefined || item.id === null) { console.warn("Skipping rendering invalid item:", item); return; }
         const li = document.createElement('li');
         const formattedAmount = typeof item.amount === 'number' ? item.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : 'N/A';
         const intervalText = item.interval ? ` / ${item.interval}` : '';
         
         let dateText = '';
-        if (item.start_date) {
+        if (isAllView) {
+            // "All" view: Show start date
+            if (item.start_date) {
+                try {
+                    const startDate = parseUTCDate(item.start_date);
+                    dateText = ` (Starts: ${startDate.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })})`;
+                } catch (e) {
+                    dateText = ' (Invalid Date)';
+                }
+            }
+        } else {
+            // "Current" view: Show occurrences this month
             try {
-                // Get all occurrences this month to display
+                const currentDate = new Date();
+                const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
                 const occurrences = getOccurrencesInMonth(item, currentMonthDateUTC);
                 const days = occurrences.map(d => d.getUTCDate()).join(', ');
                 dateText = ` (Day: ${days})`;
@@ -1167,45 +1181,59 @@ export function renderAccountsList() {
 
 export function renderTransfersList() {
     s.transferList.innerHTML = '';
-    const allRecurringTransfers = state.appState.transfers.filter(t => t.interval !== 'one-time');
-
-    if (!allRecurringTransfers || allRecurringTransfers.length === 0) {
-        s.transferList.innerHTML = `<li>No recurring transfers added yet.</li>`;
-        return;
-    }
-
-    // === ⭐️ NEW LOGIC START ===
-    const currentDate = new Date();
-    const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
-
-    // Filter for transfers that have an occurrence in the current month
-    const recurringTransfers = allRecurringTransfers.filter(item => {
-        return getOccurrencesInMonth(item, currentMonthDateUTC).length > 0;
-    });
-
-    if (recurringTransfers.length === 0) {
-        s.transferList.innerHTML = `<li>No recurring transfers for the current month.</li>`;
-        return;
-    }
-    // === NEW LOGIC END ===
-
-    recurringTransfers.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
-
+    
+    let itemsToRender = [];
+    const isAllView = state.listDisplayMode.transfer === 'all';
     const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
-    recurringTransfers.forEach(transfer => {
+    if (isAllView) {
+        // --- "All" View Logic ---
+        itemsToRender = [...state.appState.transfers]; // Use ALL transfers
+    } else {
+        // --- "Current" View Logic (existing logic) ---
+        const allRecurringTransfers = state.appState.transfers.filter(t => t.interval !== 'one-time');
+        const currentDate = new Date();
+        const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
+
+        itemsToRender = allRecurringTransfers.filter(item => {
+            return getOccurrencesInMonth(item, currentMonthDateUTC).length > 0;
+        });
+    }
+
+    if (itemsToRender.length === 0) {
+        s.transferList.innerHTML = `<li>No transfers for this view.</li>`;
+        return;
+    }
+
+    itemsToRender.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+
+    itemsToRender.forEach(transfer => {
         const fromAcc = state.appState.accounts.find(a => a.id === transfer.from_account_id);
         const toAcc = state.appState.accounts.find(a => a.id === transfer.to_account_id);
         const fromName = fromAcc ? fromAcc.name : 'Unknown';
         const toName = toAcc ? toAcc.name : 'Unknown';
 
         let dateText = '';
-        try {
-            // Get all occurrences this month to display
-            const occurrences = getOccurrencesInMonth(transfer, currentMonthDateUTC);
-            const days = occurrences.map(d => d.getUTCDate()).join(', ');
-            dateText = ` (Day: ${days})`;
-        } catch (e) { dateText = ' (Invalid Date)'; }
+        if (isAllView) {
+            // "All" view: Show start date
+            if (transfer.start_date) {
+                try {
+                    const startDate = parseUTCDate(transfer.start_date);
+                    dateText = ` (Starts: ${startDate.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })})`;
+                } catch (e) {
+                    dateText = ' (Invalid Date)';
+                }
+            }
+        } else {
+            // "Current" view: Show occurrences this month
+            try {
+                const currentDate = new Date();
+                const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
+                const occurrences = getOccurrencesInMonth(transfer, currentMonthDateUTC);
+                const days = occurrences.map(d => d.getUTCDate()).join(', ');
+                dateText = ` (Day: ${days})`;
+            } catch (e) { dateText = ' (Invalid Date)'; }
+        }
 
         const li = document.createElement('li');
         li.innerHTML = `
