@@ -78,13 +78,28 @@ export function showIncomeModal(incomeId, prefillData = null) {
     const incomeToEdit = isEditMode && Array.isArray(state.appState.incomes) ? state.appState.incomes.find(i => i.id === incomeId) : null;
     s.modalTitle.textContent = isEditMode ? 'Edit Income' : 'Add New Income';
 
+    // ⭐️ MODIFIED: Separate accounts by type ⭐️
     const bankAccounts = state.appState.accounts.filter(acc => acc.type === 'checking' || acc.type === 'savings');
+    const investmentAccounts = state.appState.accounts.filter(acc => acc.type === 'investment');
+
     let accountOptions = '<option value="">-- None --</option>';
+
     if (bankAccounts.length > 0) {
+        accountOptions += '<optgroup label="Bank Accounts">';
         accountOptions += bankAccounts.map(acc => `<option value="${acc.id}">${acc.name}</option>`).join('');
-    } else {
-        accountOptions = '<option value="" disabled>-- No bank accounts defined --</option>';
+        accountOptions += '</optgroup>';
     }
+
+    if (investmentAccounts.length > 0) {
+        accountOptions += '<optgroup label="Investment Accounts">';
+        accountOptions += investmentAccounts.map(acc => `<option value="${acc.id}">${acc.name}</option>`).join('');
+        accountOptions += '</optgroup>';
+    }
+
+    if (bankAccounts.length === 0 && investmentAccounts.length === 0) {
+        accountOptions = '<option value="" disabled>-- No accounts defined --</option>';
+    }
+    // ⭐️ END MODIFICATION ⭐️
 
     s.modalBody.innerHTML = `
         <div class="form-group"><label for="modal-income-type">Type:</label><select id="modal-income-type" required>...</select></div>
@@ -103,7 +118,6 @@ export function showIncomeModal(incomeId, prefillData = null) {
         <option value="one-time">One-time</option>
     `;
     
-    // ⭐️ UPDATED THIS LIST ⭐️
     document.getElementById('modal-income-type').innerHTML = `
         <option value="">-- Select a Type --</option>
         <option value="Regular Pay">Regular Pay</option>
