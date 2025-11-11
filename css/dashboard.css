@@ -44,7 +44,10 @@ main.dashboard-expanded #dashboard-section {
 
 main.dashboard-expanded #income-section,
 main.dashboard-expanded #expenses-section,
-main.dashboard-expanded #banking-section { 
+main.dashboard-expanded #banking-section,
+main.dashboard-expanded #dashboard-summary,
+main.dashboard-expanded #dashboard-forecast,
+main.dashboard-expanded #summary-chart-container { 
     display: none; /* Hide the sections completely */
 }
 
