@@ -100,10 +100,18 @@ function renderDashboard(){
     // B. Calculated Annual Gross Pay
     const regularPayItems = state.appState.incomes.filter(i => i.type === 'Regular Pay');
     const calculatedAnnualGrossPay = regularPayItems.reduce((total, item) => {
-        // ⭐️ Use the stored gross pay if it exists ⭐️
-        if (item.advanced_data && item.advanced_data.annual_gross_pay) {
-            return total + item.advanced_data.annual_gross_pay;
+        
+        // ⭐️ Use the stored per-payment gross if it exists ⭐️
+        if (item.advanced_data && item.advanced_data.gross_pay_amount) {
+            // Create a temporary item to pass to the annual calculator
+            const grossPayItem = {
+                amount: item.advanced_data.gross_pay_amount,
+                interval: item.interval
+            };
+            // This will annualize the gross pay
+            return total + calc.calculateAnnualTotal([grossPayItem]); 
         }
+        
         // Fallback: use the annual net pay
         return total + calc.calculateAnnualTotal([item]);
     }, 0);
