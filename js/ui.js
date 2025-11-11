@@ -78,7 +78,7 @@ export function showIncomeModal(incomeId, prefillData = null) {
     const incomeToEdit = isEditMode && Array.isArray(state.appState.incomes) ? state.appState.incomes.find(i => i.id === incomeId) : null;
     s.modalTitle.textContent = isEditMode ? 'Edit Income' : 'Add New Income';
 
-    // ⭐️ MODIFIED: To include 'investment' accounts ⭐️
+    // ... (accountOptions setup is unchanged) ...
     const bankAccounts = state.appState.accounts.filter(acc => acc.type === 'checking' || acc.type === 'savings');
     const investmentAccounts = state.appState.accounts.filter(acc => acc.type === 'investment');
 
@@ -99,15 +99,32 @@ export function showIncomeModal(incomeId, prefillData = null) {
     if (bankAccounts.length === 0 && investmentAccounts.length === 0) {
         accountOptions = '<option value="" disabled>-- No accounts defined --</option>';
     }
-    // ⭐️ END MODIFICATION ⭐️
 
+    // ⭐️ MODIFIED: Changed to a 'Gross Pay' field ⭐️
     s.modalBody.innerHTML = `
         <div class="form-group"><label for="modal-income-type">Type:</label><select id="modal-income-type" required>...</select></div>
         <div class="form-group"><label for="modal-income-name">Description / Name:</label><input type="text" id="modal-income-name" placeholder="e.g., Vincent's TSP" required></div>
+        
+        <div id="gross-pay-group" class="form-group" style="display: none;">
+            <label for="modal-income-gross-pay">Annual Gross Pay:</label>
+            <input type="number" id="modal-income-gross-pay" placeholder="e.g., 100000" min="0" step="0.01">
+        </div>
+
         <div class="form-group"><label for="modal-income-interval">Payment Interval:</label><select id="modal-income-interval" required>...</select></div>
-        <div class="form-group"><label for="modal-income-amount">Payment Amount:</label><input type="number" id="modal-income-amount" placeholder="1500" min="0" step="0.01" required></div>
+        <div class="form-group"><label for="modal-income-amount">Payment Amount (Net):</label><input type="number" id="modal-income-amount" placeholder="1500" min="0" step="0.01" required></div>
         <div class="form-group"><label for="modal-income-date">Payment Start Date:</label><input type="date" id="modal-income-date" required></div>
         <div class="form-group"><label for="modal-income-deposit-account">Deposit To Account:</label><select id="modal-income-deposit-account">${accountOptions}</select></div> `;
+
+    const typeSelect = document.getElementById('modal-income-type');
+    const grossPayGroup = document.getElementById('gross-pay-group');
+
+    // Function to toggle the new field
+    const toggleGrossPayField = () => {
+        grossPayGroup.style.display = (typeSelect.value === 'Regular Pay') ? 'grid' : 'none';
+    };
+    
+    // Add listener to toggle on change
+    typeSelect.addEventListener('change', toggleGrossPayField);
 
     document.getElementById('modal-income-interval').innerHTML = `
         <option value="monthly">Monthly</option>
@@ -118,7 +135,6 @@ export function showIncomeModal(incomeId, prefillData = null) {
         <option value="one-time">One-time</option>
     `;
     
-    // ⭐️ MODIFIED: Added 'Investment Contribution' ⭐️
     document.getElementById('modal-income-type').innerHTML = `
         <option value="">-- Select a Type --</option>
         <option value="Regular Pay">Regular Pay</option>
@@ -138,36 +154,64 @@ export function showIncomeModal(incomeId, prefillData = null) {
         document.getElementById('modal-income-amount').value = incomeToEdit.amount || '';
         document.getElementById('modal-income-date').value = incomeToEdit.start_date || '';
         document.getElementById('modal-income-deposit-account').value = incomeToEdit.deposit_account_id || '';
-    } else if (prefillData) {
-        document.getElementById('modal-income-date').value = prefillData.startDate;
-        if (prefillData.interval) {
-            document.getElementById('modal-income-interval').value = prefillData.interval;
+
+        // ⭐️ ADDED: Populate the gross pay field on edit ⭐️
+        if (incomeToEdit.advanced_data && incomeToEdit.advanced_data.annual_gross_pay) {
+            document.getElementById('modal-income-gross-pay').value = incomeToEdit.advanced_data.annual_gross_pay;
         }
+
+    } else if (prefillData) {
+        // ... (unchanged) ...
     } else if (!isEditMode) {
         document.getElementById('modal-income-date').value = new Date().toISOString().split('T')[0];
     }
 
-    // ... (onSave function is unchanged) ...
+    // ⭐️ ADDED: Trigger toggle on initial load ⭐️
+    toggleGrossPayField();
+
     state.setOnSave(async () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) { return; }
 
         const startDateValue = document.getElementById('modal-income-date').value;
         const depositAccountId = document.getElementById('modal-income-deposit-account').value;
+        const type = document.getElementById('modal-income-type').value;
+
+        // ⭐️ ADDED: Save logic for gross pay ⭐️
+        let advancedData = null;
+        if (type === 'Regular Pay') {
+            const grossPayInput = document.getElementById('modal-income-gross-pay').value;
+            if (grossPayInput) {
+                const grossAmount = parseFloat(grossPayInput);
+                if (grossAmount > 0) {
+                    advancedData = { annual_gross_pay: grossAmount };
+                }
+            }
+        }
 
         const formItem = {
             user_id: user.id,
-            type: document.getElementById('modal-income-type').value,
+            type: type,
             name: document.getElementById('modal-income-name').value.trim(),
             interval: document.getElementById('modal-income-interval').value,
             amount: parseFloat(document.getElementById('modal-income-amount').value),
             start_date: startDateValue ? startDateValue : null,
-            deposit_account_id: depositAccountId ? parseInt(depositAccountId) : null
+            deposit_account_id: depositAccountId ? parseInt(depositAccountId) : null,
+            advanced_data: advancedData // This will be null or {annual_gross_pay: ...}
         };
 
         if (!formItem.type || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0 || !formItem.start_date) {
             alert("Please fill out all fields correctly, including a valid start date.");
             return;
+        }
+
+        // ⭐️ ADDED: Validation ⭐️
+        if (type === 'Regular Pay' && advancedData && advancedData.annual_gross_pay) {
+            const annualNetPay = calc.calculateAnnualTotal([formItem]); // Get annual net
+            if (advancedData.annual_gross_pay < annualNetPay) {
+                alert("Annual Gross Pay cannot be less than the annual Net Pay. Please check your numbers.");
+                return;
+            }
         }
 
         let { error } = isEditMode

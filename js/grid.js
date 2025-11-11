@@ -66,7 +66,7 @@ export function renderAll() {
 // --- Dashboard Component Renders ---
 
 function renderDashboard(){
-    const format = num => num.toLocaleString('en-US',{style:'currency',currency:'USD'});
+    const format = num => num.toLocaleString('en-US',{style:'currency','currency':'USD'});
 
     // --- 1. Monthly Summary (Existing) ---
     const totalMonthlyIncome = calc.calculateMonthlyTotal(state.appState.incomes);
@@ -87,7 +87,7 @@ function renderDashboard(){
             <p>${format(netMonthly)}</p>
         </div>`;
     
-    // --- 2. Forecast Summary (New) ---
+    // --- 2. Forecast Summary (New Logic) ---
     
     // A. Net Worth
     const netWorth = state.appState.accounts.reduce((total, acc) => {
@@ -97,30 +97,38 @@ function renderDashboard(){
         return total + acc.current_balance; // Add all others
     }, 0);
 
-    // B. Estimated AGI
-    // Define incomes that are *NOT* part of AGI (contributions or non-taxable)
-    const nonAgiIncomeTypes = [
-        'Investment Contribution', 
-        'TSP', 
-        'TSP Supplement', 
-        'Social Security', 
-        'Investment' // Dividends are taxed differently, exclude from simple AGI
-    ];
+    // B. Calculated Annual Gross Pay
+    const regularPayItems = state.appState.incomes.filter(i => i.type === 'Regular Pay');
+    const calculatedAnnualGrossPay = regularPayItems.reduce((total, item) => {
+        // ⭐️ Use the stored gross pay if it exists ⭐️
+        if (item.advanced_data && item.advanced_data.annual_gross_pay) {
+            return total + item.advanced_data.annual_gross_pay;
+        }
+        // Fallback: use the annual net pay
+        return total + calc.calculateAnnualTotal([item]);
+    }, 0);
 
-    const annualTaxableIncome = calc.calculateAnnualTotal(
+    // C. Annual Pre-Tax Contributions (for AGI calc)
+    const annualPreTaxContributions = calc.calculateAnnualTotal(
         state.appState.incomes,
-        item => !nonAgiIncomeTypes.includes(item.type) // Filter function
+        item => item.type === 'Investment Contribution'
     );
     
-    // C. Estimated MAGI
+    // D. Estimated AGI
+    // AGI = Gross Pay - Pre-Tax Contributions
+    const estimatedAGI = calculatedAnnualGrossPay - annualPreTaxContributions;
+
+    // E. Annual MAGI Add-Backs
     const annualMagiAddBacks = calc.calculateAnnualTotal(
         state.appState.expenses,
         item => item.advanced_data && item.advanced_data.is_magi_addback === true
     );
     
-    const estimatedMagi = annualTaxableIncome + annualMagiAddBacks;
+    // F. Estimated MAGI
+    // MAGI = AGI + Add-Backs
+    const estimatedMagi = estimatedAGI + annualMagiAddBacks;
     
-    // D. Render to the new div
+    // G. Render to the new div
     const forecastDiv = document.getElementById('dashboard-forecast');
     if (forecastDiv) { // Check if it exists
         forecastDiv.innerHTML = `
@@ -129,16 +137,16 @@ function renderDashboard(){
                 <p>${format(netWorth)}</p>
             </div>
             <div class="summary-item">
+                <h3>Calc. Annual Gross Pay</h3>
+                <p>${format(calculatedAnnualGrossPay)}</p>
+            </div>
+            <div class="summary-item">
                 <h3>Est. Annual AGI</h3>
-                <p>${format(annualTaxableIncome)}</p>
+                <p>${format(estimatedAGI)}</p>
             </div>
             <div class="summary-item">
                 <h3>Est. Annual MAGI</h3>
                 <p>${format(estimatedMagi)}</p>
-            </div>
-            <div class="summary-item net-total">
-                <h3>MAGI Add-Backs</h3>
-                <p>${format(annualMagiAddBacks)}</p>
             </div>
         `;
     }
