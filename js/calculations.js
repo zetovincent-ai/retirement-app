@@ -157,49 +157,49 @@ export function getMonthsToRender(startDate, numMonths) {
 export function getOccurrencesInMonth(item, monthDate) {
     const occurrences = [];
     const itemStartDate = parseUTCDate(item.start_date);
+    
+    // ⭐️ NEW: Parse the end date if it exists ⭐️
+    const itemEndDate = item.end_date ? parseUTCDate(item.end_date) : null;
 
-    if (!itemStartDate) return []; // No start date, can't calculate
+    if (!itemStartDate) return []; 
 
-    // --- NEW: Determine the payoff date for loans ---
+    // ... (Payoff date logic remains the same) ...
     let payoffDate = null;
     if (item.advanced_data && (item.advanced_data.item_type === 'Mortgage/Loan' || item.advanced_data.item_type === 'Car Loan')) {
+        // ... (existing loan logic) ...
         const totalPayments = item.advanced_data.total_payments;
         if (totalPayments && totalPayments > 0) {
             payoffDate = new Date(itemStartDate.getTime());
-            // Set the date to the *first day* it is paid off
-            // e.g., 30 payments. Start Jan 1. Last payment is June 1 (month 5 + 29). 
-            // payoffDate will be July 1 (month 0 + 30).
             payoffDate.setUTCMonth(itemStartDate.getUTCMonth() + totalPayments);
         }
     }
 
-    // Get the boundaries of the target month in UTC
+    // ... (Month boundary logic remains the same) ...
     const targetYear = monthDate.getUTCFullYear();
     const targetMonth = monthDate.getUTCMonth();
-    
     const monthStart = new Date(Date.UTC(targetYear, targetMonth, 1));
-    // Get the *end* of the month (start of next month, minus 1 millisecond)
     const monthEnd = new Date(Date.UTC(targetYear, targetMonth + 1, 0, 23, 59, 59, 999));
     
-    // Optimization: If the item starts *after* this month ends, skip it.
-    if (item.interval !== 'one-time' && itemStartDate > monthEnd) {
-        return [];
-    }
+    if (item.interval !== 'one-time' && itemStartDate > monthEnd) return [];
+    if (payoffDate && payoffDate <= monthStart) return [];
     
-    // --- NEW: Optimization: If the payoff date is *before* this month starts, skip it. ---
-    if (payoffDate && payoffDate <= monthStart) {
-        return [];
-    }
+    // ⭐️ NEW: Optimization - If item ended before this month, skip it ⭐️
+    if (itemEndDate && itemEndDate < monthStart) return [];
 
-    const itemStartDayOfMonth = itemStartDate.getUTCDate(); // e.g., 15
+    const itemStartDayOfMonth = itemStartDate.getUTCDate();
+
+    // Helper to check if a specific date is valid given payoff and end dates
+    const isValidDate = (date) => {
+        if (payoffDate && date >= payoffDate) return false;
+        // ⭐️ NEW: Check against End Date ⭐️
+        if (itemEndDate && date > itemEndDate) return false;
+        return true;
+    };
 
     switch (item.interval) {
         case 'one-time':
             if (itemStartDate >= monthStart && itemStartDate <= monthEnd) {
-                // Check against payoff date (for a 1-payment loan, this would be true)
-                if (!payoffDate || itemStartDate < payoffDate) {
-                    occurrences.push(itemStartDate);
-                }
+                if (isValidDate(itemStartDate)) occurrences.push(itemStartDate);
             }
             break;
 
@@ -207,10 +207,7 @@ export function getOccurrencesInMonth(item, monthDate) {
             if (itemStartDate <= monthEnd) {
                 const potentialDate = new Date(Date.UTC(targetYear, targetMonth, itemStartDayOfMonth));
                 if (potentialDate.getUTCMonth() === targetMonth && potentialDate >= monthStart && potentialDate >= itemStartDate) {
-                    // --- NEW: Check if this date is before the payoff date ---
-                    if (!payoffDate || potentialDate < payoffDate) {
-                        occurrences.push(potentialDate);
-                    }
+                    if (isValidDate(potentialDate)) occurrences.push(potentialDate);
                 }
             }
             break;
@@ -219,26 +216,18 @@ export function getOccurrencesInMonth(item, monthDate) {
             if (itemStartDate.getUTCMonth() === targetMonth && itemStartDate <= monthEnd) {
                 const potentialDate = new Date(Date.UTC(targetYear, targetMonth, itemStartDayOfMonth));
                 if (potentialDate.getUTCMonth() === targetMonth && potentialDate >= itemStartDate) {
-                     // --- NEW: Check if this date is before the payoff date ---
-                    if (!payoffDate || potentialDate < payoffDate) {
-                        occurrences.push(potentialDate);
-                    }
+                    if (isValidDate(potentialDate)) occurrences.push(potentialDate);
                 }
             }
             break;
 
         case 'bi-annual':
-            // Check if this month is the start month OR 6 months after the start month
             const startMonth = itemStartDate.getUTCMonth();
             const secondMonth = (startMonth + 6) % 12;
-            
             if ((targetMonth === startMonth || targetMonth === secondMonth) && itemStartDate <= monthEnd) {
                  const potentialDate = new Date(Date.UTC(targetYear, targetMonth, itemStartDayOfMonth));
                  if (potentialDate.getUTCMonth() === targetMonth && potentialDate >= itemStartDate) {
-                    // --- NEW: Check if this date is before the payoff date ---
-                    if (!payoffDate || potentialDate < payoffDate) {
-                        occurrences.push(potentialDate);
-                    }
+                    if (isValidDate(potentialDate)) occurrences.push(potentialDate);
                  }
             }
             break;
@@ -248,10 +237,7 @@ export function getOccurrencesInMonth(item, monthDate) {
             if (monthDiff >= 0 && monthDiff % 3 === 0 && itemStartDate <= monthEnd) {
                 const potentialDate = new Date(Date.UTC(targetYear, targetMonth, itemStartDayOfMonth));
                 if (potentialDate.getUTCMonth() === targetMonth && potentialDate >= itemStartDate) {
-                     // --- NEW: Check if this date is before the payoff date ---
-                    if (!payoffDate || potentialDate < payoffDate) {
-                        occurrences.push(potentialDate);
-                    }
+                    if (isValidDate(potentialDate)) occurrences.push(potentialDate);
                 }
             }
             break;
@@ -262,15 +248,11 @@ export function getOccurrencesInMonth(item, monthDate) {
             let currentDate = parseUTCDate(item.start_date);
             
             while (currentDate <= monthEnd) {
-                // --- NEW: Stop loop if we're at or past the payoff date ---
-                if (payoffDate && currentDate >= payoffDate) {
-                    break;
-                }
+                if (!isValidDate(currentDate)) break; // Stop if we hit end date or payoff
 
                 if (currentDate >= monthStart) {
-                    occurrences.push(new Date(currentDate.getTime())); // Add a copy
+                    occurrences.push(new Date(currentDate.getTime()));
                 }
-                // Move to the next occurrence
                 currentDate.setUTCDate(currentDate.getUTCDate() + daysToAdd);
             }
             break;
