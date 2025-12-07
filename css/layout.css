@@ -161,12 +161,22 @@ main {
 
 .app-container.active {
     display: flex;
+    
+    /* ⭐️ HORIZONTAL LAYOUT (Side-by-Side) ⭐️ */
+    flex-direction: row; 
+    
+    /* Ensure it fills the screen so sections can grow */
+    width: 100%;
+    flex-grow: 1;
+    
+    gap: 1rem;
+    overflow: hidden; /* Prevents double scrollbars */
 }
 
 /* Navy Blue Theme Override  */
 body.theme-travel {
-    --header-bg-color: #000080; /* Classic Navy Blue */
-    --primary-btn-bg: #000080;
-    --primary-btn-hover: #000060;
-    --net-total-color: #000080; /* Reuse navy for highlights */
+    --header-bg-color: #2c2c4d; /* Classic Navy Blue */
+    --primary-btn-bg: #2c2c4d;
+    --primary-btn-hover: #68688b;
+    --net-total-color: #2c2c4d; /* Reuse navy for highlights */
 }
