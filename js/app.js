@@ -312,6 +312,33 @@ function handleTransferListViewToggle(event) {
     }
 }
 
+function handleAppSwitch(event) {
+    const targetBtn = event.target.closest('.app-nav-btn');
+    if (!targetBtn) return;
+
+    const targetAppId = targetBtn.dataset.target;
+    
+    // 1. Update Tabs UI
+    document.querySelectorAll('.app-nav-btn').forEach(btn => btn.classList.remove('active'));
+    targetBtn.classList.add('active');
+
+    // 2. Show/Hide App Containers
+    document.querySelectorAll('.app-container').forEach(container => {
+        if (container.id === targetAppId) {
+            container.classList.add('active');
+        } else {
+            container.classList.remove('active');
+        }
+    });
+
+    // 3. Handle Theme Switching (Navy Blue vs Green)
+    if (targetAppId === 'travel-app') {
+        document.body.classList.add('theme-travel');
+    } else {
+        document.body.classList.remove('theme-travel');
+    }
+}
+
 // === INITIALIZATION ===
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -396,6 +423,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Global
     document.addEventListener('click', handleDocumentClick);
+
+    console.log("Application initialized.");
+
+    // App Nav Listener 
+    const appNavBar = document.querySelector('.app-nav-bar');
+    if (appNavBar) {
+        appNavBar.addEventListener('click', handleAppSwitch);
+    }
 
     console.log("Application initialized.");
 });
