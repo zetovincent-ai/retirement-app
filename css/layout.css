@@ -175,8 +175,8 @@ main {
 
 /* Navy Blue Theme Override  */
 body.theme-travel {
-    --header-bg-color: #2c2c4d; /* Classic Navy Blue */
-    --primary-btn-bg: #2c2c4d;
+    --header-bg-color: #00003d; /* Classic Navy Blue */
+    --primary-btn-bg: #00003d;
     --primary-btn-hover: #68688b;
-    --net-total-color: #2c2c4d; /* Reuse navy for highlights */
+    --net-total-color: #00003d; /* Reuse navy for highlights */
 }
