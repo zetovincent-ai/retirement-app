@@ -66,3 +66,30 @@ export function formatCurrency(amount, currencyCode) {
         currency: currencyCode 
     }).format(amount);
 }
+
+/**
+ * Fetch the full list of supported currencies (e.g., { USD: "United States Dollar", ... })
+ */
+export async function getAvailableCurrencies() {
+    try {
+        // Optimistic caching: Check local storage first to save a network request
+        const cached = localStorage.getItem('frankfurter_currencies');
+        if (cached) return JSON.parse(cached);
+
+        const response = await fetch(`${BASE_URL}/currencies`);
+        if (!response.ok) throw new Error("Failed to fetch currencies");
+        
+        const data = await response.json();
+        
+        // Save to cache
+        localStorage.setItem('frankfurter_currencies', JSON.stringify(data));
+        return data;
+    } catch (error) {
+        console.error("Error fetching currency list:", error);
+        // Fallback list if API fails
+        return { 
+            USD: "United States Dollar", EUR: "Euro", JPY: "Japanese Yen", 
+            GBP: "British Pound", AUD: "Australian Dollar", CAD: "Canadian Dollar" 
+        };
+    }
+}

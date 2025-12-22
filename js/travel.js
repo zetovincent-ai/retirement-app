@@ -7,6 +7,7 @@ import * as ui from './ui.js';
 import * as data from './data.js';
 import * as currency from './currency.js';
 import { parseUTCDate } from './calculations.js';
+import { getExchangeRate, getAvailableCurrencies } from './currency.js';
 
 export function initTravelApp() {
     // Listener for the "Add Destination" button
@@ -115,12 +116,22 @@ async function handleTravelListClick(event) {
 
 /**
  * Shows the modal to Add or Edit a trip.
+ * Now fetches dynamic currencies from the API.
  */
-export function showTripModal(tripId = null) {
+export async function showTripModal(tripId = null) {
     const isEdit = tripId !== null;
     const trip = isEdit ? state.appState.trips.find(t => t.id === tripId) : null;
     
     s.modalTitle.textContent = isEdit ? 'Edit Trip' : 'Plan New Trip';
+
+    // 1. Fetch Dynamic Currencies from API
+    const currencies = await currency.getAvailableCurrencies();
+    
+    // 2. Generate Options (Sorted Alphabetically by Code)
+    const currencyOptions = Object.entries(currencies)
+        .sort(([codeA], [codeB]) => codeA.localeCompare(codeB))
+        .map(([code, name]) => `<option value="${code}">${name} (${code})</option>`)
+        .join('');
 
     s.modalBody.innerHTML = `
         <div class="form-group">
@@ -143,12 +154,7 @@ export function showTripModal(tripId = null) {
         <div class="form-group">
             <label>Target Currency:</label>
             <select id="trip-target-currency">
-                <option value="JPY">Japanese Yen (JPY)</option>
-                <option value="EUR">Euro (EUR)</option>
-                <option value="GBP">British Pound (GBP)</option>
-                <option value="MXN">Mexican Peso (MXN)</option>
-                <option value="CAD">Canadian Dollar (CAD)</option>
-                <option value="USD">US Dollar (USD)</option>
+                ${currencyOptions}
             </select>
         </div>
         <div id="rate-preview" style="font-size: 0.9rem; text-align: right; color: var(--secondary-btn-bg); margin-top: 5px;">
@@ -159,8 +165,12 @@ export function showTripModal(tripId = null) {
     const currencySelect = document.getElementById('trip-target-currency');
     const ratePreview = document.getElementById('rate-preview');
     
-    if (trip) currencySelect.value = trip.target_currency;
-    else currencySelect.value = 'JPY'; // Default
+    // Set default value (Trip's currency if editing, otherwise JPY, fallback to first available)
+    if (trip && currencies[trip.target_currency]) {
+        currencySelect.value = trip.target_currency;
+    } else {
+        currencySelect.value = currencies['JPY'] ? 'JPY' : Object.keys(currencies)[0];
+    }
 
     // --- Helper to update rate preview ---
     const updateRatePreview = async () => {
@@ -186,10 +196,6 @@ export function showTripModal(tripId = null) {
         }
 
         // Fetch the rate at the moment of saving (The "Anchor" rate)
-        // If editing, we might want to keep the OLD rate? 
-        // For simplicity, if editing, we keep the old initial_rate unless we want to reset the baseline.
-        // Let's keep the old rate if editing, fetch new if creating.
-        
         let initialRate = trip ? trip.initial_exchange_rate : null;
         if (!initialRate) {
             initialRate = await currency.getExchangeRate('USD', targetCurr, 'latest');
@@ -200,7 +206,7 @@ export function showTripModal(tripId = null) {
             name,
             start_date: start,
             end_date: end,
-            home_currency: 'USD', // Hardcoded for now, can be dynamic later
+            home_currency: 'USD', // Hardcoded for now
             target_currency: targetCurr,
             budget_home_currency: budget,
             initial_exchange_rate: initialRate
