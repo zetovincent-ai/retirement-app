@@ -829,19 +829,27 @@ export function calculateAccountBalancesForYear(year, startingBalances) {
 }
 
 /**
- * Calculates the running Net Total (Income - Expense) from Jan 1st
- * up to (but NOT including) the current start month.
- * This effectively "grabs the previous month's ending total".
+ * Calculates the Net Total (Income - Expenses) from Jan 1st of the given year
+ * up to (but not including) the target month index.
  */
 function calculateYTDNet(year, upToMonthIndex) {
     let totalIncome = 0;
     let totalExpense = 0;
+
+    // 1. Identify Credit Card Accounts to exclude their charges
+    const creditCardAccounts = state.appState.accounts.filter(acc => acc.type === 'credit_card');
+    const creditCardAccountIds = new Set(creditCardAccounts.map(acc => acc.id));
 
     const sumItems = (items, type) => {
         let sum = 0;
         items.forEach(item => {
             const itemStartDate = calc.parseUTCDate(item.start_date);
             if (!itemStartDate) return;
+
+            // ⭐️ FIX: Skip expenses that are paid by Credit Card
+            if (type === 'expense' && creditCardAccountIds.has(item.payment_account_id)) {
+                return;
+            }
 
             // Loop from Jan (0) up to the target month
             for (let m = 0; m < upToMonthIndex; m++) {
@@ -852,7 +860,6 @@ function calculateYTDNet(year, upToMonthIndex) {
                 
                 occurrences.forEach(occurrenceDate => {
                     const statusRecord = findTransactionStatus(item.id, type, occurrenceDate);
-                    // Use edited amount if it exists, otherwise default
                     if (statusRecord && statusRecord.edited_amount !== null) {
                         sum += statusRecord.edited_amount;
                     } else {
