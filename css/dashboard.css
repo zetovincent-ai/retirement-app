@@ -787,3 +787,34 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
 .recon-negative {
     color: var(--expense-total-color);
 }
+
+/* === Collapsible Grid Sections === */
+
+/* The arrow icon style */
+.grid-section-toggle {
+    cursor: pointer;
+    margin-right: 8px;
+    display: inline-block;
+    transition: transform 0.2s ease;
+    user-select: none;
+    font-size: 0.85rem;
+    color: var(--text-color);
+}
+
+/* Hover state for the arrow */
+.grid-section-toggle:hover {
+    color: var(--primary-btn-bg);
+    transform: scale(1.2);
+}
+
+/* When the tbody has the 'collapsed' class: */
+
+/* 1. Rotate the arrow to point right */
+tbody.collapsed .grid-section-toggle {
+    transform: rotate(-90deg);
+}
+
+/* 2. Hide all rows EXCEPT the header row */
+tbody.collapsed tr:not(.grid-group-header) {
+    display: none;
+}

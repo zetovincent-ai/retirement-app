@@ -92,6 +92,15 @@ async function handleBankingListClick(event) {
 function handleGridContentClick(event) {
     const target = event.target;
 
+    // === ⭐️ NEW: Handle Section Toggle (Arrow Click) ===
+    if (target.classList.contains('grid-section-toggle')) {
+        const tbody = target.closest('tbody');
+        if (tbody) {
+            tbody.classList.toggle('collapsed');
+        }
+        return; // Stop processing this click
+    }
+
     // 1. Handle "Generate Summary" click
     if (target.id === 'btn-generate-yearly-summary') {
         const numYearsInput = s.gridYearlySummaryPanel.querySelector('#yearly-forecast-years');

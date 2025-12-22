@@ -270,6 +270,7 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
 
     const formatCurrency = (num) => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     const formatDay = date => date.getUTCDate();
+    const toggleIcon = '<span class="grid-section-toggle" title="Toggle Section">▼</span>'; // ⭐️ NEW helper
 
     // === 1. Identify Credit Card Accounts & Charges ===
     const creditCardAccounts = state.appState.accounts.filter(acc => acc.type === 'credit_card');
@@ -280,26 +281,22 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
     );
     
     // === 2. Filter Main Expense Lists ===
-    // Filter Expenses (exclude CC charges)
     const recurringExpenses = state.appState.expenses.filter(i => 
         i.interval !== 'one-time' && !creditCardAccountIds.has(i.payment_account_id)
     );
 
-    // One-Time Items
     const oneTimeIncomes = state.appState.incomes.filter(i => i.interval === 'one-time');
     const oneTimeExpenses = state.appState.expenses.filter(i => 
         i.interval === 'one-time' && !creditCardAccountIds.has(i.payment_account_id)
     );
 
-    // === ⭐️ 3. Split Income into Regular vs TSP (By Name) ⭐️ ===
+    // === 3. Split Income into Regular vs TSP ===
     const allRecurringIncomes = state.appState.incomes.filter(i => i.interval !== 'one-time');
     
-    // Filter by looking for "TSP" in the name (case-insensitive for safety)
     const tspIncomes = allRecurringIncomes.filter(i => 
         i.name && i.name.toUpperCase().includes('TSP')
     );
     
-    // Regular incomes are everything else
     const regularIncomes = allRecurringIncomes.filter(i => 
         !i.name || !i.name.toUpperCase().includes('TSP')
     );
@@ -321,7 +318,7 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
         const monthYear = monthDateUTC.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
         const monthString = monthDateUTC.toISOString().split('T')[0];
 
-        // --- Helper: Generate Rows (Reusable) ---
+        // --- Helper: Generate Rows ---
         const generateRows = (items, type, emptyMessage) => {
             let rowsHTML = '';
             let hasItems = false;
@@ -435,11 +432,12 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
             const cardData = generateRows(chargesForThisCard, 'expense', 'No charges this month.');
             
             if (cardData.total > 0 || cardData.html.includes('<tr')) {
+                 // ⭐️ Added toggleIcon below
                  creditCardSectionsHTML += `
                     <tbody class="grid-group-creditcard">
                         <tr class="grid-group-header"><td colspan="3">
                             <div class="grid-header-content">
-                                <span>${cardAccount.name}</span>
+                                <div>${toggleIcon} <span>${cardAccount.name}</span></div>
                                 <button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}">+ Add</button>
                             </div>
                         </td></tr>
@@ -456,7 +454,6 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
         const oneTimeData = generateOneTimeRows();
 
         // === Calculate Net Totals ===
-        // Sum includes both Regular Income AND TSP Income
         const monthlyNetTotal = (regularIncomeData.total + tspIncomeData.total - expenseData.total) + oneTimeData.net;
         runningOverallNet += monthlyNetTotal;
 
@@ -491,7 +488,11 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
         allTransferOccurrences.sort((a, b) => a.occDate.getUTCDate() - b.occDate.getUTCDate());
 
         if (allTransferOccurrences.length > 0) {
+            // ⭐️ Added toggleIcon below (nested inside Banking, treated as sub-header)
+            // Note: Since this row is inside the 'grid-group-banking' tbody, collapsing banking will collapse this too.
+            // If we want this to be separate, it needs its own tbody. For now, it's just a row.
             transferRowsHTML += '<tr class="grid-group-header"><td colspan="3">Monthly Transfers</td></tr>';
+            
             allTransferOccurrences.forEach(({ transfer, occDate }) => {
                 const desc = transfer.description || 'Transfer';
                 const day = formatDay(occDate);
@@ -518,13 +519,14 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
         runningAccountBalances = bankingMonthData.endingBalances;
         
         const incomeTotalFormatted = formatCurrency(regularIncomeData.total);
-        const tspTotalFormatted = formatCurrency(tspIncomeData.total); // New Total
+        const tspTotalFormatted = formatCurrency(tspIncomeData.total);
         const expenseTotalFormatted = formatCurrency(expenseData.total);
         const oneTimeNetFormatted = formatCurrency(oneTimeData.net);
         const monthlyNetTotalFormatted = formatCurrency(monthlyNetTotal);
         const overallNetTotalFormatted = formatCurrency(runningOverallNet);
 
         // === 4. Construct Final HTML ===
+        // ⭐️ Added toggleIcon to all main sections below
         finalHTML += `
             <div class="month-grid-container">
                 <h3 class="month-grid-header">${monthYear}</h3>
@@ -538,19 +540,19 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
                     </tbody>
                     
                     <tbody class="grid-group-income">
-                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><span>Income</span><button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}">+ Add</button></div></td></tr>
+                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><div>${toggleIcon} <span>Income</span></div><button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}">+ Add</button></div></td></tr>
                         ${regularIncomeData.html}
                         <tr class="grid-total-row"><td colspan="2">Total Income</td><td>${incomeTotalFormatted}</td></tr>
                     </tbody>
 
                     <tbody class="grid-group-income">
-                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><span>TSP Distributions</span></div></td></tr>
+                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><div>${toggleIcon} <span>TSP Distributions</span></div></div></td></tr>
                         ${tspIncomeData.html}
                         <tr class="grid-total-row"><td colspan="2">Total TSP</td><td>${tspTotalFormatted}</td></tr>
                     </tbody>
 
                     <tbody class="grid-group-expense">
-                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><span>Expenses (Cash/Bank)</span><button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}">+ Add</button></div></td></tr>
+                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><div>${toggleIcon} <span>Expenses (Cash/Bank)</span></div><button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}">+ Add</button></div></td></tr>
                         ${expenseData.html}
                         <tr class="grid-total-row"><td colspan="2">Total Expenses</td><td>${expenseTotalFormatted}</td></tr>
                     </tbody>
@@ -558,12 +560,13 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
                     ${creditCardSectionsHTML}
                     
                     <tbody class="grid-group-onetime">
-                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><span>One-time (Cash/Bank)</span><div class="grid-header-buttons"><button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}" data-interval="one-time">+ Income</button><button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}" data-interval="one-time">+ Expense</button></div></div></td></tr>
+                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><div>${toggleIcon} <span>One-time (Cash/Bank)</span></div><div class="grid-header-buttons"><button class="btn-grid-add" data-action="add-grid-item" data-type="income" data-date="${monthString}" data-interval="one-time">+ Income</button><button class="btn-grid-add" data-action="add-grid-item" data-type="expense" data-date="${monthString}" data-interval="one-time">+ Expense</button></div></div></td></tr>
                         ${oneTimeData.html}
                         <tr class="grid-total-row"><td colspan="2">One-time Net</td><td>${oneTimeNetFormatted}</td></tr>
                     </tbody>
+
                     <tbody class="grid-group-banking">
-                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><span>Banking</span></div></td></tr>
+                        <tr class="grid-group-header"><td colspan="3"><div class="grid-header-content"><div>${toggleIcon} <span>Banking</span></div></div></td></tr>
                         ${bankingRowsHTML}
                     </tbody>
                 </table>
