@@ -8,7 +8,8 @@ export let appState = {
     transactions: [], 
     accounts: [], 
     transfers: [],
-    reconciliation_log: []
+    reconciliation_log: [],
+    trips: []
 };
 
 export let onSave = null;
