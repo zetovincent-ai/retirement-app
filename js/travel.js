@@ -125,6 +125,7 @@ export async function showTripModal(tripId = null) {
     s.modalTitle.textContent = isEdit ? 'Edit Trip' : 'Plan New Trip';
 
     // 1. Fetch Dynamic Currencies from API
+    // We use 'await' here so the modal doesn't render empty options
     const currencies = await currency.getAvailableCurrencies();
     
     // 2. Generate Options (Sorted Alphabetically by Code)
@@ -169,6 +170,7 @@ export async function showTripModal(tripId = null) {
     if (trip && currencies[trip.target_currency]) {
         currencySelect.value = trip.target_currency;
     } else {
+        // Default to JPY if available, otherwise just pick the first one in the list
         currencySelect.value = currencies['JPY'] ? 'JPY' : Object.keys(currencies)[0];
     }
 
@@ -197,6 +199,9 @@ export async function showTripModal(tripId = null) {
 
         // Fetch the rate at the moment of saving (The "Anchor" rate)
         let initialRate = trip ? trip.initial_exchange_rate : null;
+        
+        // If it's a new trip, OR if we want to reset the baseline, fetch new rate.
+        // Currently logic: Only fetch if we don't have one (New Trip).
         if (!initialRate) {
             initialRate = await currency.getExchangeRate('USD', targetCurr, 'latest');
         }
@@ -215,6 +220,14 @@ export async function showTripModal(tripId = null) {
         const success = await data.saveTrip(tripData);
         if (success) {
             ui.closeModal();
+            // Ensure renderTripsList is imported or available in scope
+            // If this function is inside travel.js, just call it directly:
+            // renderTripsList(); 
+            // If you are exporting it from the same file, `this.renderTripsList` might not work depending on context.
+            // Best practice in module: call the exported function directly if it's in the same file.
+            
+            // Assuming renderTripsList is in the same file:
+            const { renderTripsList } = await import('./travel.js');
             renderTripsList();
         }
     });
