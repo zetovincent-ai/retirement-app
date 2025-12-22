@@ -235,11 +235,22 @@ export async function renderActiveDashboardContent() {
     if (state.activeDashboardTab === 'grids') {
         if (state.activeGridView === 'yearly') {
             renderYearlyConfigUI();
-        } else if (state.activeGridView === 'historic') { // ⭐️ ADDED BLOCK
+        } else if (state.activeGridView === 'historic') {
             renderHistoricConfigUI();
         } else {
+            // === ⭐️ FIX: "Grab" the previous month's ending total ⭐️ ===
             const months = (state.activeGridView === '6m') ? 6 : 2;
-            s.gridMonthlyContent.innerHTML = renderGridView(months, new Date(), 0, null);
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonthIndex = today.getMonth(); // 0-based (Dec = 11)
+
+            // This sums Jan->Nov to give us the "Starting Balance" for Dec 1st
+            const ytdNetTotal = calculateYTDNet(currentYear, currentMonthIndex);
+            
+            console.log(`Rolling Net Total (Jan - Month ${currentMonthIndex}):`, ytdNetTotal);
+
+            // Pass ytdNetTotal as the 3rd argument (startingNetTotal)
+            s.gridMonthlyContent.innerHTML = renderGridView(months, today, ytdNetTotal, null);
         }
     } else if (state.activeDashboardTab === 'charts') {
         
@@ -252,11 +263,9 @@ export async function renderActiveDashboardContent() {
                 console.error("Failed to initialize loan chart:", err);
                 ui.showNotification("Error loading loan chart. Check console.", "error");
             }
-        // === ⭐️ ADDED THIS BLOCK ⭐️ ===
         } else if (state.activeChartView === 'reconciliationView') {
-            ui.renderReconciliationList(); // Call the new function
+            ui.renderReconciliationList(); 
         }
-        // === END NEW BLOCK ===
     }
 }
 
@@ -817,4 +826,46 @@ export function calculateAccountBalancesForYear(year, startingBalances) {
     }
     
     return runningBalances;
+}
+
+/**
+ * Calculates the running Net Total (Income - Expense) from Jan 1st
+ * up to (but NOT including) the current start month.
+ * This effectively "grabs the previous month's ending total".
+ */
+function calculateYTDNet(year, upToMonthIndex) {
+    let totalIncome = 0;
+    let totalExpense = 0;
+
+    const sumItems = (items, type) => {
+        let sum = 0;
+        items.forEach(item => {
+            const itemStartDate = calc.parseUTCDate(item.start_date);
+            if (!itemStartDate) return;
+
+            // Loop from Jan (0) up to the target month
+            for (let m = 0; m < upToMonthIndex; m++) {
+                const monthDate = new Date(Date.UTC(year, m, 1));
+                
+                // Get occurrences for this specific past month
+                const occurrences = calc.getOccurrencesInMonth(item, monthDate);
+                
+                occurrences.forEach(occurrenceDate => {
+                    const statusRecord = findTransactionStatus(item.id, type, occurrenceDate);
+                    // Use edited amount if it exists, otherwise default
+                    if (statusRecord && statusRecord.edited_amount !== null) {
+                        sum += statusRecord.edited_amount;
+                    } else {
+                        sum += item.amount;
+                    }
+                });
+            }
+        });
+        return sum;
+    };
+
+    totalIncome = sumItems(state.appState.incomes, 'income');
+    totalExpense = sumItems(state.appState.expenses, 'expense');
+
+    return totalIncome - totalExpense;
 }
