@@ -373,12 +373,15 @@ export async function saveTrip(tripData) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) { showNotification("You must be logged in.", "error"); return; }
 
+    // Create a copy so we don't mutate the original
     const tripPayload = {
         ...tripData,
         user_id: user.id
     };
 
     let error;
+    
+    // Check if we are updating (ID exists and is truthy)
     if (tripData.id) {
         // Update
         const { error: updateError } = await supabaseClient
@@ -388,6 +391,9 @@ export async function saveTrip(tripData) {
         error = updateError;
     } else {
         // Insert
+        // ⭐️ CRITICAL FIX: Remove 'id' if it is null/undefined so DB auto-generates it ⭐️
+        delete tripPayload.id; 
+
         const { error: insertError } = await supabaseClient
             .from('trips')
             .insert([tripPayload]);
