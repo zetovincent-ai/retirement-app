@@ -55,3 +55,7 @@ export const loanChartCanvas = document.getElementById('loan-chart-canvas');
 export const loanChartSelectContainer = document.getElementById('loan-chart-select-container');
 export const reconciliationViewContent = document.getElementById('reconciliation-view-content');
 export const loanTimeframeSelect = document.getElementById('loan-timeframe-select');
+// === TRAVEL APP SELECTORS ===
+export const travelAppContainer = document.getElementById('travel-app');
+export const travelList = document.getElementById('travel-list');
+export const addTravelItemBtn = document.getElementById('add-travel-item-btn');

@@ -9,6 +9,7 @@ import * as ui from './ui.js';
 import * as auth from './auth.js';
 import * as grid from './grid.js';
 import * as data from './data.js';
+import * as travel from './travel.js';
 
 // === EVENT HANDLERS ===
 
@@ -343,6 +344,7 @@ function handleAppSwitch(event) {
     // 3. Handle Theme Switching (Navy Blue vs Green)
     if (targetAppId === 'travel-app') {
         document.body.classList.add('theme-travel');
+        travel.renderTripsList();
     } else {
         document.body.classList.remove('theme-travel');
     }
@@ -359,6 +361,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Auth Listeners ---
     auth.initializeAuthListener(); // Sets up the onAuthStateChange
     auth.addAuthEventListeners();  // Sets up modal/button clicks
+
+    // --- Init Travel App ---
+    travel.initTravelApp();
 
     // --- Main App Listeners ---
     s.darkModeToggle.addEventListener('change', () => {
