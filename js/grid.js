@@ -65,65 +65,101 @@ export function renderAll() {
 
 // --- Dashboard Component Renders ---
 
-function renderDashboard(){
-    const format = num => num.toLocaleString('en-US',{style:'currency','currency':'USD'});
+function renderDashboard() {
+    const format = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonthIndex = today.getMonth();
+    const monthName = today.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
-    // --- 1. Monthly Summary (Existing) ---
-    const totalMonthlyIncome = calc.calculateMonthlyTotal(state.appState.incomes);
-    const totalMonthlyExpenses = calc.calculateMonthlyTotal(state.appState.expenses);
-    const netMonthly = totalMonthlyIncome - totalMonthlyExpenses;
+    // === 1. Calculate Real-Time Totals for THIS Month ===
+    // We reuse the logic from the grid to ensure numbers match perfectly.
     
-    s.dashboardSummary.innerHTML=`
+    const startOfMonthUTC = new Date(Date.UTC(currentYear, currentMonthIndex, 1));
+    const creditCardAccounts = state.appState.accounts.filter(acc => acc.type === 'credit_card');
+    const creditCardAccountIds = new Set(creditCardAccounts.map(acc => acc.id));
+
+    const getMonthSum = (items, type) => {
+        let sum = 0;
+        items.forEach(item => {
+            // Exclude Credit Card expenses from the dashboard (Cash Flow view)
+            if (type === 'expense' && creditCardAccountIds.has(item.payment_account_id)) return;
+
+            const occurrences = calc.getOccurrencesInMonth(item, startOfMonthUTC);
+            occurrences.forEach(occDate => {
+                const statusRecord = findTransactionStatus(item.id, type, occDate);
+                // Use the edited amount if it exists, otherwise the default amount
+                if (statusRecord && statusRecord.edited_amount !== null) {
+                    sum += statusRecord.edited_amount;
+                } else {
+                    sum += item.amount;
+                }
+            });
+        });
+        return sum;
+    };
+
+    const monthlyIncome = getMonthSum(state.appState.incomes, 'income');
+    const monthlyExpense = getMonthSum(state.appState.expenses, 'expense');
+    const monthlyNet = monthlyIncome - monthlyExpense;
+
+    // === 2. Calculate Overall Net (YTD) ===
+    // We sum from Jan 1st up to (and including) the current month.
+    // calculateYTDNet sums "up to" the index provided, so we pass (index + 1).
+    const overallNet = calculateYTDNet(currentYear, currentMonthIndex + 1);
+
+    // === 3. Render the Dashboard UI ===
+    s.dashboardSummary.innerHTML = `
+        <div style="margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
+            <h3 style="margin: 0; font-size: 1.2rem; color: var(--text-color);">Current Month - ${monthName}</h3>
+        </div>
+        
         <div class="summary-item">
             <h3 class="income-total">Total Monthly Income</h3>
-            <p class="income-total">${format(totalMonthlyIncome)}</p>
+            <p class="income-total">${format(monthlyIncome)}</p>
         </div>
         <div class="summary-item">
             <h3 class="expense-total">Total Monthly Expenses</h3>
-            <p class="expense-total">${format(totalMonthlyExpenses)}</p>
+            <p class="expense-total">${format(monthlyExpense)}</p>
         </div>
         <div class="summary-item net-total">
             <h3>Net Monthly Balance</h3>
-            <p>${format(netMonthly)}</p>
+            <p>${format(monthlyNet)}</p>
+        </div>
+        <div class="summary-item net-total" style="border-top: none; margin-top: 0.5rem;">
+            <h3>Overall Net (YTD)</h3>
+            <p>${format(overallNet)}</p>
         </div>`;
     
-    // --- 2. Forecast Summary (New Logic) ---
-    
+    // --- Forecast Section (Unchanged) ---
     // A. Net Worth
     const netWorth = state.appState.accounts.reduce((total, acc) => {
         if (acc.type === 'credit_card') {
-            return total - acc.current_balance; // Subtract CC balances
+            return total - acc.current_balance; 
         }
-        return total + acc.current_balance; // Add all others
+        return total + acc.current_balance; 
     }, 0);
 
     // B. Calculated Annual Gross Pay
     const regularPayItems = state.appState.incomes.filter(i => i.type === 'Regular Pay');
     const calculatedAnnualGrossPay = regularPayItems.reduce((total, item) => {
-        
-        // ⭐️ Use the stored per-payment gross if it exists ⭐️
         if (item.advanced_data && item.advanced_data.gross_pay_amount) {
-            // Create a temporary item to pass to the annual calculator
             const grossPayItem = {
                 amount: item.advanced_data.gross_pay_amount,
                 interval: item.interval
             };
-            // This will annualize the gross pay
             return total + calc.calculateAnnualTotal([grossPayItem]); 
         }
-        
-        // Fallback: use the annual net pay
         return total + calc.calculateAnnualTotal([item]);
     }, 0);
 
-    // C. Annual Pre-Tax Contributions (for AGI calc)
+    // C. Annual Pre-Tax Contributions
     const annualPreTaxContributions = calc.calculateAnnualTotal(
         state.appState.incomes,
         item => item.type === 'Investment Contribution'
     );
     
     // D. Estimated AGI
-    // AGI = Gross Pay - Pre-Tax Contributions
     const estimatedAGI = calculatedAnnualGrossPay - annualPreTaxContributions;
 
     // E. Annual MAGI Add-Backs
@@ -133,13 +169,15 @@ function renderDashboard(){
     );
     
     // F. Estimated MAGI
-    // MAGI = AGI + Add-Backs
     const estimatedMagi = estimatedAGI + annualMagiAddBacks;
     
-    // G. Render to the new div
+    // G. Render Forecast
     const forecastDiv = document.getElementById('dashboard-forecast');
-    if (forecastDiv) { // Check if it exists
+    if (forecastDiv) { 
         forecastDiv.innerHTML = `
+            <div style="margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
+                <h3 style="margin: 0; font-size: 1.2rem; color: var(--text-color);">Annual Forecast</h3>
+            </div>
             <div class="summary-item">
                 <h3>Est. Net Worth</h3>
                 <p>${format(netWorth)}</p>
