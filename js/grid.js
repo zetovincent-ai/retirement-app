@@ -291,15 +291,17 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
         i.interval === 'one-time' && !creditCardAccountIds.has(i.payment_account_id)
     );
 
-    // === ⭐️ 3. Split Income into Regular vs TSP ⭐️ ===
+    // === ⭐️ 3. Split Income into Regular vs TSP (By Name) ⭐️ ===
     const allRecurringIncomes = state.appState.incomes.filter(i => i.interval !== 'one-time');
     
+    // Filter by looking for "TSP" in the name (case-insensitive for safety)
     const tspIncomes = allRecurringIncomes.filter(i => 
-        i.type === 'TSP' || i.type === 'TSP Supplement'
+        i.name && i.name.toUpperCase().includes('TSP')
     );
     
+    // Regular incomes are everything else
     const regularIncomes = allRecurringIncomes.filter(i => 
-        i.type !== 'TSP' && i.type !== 'TSP Supplement'
+        !i.name || !i.name.toUpperCase().includes('TSP')
     );
 
     let finalHTML = '<div class="grid-view-container">';
