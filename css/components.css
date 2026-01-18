@@ -346,3 +346,96 @@ input:checked + .slider:before {
     width: auto; /* Let checkbox be its natural size */
     justify-self: center; /* Center it in its small column */
 }
+
+/* === CARD GRID LAYOUT (Banking & Liabilities) === */
+
+/* 1. Turn the list containers into Grids */
+#account-list, 
+#cc-list, 
+#loan-list {
+    display: grid;
+    /* Auto-fit columns: at least 300px wide, but stretch to fill space */
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+    gap: 1.5rem;
+    padding: 0.5rem; /* Add breathing room around grid */
+}
+
+/* 2. Style the Individual Cards */
+#account-list li, 
+#cc-list li, 
+#loan-list li {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%; /* Make all cards in a row the same height */
+    background-color: var(--section-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* Subtle shadow for depth */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hover Effect */
+#account-list li:hover, 
+#cc-list li:hover, 
+#loan-list li:hover {
+    transform: translateY(-3px); /* Lift up slightly */
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* 3. Color Coded Top Borders (The "Strips") */
+
+/* Banking -> Blue/Green Accent */
+#account-list li {
+    border-top: 5px solid #3498db; /* Default Blue */
+}
+
+/* Credit Cards -> Purple Accent */
+#cc-list li {
+    border-top: 5px solid #9b59b6;
+}
+
+/* Loans -> Red Accent */
+#loan-list li {
+    border-top: 5px solid #e74c3c;
+}
+
+/* 4. Typography Updates inside Cards */
+
+/* Make the Name bigger */
+#account-list li .item-details strong,
+#cc-list li .item-details strong,
+#loan-list li .item-details strong {
+    font-size: 1.1rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+/* Make the Balance stand out heavily */
+#account-list li .item-details span[class*="total"],
+#account-list li .item-details span:not([class]) { /* Catch-all for balance spans */
+    font-size: 1.6rem;
+    font-weight: bold;
+    display: block;
+    margin: 1rem 0;
+}
+
+/* Add a line above the buttons */
+#account-list li .item-controls,
+#cc-list li .item-controls,
+#loan-list li .item-controls {
+    margin-top: auto; /* Push to bottom */
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    justify-content: flex-end; /* Align buttons to right */
+    gap: 0.5rem;
+}
+
+/* Tweak buttons to be smaller/outline style in cards? Optional. */
+#account-list li .item-controls button,
+#cc-list li .item-controls button,
+#loan-list li .item-controls button {
+    font-size: 0.85rem;
+    padding: 0.3rem 0.6rem;
+}
