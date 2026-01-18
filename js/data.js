@@ -27,6 +27,7 @@ export async function fetchData() {
     const [
         { data: incomes, error: incomesError },
         { data: expenses, error: expensesError },
+        // ⭐️ FIX: Changed 'transactions' to 'transaction_log'
         { data: transactions, error: transactionsError },
         { data: accounts, error: accountsError },
         { data: transfers, error: transfersError },
@@ -35,7 +36,8 @@ export async function fetchData() {
     ] = await Promise.all([
         supabaseClient.from('incomes').select('*').eq('user_id', user.id),
         supabaseClient.from('expenses').select('*').eq('user_id', user.id),
-        supabaseClient.from('transactions').select('*').eq('user_id', user.id),
+        // ⭐️ FIX: Changed 'transactions' to 'transaction_log'
+        supabaseClient.from('transaction_log').select('*').eq('user_id', user.id),
         supabaseClient.from('accounts').select('*').eq('user_id', user.id),
         supabaseClient.from('transfers').select('*').eq('user_id', user.id),
         supabaseClient.from('reconciliation_log').select('*').eq('user_id', user.id),
@@ -50,7 +52,7 @@ export async function fetchData() {
     state.setAppState({
         incomes: incomes || [],
         expenses: expenses || [],
-        transactions: transactions || [],
+        transactions: transactions || [], // We keep the state variable name 'transactions' for compatibility
         accounts: accounts || [],
         transfers: transfers || [],
         reconciliation_log: reconciliation_log || [],
@@ -60,7 +62,6 @@ export async function fetchData() {
     console.log("Data fetched successfully. App State:", state.appState);
     renderAll();
     
-    // Trigger travel render if available
     if (typeof window.renderTripsList === 'function') {
         window.renderTripsList();
     } else {
@@ -90,13 +91,13 @@ export async function saveTransactionStatus(itemId, itemType, date, status) {
 
     if (existingRecord) {
         const { error } = await supabaseClient
-            .from('transactions')
+            .from('transaction_log') // ⭐️ FIX: Updated table name
             .update({ status: status })
             .eq('id', existingRecord.id);
         if (error) console.error("Error updating status:", error);
     } else {
         const { error } = await supabaseClient
-            .from('transactions')
+            .from('transaction_log') // ⭐️ FIX: Updated table name
             .insert([{
                 user_id: user.id,
                 item_id: itemId,
@@ -110,7 +111,8 @@ export async function saveTransactionStatus(itemId, itemType, date, status) {
     await fetchData();
 }
 
-export async function saveTransactionAmount(itemId, itemType, date, newAmount) {
+// ⭐️ FIX: Updated signature to accept originalAmount (matching app.js)
+export async function saveTransactionAmount(itemId, itemType, date, originalAmount, newAmount) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
 
@@ -119,19 +121,20 @@ export async function saveTransactionAmount(itemId, itemType, date, newAmount) {
 
     if (existingRecord) {
         const { error } = await supabaseClient
-            .from('transactions')
-            .update({ edited_amount: newAmount })
+            .from('transaction_log') // ⭐️ FIX: Updated table name
+            .update({ edited_amount: newAmount, original_amount: originalAmount }) // ⭐️ Saving original_amount
             .eq('id', existingRecord.id);
         if (error) console.error("Error updating amount:", error);
     } else {
         const { error } = await supabaseClient
-            .from('transactions')
+            .from('transaction_log') // ⭐️ FIX: Updated table name
             .insert([{
                 user_id: user.id,
                 item_id: itemId,
                 item_type: itemType,
                 occurrence_date: dateString,
                 status: 'pending',
+                original_amount: originalAmount, // ⭐️ Saving original_amount
                 edited_amount: newAmount
             }]);
         if (error) console.error("Error inserting amount:", error);
@@ -143,7 +146,7 @@ export async function revertTransactionAmount(itemId, itemType, date) {
     const existingRecord = findTransactionStatus(itemId, itemType, date);
     if (existingRecord) {
         const { error } = await supabaseClient
-            .from('transactions')
+            .from('transaction_log') // ⭐️ FIX: Updated table name
             .update({ edited_amount: null })
             .eq('id', existingRecord.id);
         if (error) console.error("Error reverting amount:", error);
@@ -205,46 +208,36 @@ export async function deleteTrip(tripId) {
     } else {
         showNotification("Trip deleted.", "success");
         await fetchData();
-        // Trigger render
          import('./travel.js').then(module => {
             if (module.renderTripsList) module.renderTripsList();
         });
     }
 }
 
-// === ⭐️ NEW: Loan Amortization Engine (Account-Centric) ⭐️ ===
-// Calculates payoff for a specific Loan Account by finding all linked expenses.
+// === Loan Amortization Engine (Account-Centric) ===
 export function getLoanAmortization(account) {
     if (!account || !account.advanced_data) return null;
 
-    // Debt is stored as negative (e.g., -200,000), but logic is easier with positive principal
     const principal = Math.abs(account.current_balance); 
     const annualRate = account.advanced_data.interest_rate || 0;
     const monthlyRate = annualRate / 12;
 
-    // 1. Find all linked expenses (The "Feeders")
     const linkedExpenses = state.appState.expenses.filter(e => 
         e.advanced_data && e.advanced_data.linked_loan_id === account.id
     );
 
-    // 2. Build a map of "Payment by Month" for next 30 years
-    const paymentSchedule = {}; // "YYYY-MM": amount
-    
+    const paymentSchedule = {}; 
     const startDate = new Date();
     const startYear = startDate.getFullYear();
-    const startMonth = startDate.getMonth(); // 0-11
+    const startMonth = startDate.getMonth();
 
-    // Pre-calculate payments for the next 360 months
     for (let i = 0; i < 360; i++) {
         const utcDate = new Date(Date.UTC(startYear, startMonth + i, 1));
-        
         let monthlyPayment = 0;
         
         linkedExpenses.forEach(exp => {
-            // Check if this expense occurs in this month
             const occurrences = getOccurrencesInMonth(exp, utcDate);
             if (occurrences.length > 0) {
-                // Sum up payments (e.g. if weekly, might be 4 or 5)
                 monthlyPayment += (exp.amount * occurrences.length);
             }
         });
@@ -253,7 +246,6 @@ export function getLoanAmortization(account) {
         paymentSchedule[dateKey] = monthlyPayment;
     }
 
-    // 3. Run Amortization Loop
     let remainingBalance = principal;
     const schedule = [];
     let month = 1;
@@ -268,7 +260,6 @@ export function getLoanAmortization(account) {
         const interest = remainingBalance * monthlyRate;
         let principalPayment = payment - interest;
 
-        // Cap payment at remaining balance
         if (remainingBalance + interest <= payment) {
             principalPayment = remainingBalance;
             remainingBalance = 0;
@@ -293,12 +284,10 @@ export function getLoanAmortization(account) {
     };
 }
 
-// === UPDATED: Legacy function for single-item loans ===
-// Used for expenses that define their OWN loan terms (not linked to an account)
+// === Legacy Amortization Engine (Item-Centric) ===
 export function getDynamicAmortization(item) {
     if (!item.advanced_data || !item.advanced_data.original_principal) return null;
 
-    // 1. Get all edits
     const edits = state.appState.transactions.filter(t => 
         t.item_id === item.id && 
         t.item_type === 'expense' && 
@@ -336,7 +325,7 @@ export function getDynamicAmortization(item) {
             remainingBalance -= principalPayment;
         }
 
-        if (remainingBalance > principal * 2) break; // Safety break
+        if (remainingBalance > principal * 2) break; 
 
         schedule.push({
             month: month,
