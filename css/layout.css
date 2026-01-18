@@ -280,21 +280,18 @@ body.dark-mode .section-tab-btn.active {
 
 /* === DASHBOARD EXPANSION LOGIC === */
 
-/* 1. Target the flex container when expanded */
-#financial-app.dashboard-expanded {
-    /* Ensure flex behavior continues, but we will hide one child */
-    display: flex !important; 
-}
-
-/* 2. Hide the Main Content (Tabs) completely */
+/* 1. Hide the Main Content (Tabs) when expanded */
+/* We target both possibilities to be safe: class on <main> OR class on #financial-app */
+main.dashboard-expanded #financial-app .app-main-content,
 #financial-app.dashboard-expanded .app-main-content {
     display: none !important;
 }
 
-/* 3. Force the Sidebar to take 100% width */
+/* 2. Force the Sidebar to take 100% width */
+main.dashboard-expanded #financial-app .app-sidebar,
 #financial-app.dashboard-expanded .app-sidebar {
     width: 100% !important;
     max-width: none !important;
-    flex: 1 0 100% !important; /* Grow to fill the flex container */
+    flex: 1 0 100% !important; /* Force grow to fill flex container */
     border-right: none !important;
 }
