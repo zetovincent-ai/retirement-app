@@ -394,6 +394,9 @@ document.addEventListener('DOMContentLoaded', () => {
     s.incomeList.addEventListener('click', handleListClick);
     s.expenseList.addEventListener('click', handleListClick);
     s.bankingSection.addEventListener('click', handleBankingListClick);
+    if (s.liabilitiesSection) {
+        s.liabilitiesSection.addEventListener('click', handleBankingListClick);
+    }
 
     // listen on the parent section to catch the button click
     s.incomeList.closest('.app-section').addEventListener('click', handleIncomeListViewToggle);
