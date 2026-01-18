@@ -445,20 +445,20 @@ input:checked + .slider:before {
 /* 1. The Header Row */
 .ledger-header {
     display: grid;
-    /* 3 Columns: 
-       1. Name (Takes all remaining space)
-       2. Amount (Fixed 140px) 
-       3. Actions (Fixed 110px to match button width) 
+    /* Updated Columns:
+       1. Name: 1fr (Takes remaining space)
+       2. Amount: 160px (Wider to fit long text)
+       3. Actions: 230px (Much wider to fit Schedule + Edit + X)
     */
-    grid-template-columns: 1fr 140px 110px;
+    grid-template-columns: 1fr 160px 230px; 
     gap: 1rem;
     padding: 0.8rem 1rem;
-    background-color: var(--secondary-btn-bg); /* Or a light grey like #f8f9fa */
-    color: #fff; /* Or dark text if using light bg */
+    background-color: var(--secondary-btn-bg); 
+    color: #fff; 
     font-weight: bold;
     font-size: 0.9rem;
-    border-radius: 8px 8px 0 0; /* Rounded top corners */
-    margin-bottom: 0; /* Touching the list below */
+    border-radius: 8px 8px 0 0; 
+    margin-bottom: 0; 
 }
 
 /* Align header text */
@@ -472,16 +472,16 @@ input:checked + .slider:before {
     padding: 0;
     margin: 0;
     border: 1px solid var(--border-color);
-    border-top: none; /* Connect to header */
-    border-radius: 0 0 8px 8px; /* Rounded bottom corners */
+    border-top: none; 
+    border-radius: 0 0 8px 8px; 
 }
 
 /* 3. The Data Rows (List Items) */
 #income-list li, 
 #expense-list li {
     display: grid;
-    /* Match the header structure, but Actions is a direct child here */
-    grid-template-columns: 1fr 110px; 
+    /* Match the header: Content (1fr) | Actions (230px) */
+    grid-template-columns: 1fr 230px; 
     gap: 1rem;
     padding: 0.8rem 1rem;
     border-bottom: 1px solid var(--border-color);
@@ -495,17 +495,17 @@ input:checked + .slider:before {
     background-color: rgba(0, 0, 0, 0.02);
 }
 
-/* 4. Column 1 & 2 Wrapper (The .item-details div) */
-/* We make this a sub-grid to split Name and Amount */
+/* 4. Column 1 Wrapper (Name & Amount) */
+/* This sub-grid splits the first column into Name (fluid) and Amount (fixed) */
 #income-list li .item-details, 
 #expense-list li .item-details {
     display: grid;
-    grid-template-columns: 1fr 140px; /* Name takes space, Amount is fixed */
+    grid-template-columns: 1fr 160px; /* Matches Header Amount width */
     gap: 1rem;
     align-items: center;
 }
 
-/* Hide the <br> so they sit on same line */
+/* Hide the <br> */
 #income-list li .item-details br, 
 #expense-list li .item-details br { display: none; }
 
