@@ -440,100 +440,104 @@ input:checked + .slider:before {
     padding: 0.3rem 0.6rem;
 }
 
-/* === LEDGER LAYOUT (Income & Expense Lists) === */
+/* === LEDGER LAYOUT (Income & Expense Tables) === */
 
-/* 1. Reset List Styles */
+/* 1. The Header Row */
+.ledger-header {
+    display: grid;
+    /* 3 Columns: 
+       1. Name (Takes all remaining space)
+       2. Amount (Fixed 140px) 
+       3. Actions (Fixed 110px to match button width) 
+    */
+    grid-template-columns: 1fr 140px 110px;
+    gap: 1rem;
+    padding: 0.8rem 1rem;
+    background-color: var(--secondary-btn-bg); /* Or a light grey like #f8f9fa */
+    color: #fff; /* Or dark text if using light bg */
+    font-weight: bold;
+    font-size: 0.9rem;
+    border-radius: 8px 8px 0 0; /* Rounded top corners */
+    margin-bottom: 0; /* Touching the list below */
+}
+
+/* Align header text */
+.ledger-header .col-amount { text-align: right; }
+.ledger-header .col-actions { text-align: right; }
+
+/* 2. The List Container */
 #income-list, 
-#expense-list,
-#transfer-list {
+#expense-list {
     list-style: none;
     padding: 0;
     margin: 0;
-    display: block; /* Ensure it's not a grid like the accounts */
+    border: 1px solid var(--border-color);
+    border-top: none; /* Connect to header */
+    border-radius: 0 0 8px 8px; /* Rounded bottom corners */
 }
 
-/* 2. Create the "Row" Look */
+/* 3. The Data Rows (List Items) */
 #income-list li, 
-#expense-list li,
-#transfer-list li {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+#expense-list li {
+    display: grid;
+    /* Match the header structure, but Actions is a direct child here */
+    grid-template-columns: 1fr 110px; 
+    gap: 1rem;
     padding: 0.8rem 1rem;
     border-bottom: 1px solid var(--border-color);
     background-color: var(--section-bg-color);
-    transition: background-color 0.15s ease;
-}
-
-/* Zebra Striping: Alternating background colors */
-#income-list li:nth-child(even), 
-#expense-list li:nth-child(even),
-#transfer-list li:nth-child(even) {
-    background-color: rgba(0, 0, 0, 0.02); /* Very subtle grey */
-}
-
-/* Hover Effect */
-#income-list li:hover, 
-#expense-list li:hover,
-#transfer-list li:hover {
-    background-color: rgba(0, 0, 0, 0.05); /* Slightly darker on hover */
-}
-
-/* 3. Style the Content (Name & Amount) */
-#income-list li .item-details, 
-#expense-list li .item-details,
-#transfer-list li .item-details {
-    display: flex;
     align-items: center;
-    flex: 1; /* Take up all available space */
-    gap: 0.5rem; /* Space between Name and Badge */
-    overflow: hidden; /* Prevent breaking layout */
 }
 
-/* Hide the <br> tag so everything sits on one line */
+/* Zebra Striping */
+#income-list li:nth-child(even), 
+#expense-list li:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* 4. Column 1 & 2 Wrapper (The .item-details div) */
+/* We make this a sub-grid to split Name and Amount */
+#income-list li .item-details, 
+#expense-list li .item-details {
+    display: grid;
+    grid-template-columns: 1fr 140px; /* Name takes space, Amount is fixed */
+    gap: 1rem;
+    align-items: center;
+}
+
+/* Hide the <br> so they sit on same line */
 #income-list li .item-details br, 
-#expense-list li .item-details br,
-#transfer-list li .item-details br {
-    display: none;
-}
+#expense-list li .item-details br { display: none; }
 
-/* Name Column */
+/* Name Column Styling */
 #income-list li .item-details strong, 
-#expense-list li .item-details strong,
-#transfer-list li .item-details strong {
-    font-size: 1rem;
-    color: var(--text-color);
+#expense-list li .item-details strong {
     white-space: nowrap;
-    /* Don't let the name force the row to break */
-    max-width: 40%; 
     overflow: hidden;
     text-overflow: ellipsis;
+    font-size: 0.95rem;
+    color: var(--text-color);
 }
 
-/* Amount Column (Targeting the last span in the container) */
+/* Amount Column Styling */
 #income-list li .item-details > span:last-child, 
-#expense-list li .item-details > span:last-child,
-#transfer-list li .item-details > span:last-child {
-    margin-left: auto; /* Push to the far right */
-    padding-right: 2rem; /* Space from the buttons */
-    font-family: monospace; /* Better for numbers */
-    font-size: 1rem;
+#expense-list li .item-details > span:last-child {
+    text-align: right;
+    font-family: monospace;
     font-weight: 600;
-    white-space: nowrap;
+    font-size: 1rem;
 }
 
-/* 4. Controls (Buttons) */
+/* 5. Actions Column (The buttons) */
 #income-list li .item-controls, 
-#expense-list li .item-controls,
-#transfer-list li .item-controls {
+#expense-list li .item-controls {
     display: flex;
+    justify-content: flex-end;
     gap: 0.5rem;
 }
 
-/* Make buttons a bit more compact in these rows */
 #income-list li .item-controls button, 
-#expense-list li .item-controls button,
-#transfer-list li .item-controls button {
-    padding: 0.25rem 0.6rem;
+#expense-list li .item-controls button {
+    padding: 0.2rem 0.5rem;
     font-size: 0.8rem;
 }

@@ -123,27 +123,31 @@
                 </nav>
 
                 <section id="income-section" class="app-section tab-panel">
-                    <div class="section-header"><h2>Income Sources</h2></div>
-                    <div class="section-controls">
+                    <div class="section-header">
+                        <h2>Incomes</h2>
                         <button id="show-income-modal-btn" class="btn-primary">Add Income</button>
-                        <button id="toggle-income-list-view" class="btn-secondary" data-type="income">Show All</button>
                     </div>
-                    <hr class="divider">
-                    <div id="income-list-container">
-                        <ul id="income-list" class="item-list"></ul>
+                    
+                    <div class="ledger-header">
+                        <span class="col-name">Name / Description</span>
+                        <span class="col-amount">Amount</span>
+                        <span class="col-actions">Actions</span>
                     </div>
+                    <ul id="income-list" class="item-list"><li>Loading...</li></ul>
                 </section>
                 
-                <section id="expenses-section" class="app-section tab-panel active">
-                    <div class="section-header"><h2>Expense Log</h2></div>
-                    <div class="section-controls">
+                <section id="expense-section" class="app-section tab-panel">
+                    <div class="section-header">
+                        <h2>Expenses</h2>
                         <button id="show-expense-modal-btn" class="btn-primary">Add Expense</button>
-                        <button id="toggle-expense-list-view" class="btn-secondary" data-type="expense">Show All</button>
                     </div>
-                    <hr class="divider">
-                    <div id="expense-list-container">
-                        <ul id="expense-list" class="item-list"></ul>
+
+                    <div class="ledger-header">
+                        <span class="col-name">Name / Category</span>
+                        <span class="col-amount">Amount</span>
+                        <span class="col-actions">Actions</span>
                     </div>
+                    <ul id="expense-list" class="item-list"><li>Loading...</li></ul>
                 </section>
                 
                 <section id="banking-section" class="app-section tab-panel">
