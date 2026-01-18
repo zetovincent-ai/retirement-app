@@ -280,9 +280,10 @@ body.dark-mode .section-tab-btn.active {
 
 /* === DASHBOARD EXPANSION LOGIC === */
 
-/* 1. Force the main app container to a single column */
+/* 1. Target the flex container when expanded */
 #financial-app.dashboard-expanded {
-    grid-template-columns: 1fr !important; /* Use full width for the first column */
+    /* Ensure flex behavior continues, but we will hide one child */
+    display: flex !important; 
 }
 
 /* 2. Hide the Main Content (Tabs) completely */
@@ -290,9 +291,10 @@ body.dark-mode .section-tab-btn.active {
     display: none !important;
 }
 
-/* 3. Allow the Sidebar to stretch full width */
+/* 3. Force the Sidebar to take 100% width */
 #financial-app.dashboard-expanded .app-sidebar {
-    width: 100%;
-    max-width: none; /* Override any sidebar width limits */
-    border-right: none; /* Remove the border since it's full screen */
+    width: 100% !important;
+    max-width: none !important;
+    flex: 1 0 100% !important; /* Grow to fill the flex container */
+    border-right: none !important;
 }

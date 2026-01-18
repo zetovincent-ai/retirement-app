@@ -36,41 +36,6 @@
     height: 300px; 
 }
 
-
-/* === Dashboard Expanded State === */
-main.dashboard-expanded #dashboard-section { 
-    flex-grow: 20; 
-}
-
-main.dashboard-expanded #income-section,
-main.dashboard-expanded #expenses-section,
-main.dashboard-expanded #banking-section,
-main.dashboard-expanded #dashboard-summary,
-main.dashboard-expanded #dashboard-forecast,
-main.dashboard-expanded #summary-chart-container { 
-    display: none; /* Hide the sections completely */
-}
-
-/* Ensure the dashboard section takes up all the space */
-main.dashboard-expanded #dashboard-section {
-    flex-grow: 1; /* Allow dashboard to expand fully */
-    width: 100%; /* Explicitly set width */
-    min-width: 0; /* Override any potential minimum width */
-}
-
-/* Hide default summary/chart when expanded */
-main.dashboard-expanded #dashboard-summary,
-main.dashboard-expanded #summary-chart-container {
-    display: none;
-}
-
-/* Show expanded content container when expanded */
-main.dashboard-expanded #expanded-dashboard-content {
-    display: flex; /* Use flexbox for overall layout */
-    flex-direction: column; /* Stack tabs, controls, content vertically */
-}
-
-
 /* === Dashboard Tabs & Controls === */
 .dashboard-tabs {
     display: flex;
@@ -667,6 +632,13 @@ body.dark-mode .month-grid-table tr.row-highlighted:hover {
 
 .checkbox-item input {
     cursor: pointer;
+}
+
+/* Ensure the inner expanded content displays correctly */
+#expanded-dashboard-content {
+    display: none; /* Controlled by JS toggling style.display */
+    flex-direction: column; 
+    height: 100%;
 }
 
 /* === Chart Details List === */
