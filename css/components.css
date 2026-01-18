@@ -439,3 +439,101 @@ input:checked + .slider:before {
     font-size: 0.85rem;
     padding: 0.3rem 0.6rem;
 }
+
+/* === LEDGER LAYOUT (Income & Expense Lists) === */
+
+/* 1. Reset List Styles */
+#income-list, 
+#expense-list,
+#transfer-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: block; /* Ensure it's not a grid like the accounts */
+}
+
+/* 2. Create the "Row" Look */
+#income-list li, 
+#expense-list li,
+#transfer-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--section-bg-color);
+    transition: background-color 0.15s ease;
+}
+
+/* Zebra Striping: Alternating background colors */
+#income-list li:nth-child(even), 
+#expense-list li:nth-child(even),
+#transfer-list li:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.02); /* Very subtle grey */
+}
+
+/* Hover Effect */
+#income-list li:hover, 
+#expense-list li:hover,
+#transfer-list li:hover {
+    background-color: rgba(0, 0, 0, 0.05); /* Slightly darker on hover */
+}
+
+/* 3. Style the Content (Name & Amount) */
+#income-list li .item-details, 
+#expense-list li .item-details,
+#transfer-list li .item-details {
+    display: flex;
+    align-items: center;
+    flex: 1; /* Take up all available space */
+    gap: 0.5rem; /* Space between Name and Badge */
+    overflow: hidden; /* Prevent breaking layout */
+}
+
+/* Hide the <br> tag so everything sits on one line */
+#income-list li .item-details br, 
+#expense-list li .item-details br,
+#transfer-list li .item-details br {
+    display: none;
+}
+
+/* Name Column */
+#income-list li .item-details strong, 
+#expense-list li .item-details strong,
+#transfer-list li .item-details strong {
+    font-size: 1rem;
+    color: var(--text-color);
+    white-space: nowrap;
+    /* Don't let the name force the row to break */
+    max-width: 40%; 
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Amount Column (Targeting the last span in the container) */
+#income-list li .item-details > span:last-child, 
+#expense-list li .item-details > span:last-child,
+#transfer-list li .item-details > span:last-child {
+    margin-left: auto; /* Push to the far right */
+    padding-right: 2rem; /* Space from the buttons */
+    font-family: monospace; /* Better for numbers */
+    font-size: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* 4. Controls (Buttons) */
+#income-list li .item-controls, 
+#expense-list li .item-controls,
+#transfer-list li .item-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Make buttons a bit more compact in these rows */
+#income-list li .item-controls button, 
+#expense-list li .item-controls button,
+#transfer-list li .item-controls button {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.8rem;
+}
