@@ -63,7 +63,19 @@ async function handleBankingListClick(event) {
 
     if (target.classList.contains('edit-btn')) {
         console.log(`Edit ${type} ID ${id}`);
-        if (type === 'account') ui.showAccountModal(id);
+        if (type === 'account') {
+            // ⭐️ CHANGE: Determine allowed types based on the Section ID
+            const sectionId = event.currentTarget.id;
+            let allowedTypes = null;
+            
+            if (sectionId === 'banking-section') {
+                allowedTypes = ['checking', 'savings', 'investment'];
+            } else if (sectionId === 'liabilities-section') {
+                allowedTypes = ['credit_card', 'loan'];
+            }
+            
+            ui.showAccountModal(id, allowedTypes);
+        }
         else if (type === 'transfer') ui.showTransferModal(id);
 
     } else if (target.classList.contains('delete-btn')) {
@@ -80,13 +92,11 @@ async function handleBankingListClick(event) {
                  await data.fetchData(); 
              }
         }
-    // === ⭐️ ADDED THIS BLOCK ⭐️ ===
     } else if (target.classList.contains('reconcile-btn')) {
         console.log(`Reconcile ${type} ID ${id}`);
         if (type === 'account') {
             ui.showReconcileModal(id);
         }
-    // === END NEW BLOCK ===
     }
 }
 

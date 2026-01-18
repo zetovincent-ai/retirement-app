@@ -476,8 +476,6 @@ export function showExpenseModal(expenseId, prefillData = null) {
     openModal();
 }
 
-// In ui.js
-
 export function showAccountModal(accountId, allowedTypes = null) {
     const isEditMode = accountId !== undefined;
     const accountToEdit = isEditMode && Array.isArray(state.appState.accounts) ? state.appState.accounts.find(a => a.id === accountId) : null;
@@ -501,7 +499,9 @@ export function showAccountModal(accountId, allowedTypes = null) {
         loan: 'Loan (Mortgage, Car, etc.)'
     };
 
-    const typesToShow = (allowedTypes && !isEditMode) ? allowedTypes : Object.keys(allTypes);
+    // ⭐️ CHANGE: Use the filter if provided, otherwise show all. (Removed !isEditMode check)
+    const typesToShow = allowedTypes ? allowedTypes : Object.keys(allTypes);
+    
     let typeOptions = '<option value="">-- Select Type --</option>';
     typesToShow.forEach(key => {
         if (allTypes[key]) typeOptions += `<option value="${key}">${allTypes[key]}</option>`;
@@ -533,12 +533,15 @@ export function showAccountModal(accountId, allowedTypes = null) {
 
     if (isEditMode && accountToEdit) {
         document.getElementById('modal-account-name').value = accountToEdit.name || '';
+        
+        // Safety: If the item's current type isn't in our filter list, add it temporarily so it displays correctly
         if (!typesToShow.includes(accountToEdit.type)) {
             const tempOption = document.createElement('option');
             tempOption.value = accountToEdit.type;
             tempOption.text = allTypes[accountToEdit.type] || accountToEdit.type;
             typeSelect.add(tempOption);
         }
+        
         typeSelect.value = accountToEdit.type || '';
         document.getElementById('modal-account-balance').value = accountToEdit.current_balance || '';
         if (accountToEdit.type === 'investment') {
