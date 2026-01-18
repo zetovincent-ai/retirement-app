@@ -379,12 +379,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Section "Add" Buttons
     s.showIncomeModalBtn.addEventListener('click', () => ui.showIncomeModal());
     s.showExpenseModalBtn.addEventListener('click', () => ui.showExpenseModal());
-    s.showAccountModalBtn.addEventListener('click', () => ui.showAccountModal());
+    s.showAccountModalBtn.addEventListener('click', () => {
+        ui.showAccountModal(undefined, ['checking', 'savings', 'investment']);
+    });
     s.showTransferModalBtn.addEventListener('click', () => ui.showTransferModal());
 
     if (s.showCcModalBtn) {
-            s.showCcModalBtn.addEventListener('click', () => ui.showAccountModal());
-        }
+        s.showCcModalBtn.addEventListener('click', () => {
+            ui.showAccountModal(undefined, ['credit_card', 'loan']);
+        });
+    }
 
     // List Edit/Delete
     s.incomeList.addEventListener('click', handleListClick);

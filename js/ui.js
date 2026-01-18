@@ -512,7 +512,9 @@ export function showExpenseModal(expenseId, prefillData = null) {
     openModal();
 }
 
-export function showAccountModal(accountId) {
+// In ui.js
+
+export function showAccountModal(accountId, allowedTypes = null) {
     const isEditMode = accountId !== undefined;
     const accountToEdit = isEditMode && Array.isArray(state.appState.accounts) ? state.appState.accounts.find(a => a.id === accountId) : null;
     s.modalTitle.textContent = isEditMode ? 'Edit Account' : 'Add New Account';
@@ -528,6 +530,25 @@ export function showAccountModal(accountId) {
         </div>
     `;
 
+    // === ⭐️ Dynamic Option Generation ===
+    const allTypes = {
+        checking: 'Checking',
+        savings: 'Savings',
+        investment: 'Investment',
+        credit_card: 'Credit Card',
+        loan: 'Loan (Mortgage, Car, etc.)'
+    };
+
+    // If we are Adding and have a filter, use it. If Editing or no filter, show all.
+    const typesToShow = (allowedTypes && !isEditMode) ? allowedTypes : Object.keys(allTypes);
+
+    let typeOptions = '<option value="">-- Select Type --</option>';
+    typesToShow.forEach(key => {
+        if (allTypes[key]) {
+            typeOptions += `<option value="${key}">${allTypes[key]}</option>`;
+        }
+    });
+
     s.modalBody.innerHTML = `
         <div class="form-group">
             <label for="modal-account-name">Account Name:</label>
@@ -536,12 +557,7 @@ export function showAccountModal(accountId) {
         <div class="form-group">
             <label for="modal-account-type">Account Type:</label>
             <select id="modal-account-type" required>
-                <option value="">-- Select Type --</option>
-                <option value="checking">Checking</option>
-                <option value="savings">Savings</option>
-                <option value="investment">Investment</option>
-                <option value="credit_card">Credit Card</option>
-                <option value="loan">Loan (Mortgage, Car, etc.)</option> 
+                ${typeOptions}
             </select>
         </div>
         <div class="form-group">
@@ -570,7 +586,16 @@ export function showAccountModal(accountId) {
 
     if (isEditMode && accountToEdit) {
         document.getElementById('modal-account-name').value = accountToEdit.name || '';
+        
+        // Safety: If the current type isn't in our filtered list (rare edge case), default to showing it anyway
+        if (!typesToShow.includes(accountToEdit.type)) {
+            const tempOption = document.createElement('option');
+            tempOption.value = accountToEdit.type;
+            tempOption.text = allTypes[accountToEdit.type] || accountToEdit.type;
+            typeSelect.add(tempOption);
+        }
         typeSelect.value = accountToEdit.type || '';
+        
         balanceInput.value = accountToEdit.current_balance || '';
         
         if (accountToEdit.type === 'investment') {
@@ -591,7 +616,7 @@ export function showAccountModal(accountId) {
          ccFields.style.display = 'none';
     }
 
-    // === ⭐️ Save logic ===
+    // === ⭐️ Save logic (No changes needed here) ===
     state.setOnSave(async () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) { return; }
