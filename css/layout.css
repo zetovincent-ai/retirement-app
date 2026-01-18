@@ -277,3 +277,22 @@ body.dark-mode .section-tab-btn.active {
     background-color: var(--section-bg-color); /* Matches panel */
     border-bottom-color: var(--section-bg-color);
 }
+
+/* === DASHBOARD EXPANSION LOGIC === */
+
+/* 1. Force the main app container to a single column */
+#financial-app.dashboard-expanded {
+    grid-template-columns: 1fr !important; /* Use full width for the first column */
+}
+
+/* 2. Hide the Main Content (Tabs) completely */
+#financial-app.dashboard-expanded .app-main-content {
+    display: none !important;
+}
+
+/* 3. Allow the Sidebar to stretch full width */
+#financial-app.dashboard-expanded .app-sidebar {
+    width: 100%;
+    max-width: none; /* Override any sidebar width limits */
+    border-right: none; /* Remove the border since it's full screen */
+}
