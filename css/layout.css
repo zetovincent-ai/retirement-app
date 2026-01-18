@@ -180,3 +180,100 @@ body.theme-travel {
     --primary-btn-hover: #68688b;
     --net-total-color: #00003d; /* Reuse navy for highlights */
 }
+/* === NEW LAYOUT: Sidebar + Main Content === */
+
+/* 1. The Container */
+.app-container.active {
+    display: flex;
+    flex-direction: row; /* Horizontal layout */
+    align-items: flex-start; /* Align top */
+    gap: 1.5rem;
+    height: calc(100vh - 140px); /* Fill screen minus header/footer */
+}
+
+/* 2. The Sidebar (Dashboard) */
+.app-sidebar {
+    width: 320px; /* Fixed width */
+    flex-shrink: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#dashboard-section {
+    height: 100%;
+    overflow-y: auto; /* Scrollable sidebar */
+}
+
+/* 3. The Main Content Area (Tabs) */
+.app-main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0; /* Prevents flex overflow issues */
+}
+
+/* 4. Tab Navigation Bar */
+.section-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0; /* Tabs sit directly on top of content */
+}
+
+.section-tab-btn {
+    padding: 0.75rem 1.5rem;
+    background-color: #e0e6ed; /* Inactive tab color */
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    color: var(--text-color);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    opacity: 0.8;
+}
+
+.section-tab-btn:hover {
+    background-color: #d1d9e2;
+    opacity: 1;
+}
+
+.section-tab-btn.active {
+    background-color: var(--section-bg-color); /* Active tab matches content bg */
+    border-color: var(--border-color);
+    border-bottom: 1px solid var(--section-bg-color); /* Hide bottom border to merge */
+    color: var(--primary-btn-bg);
+    font-weight: bold;
+    opacity: 1;
+    margin-bottom: -1px; /* Overlap the panel border */
+    z-index: 2;
+}
+
+/* 5. Tab Panels */
+.tab-panel {
+    display: none; /* Hidden by default */
+    border-top-left-radius: 0; /* Remove top-left corner radius for tab merge */
+    height: 100%;
+    overflow-y: auto; /* Scrollable content */
+}
+
+.tab-panel.active {
+    display: block; /* Show active */
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Dark Mode Tweaks for Tabs */
+body.dark-mode .section-tab-btn {
+    background-color: #2d3748;
+    border-color: #4a5568;
+}
+body.dark-mode .section-tab-btn.active {
+    background-color: var(--section-bg-color); /* Matches panel */
+    border-bottom-color: var(--section-bg-color);
+}

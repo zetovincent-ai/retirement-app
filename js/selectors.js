@@ -59,3 +59,10 @@ export const loanTimeframeSelect = document.getElementById('loan-timeframe-selec
 export const travelAppContainer = document.getElementById('travel-app');
 export const travelList = document.getElementById('travel-list');
 export const addTravelItemBtn = document.getElementById('add-travel-item-btn');
+// === MAIN LAYOUT SELECTORS ===
+export const sectionTabs = document.querySelectorAll('.section-tab-btn');
+export const tabPanels = document.querySelectorAll('.tab-panel');
+// === LIABILITIES SELECTORS ===
+export const liabilitiesSection = document.getElementById('liabilities-section');
+export const showCcModalBtn = document.getElementById('show-cc-modal-btn');
+export const ccList = document.getElementById('cc-list');

@@ -382,6 +382,10 @@ document.addEventListener('DOMContentLoaded', () => {
     s.showAccountModalBtn.addEventListener('click', () => ui.showAccountModal());
     s.showTransferModalBtn.addEventListener('click', () => ui.showTransferModal());
 
+    if (s.showCcModalBtn) {
+            s.showCcModalBtn.addEventListener('click', () => ui.showAccountModal());
+        }
+
     // List Edit/Delete
     s.incomeList.addEventListener('click', handleListClick);
     s.expenseList.addEventListener('click', handleListClick);
@@ -428,6 +432,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 setActiveChartView(viewId);
             }
         }
+    });
+
+    // === Section Tab Switching ===
+    s.sectionTabs.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.dataset.target;
+
+            // 1. Update Buttons
+            s.sectionTabs.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // 2. Update Panels
+            s.tabPanels.forEach(panel => {
+                if (panel.id === targetId) {
+                    panel.classList.add('active');
+                } else {
+                    panel.classList.remove('active');
+                }
+            });
+        });
     });
 
     // Grid

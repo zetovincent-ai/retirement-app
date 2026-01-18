@@ -38,127 +38,144 @@
     </nav>
     <main>
         <div id="financial-app" class="app-container active">
-        <section id="dashboard-section" class="app-section">
-            <div class="section-header">
-                <h2>Dashboard</h2>
-                <button id="toggle-dashboard-btn" title="Toggle Dashboard View">Grids & Charts</button>
-            </div>
-            <div id="dashboard-summary"></div>
-            <div id="dashboard-forecast" class="dashboard-summary"></div>
-            <div class="chart-container" id="summary-chart-container">
-                <canvas id="expense-chart"></canvas>
-            </div>
-            <div id="expanded-dashboard-content" style="display: none;">
-                <div class="dashboard-tabs">
-                    <button class="tab-btn active" data-tab="grids">Grids</button>
-                    <button class="tab-btn" data-tab="charts">Charts</button>
-                </div>
-                <div class="dashboard-view-controls">
-                    <div class="view-group" data-tab-group="grids">
-                        <button class="view-btn active" data-view="2m">2 Month</button>
-                        <button class="view-btn" data-view="6m">6 Month</button>
-                        <button class="view-btn" data-view="yearly">Yearly Summary</button>
-                        <button class="view-btn" data-view="historic">Historic</button> 
-                    </div> 
-                    <div class="view-group" data-tab-group="charts" style="display: none;">
-                         <button class="view-btn active" data-view="expensePie">Expenses</button>
-                         <button class="view-btn" data-view="loanChart">Loans</button>
-                         <button class="view-btn" data-view="reconciliationView">Reconciliations</button>
+    
+            <aside class="app-sidebar">
+                <section id="dashboard-section" class="app-section">
+                    <div class="section-header">
+                        <h2>Dashboard</h2>
+                        <button id="toggle-dashboard-btn" title="Toggle Dashboard View">Grids & Charts</button>
                     </div>
-                </div>
-            </div>
-                <div class="dashboard-content-area">
-                    <div id="grid-content" class="tab-content active">
-                        <div id="grid-monthly-content" class="grid-layout-container">
-                            </div>
-                        
-                        <div id="grid-yearly-content" class="grid-layout-container" style="display: none;">
-                            <div id="grid-yearly-summary-panel">
-                                Yearly Summary Panel
-                            </div>
-                            <div id="grid-detail-content">
-                                Detail Panel
+                    <div id="dashboard-summary"></div>
+                    <div id="dashboard-forecast" class="dashboard-summary"></div>
+                    <div class="chart-container" id="summary-chart-container">
+                        <canvas id="expense-chart"></canvas>
+                    </div>
+                    <div id="expanded-dashboard-content" style="display: none;">
+                        <div class="dashboard-tabs">
+                            <button class="tab-btn active" data-tab="grids">Grids</button>
+                            <button class="tab-btn" data-tab="charts">Charts</button>
+                        </div>
+                        <div class="dashboard-view-controls">
+                            <div class="view-group" data-tab-group="grids">
+                                <button class="view-btn active" data-view="2m">2 Month</button>
+                                <button class="view-btn" data-view="6m">6 Month</button>
+                                <button class="view-btn" data-view="yearly">Yearly Summary</button>
+                                <button class="view-btn" data-view="historic">Historic</button> 
+                            </div> 
+                            <div class="view-group" data-tab-group="charts" style="display: none;">
+                                <button class="view-btn active" data-view="expensePie">Expenses</button>
+                                <button class="view-btn" data-view="loanChart">Loans</button>
+                                <button class="view-btn" data-view="reconciliationView">Reconciliations</button>
                             </div>
                         </div>
-                        <div id="grid-historic-content" class="grid-layout-container" style="display: none;">
-                            <div id="grid-historic-year-panel">
+                        <div class="dashboard-content-area">
+                            <div id="grid-content" class="tab-content active">
+                                <div id="grid-monthly-content" class="grid-layout-container"></div>
+                                <div id="grid-yearly-content" class="grid-layout-container" style="display: none;">
+                                    <div id="grid-yearly-summary-panel">Yearly Summary Panel</div>
+                                    <div id="grid-detail-content">Detail Panel</div>
+                                </div>
+                                <div id="grid-historic-content" class="grid-layout-container" style="display: none;">
+                                    <div id="grid-historic-year-panel"></div>
+                                    <div id="grid-historic-detail-content"></div>
+                                </div>
                             </div>
-                            <div id="grid-historic-detail-content">
-                            </div>
-                        </div>
-                    </div>
-                    <div id="chart-content" class="tab-content">
-                         <div id="expense-pie-chart-container" class="chart-container-wrapper"">
-                             <div class="chart-container">
-                                <canvas id="expanded-expense-chart"></canvas>
-                                <div id="expanded-expense-details" style="display: none;">
+                            <div id="chart-content" class="tab-content">
+                                <div id="expense-pie-chart-container" class="chart-container-wrapper">
+                                    <div class="chart-container">
+                                        <canvas id="expanded-expense-chart"></canvas>
+                                        <div id="expanded-expense-details" style="display: none;"></div>
                                     </div>
-                             </div>
-                         </div>
-
-                         <div id="loan-chart-content" class="chart-container-wrapper" style="display: none;">
-                            <div id="loan-chart-controls" class="chart-controls-container">
-                                <div class="form-group">
-                                    <label>Select Loans:</label>
-                                    <div id="loan-chart-select-container" class="checkbox-container">
+                                </div>
+                                <div id="loan-chart-content" class="chart-container-wrapper" style="display: none;">
+                                    <div id="loan-chart-controls" class="chart-controls-container">
+                                        <div class="form-group">
+                                            <label>Select Loans:</label>
+                                            <div id="loan-chart-select-container" class="checkbox-container"></div>
                                         </div>
+                                        <div class="form-group">
+                                            <label for="loan-timeframe-select">Select Timeframe:</label>
+                                            <select id="loan-timeframe-select">
+                                                <option value="10">10 Years</option>
+                                                <option value="15">15 Years</option>
+                                                <option value="20">20 Years</option>
+                                                <option value="25">25 Years</option>
+                                                <option value="30">30 Years</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="chart-container"><canvas id="loan-chart-canvas"></canvas></div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="loan-timeframe-select">Select Timeframe:</label>
-                                    <select id="loan-timeframe-select">
-                                        <option value="10">10 Years</option>
-                                        <option value="15">15 Years</option>
-                                        <option value="20">20 Years</option>
-                                        <option value="25">25 Years</option>
-                                        <option value="30">30 Years</option>
-                                    </select>
-                                </div>
+                                <div id="reconciliation-view-content" class="chart-container-wrapper" style="display: none;"></div>
                             </div>
-                            <div class="chart-container">
-                                <canvas id="loan-chart-canvas"></canvas>
-                            </div>
-                         </div>
-                         <div id="reconciliation-view-content" class="chart-container-wrapper" style="display: none;">
                         </div>
                     </div>
-                </div>
-        </section>
-        <section id="income-section" class="app-section">
-            <div class="section-header"><h2>Income Sources</h2></div>
-            <div class="section-controls">
-                <button id="show-income-modal-btn" class="btn-primary">Add Income</button>
-                <button id="toggle-income-list-view" class="btn-secondary" data-type="income">Show All</button>
+                </section>
+            </aside>
+
+            <div class="app-main-content">
+                
+                <nav class="section-tabs">
+                    <button class="section-tab-btn" data-target="income-section">Income Sources</button>
+                    <button class="section-tab-btn active" data-target="expenses-section">Expense Log</button>
+                    <button class="section-tab-btn" data-target="banking-section">Banking & Investment</button>
+                    <button class="section-tab-btn" data-target="liabilities-section">Loans & Credit</button>
+                </nav>
+
+                <section id="income-section" class="app-section tab-panel">
+                    <div class="section-header"><h2>Income Sources</h2></div>
+                    <div class="section-controls">
+                        <button id="show-income-modal-btn" class="btn-primary">Add Income</button>
+                        <button id="toggle-income-list-view" class="btn-secondary" data-type="income">Show All</button>
+                    </div>
+                    <hr class="divider">
+                    <div id="income-list-container">
+                        <ul id="income-list" class="item-list"></ul>
+                    </div>
+                </section>
+                
+                <section id="expenses-section" class="app-section tab-panel active">
+                    <div class="section-header"><h2>Expense Log</h2></div>
+                    <div class="section-controls">
+                        <button id="show-expense-modal-btn" class="btn-primary">Add Expense</button>
+                        <button id="toggle-expense-list-view" class="btn-secondary" data-type="expense">Show All</button>
+                    </div>
+                    <hr class="divider">
+                    <div id="expense-list-container">
+                        <ul id="expense-list" class="item-list"></ul>
+                    </div>
+                </section>
+                
+                <section id="banking-section" class="app-section tab-panel">
+                    <div class="section-header"><h2>Banking & Investment</h2></div>
+                    <div class="section-controls">
+                        <button id="show-account-modal-btn" class="btn-primary">Add Account</button>
+                        <button id="show-transfer-modal-btn" class="btn-primary">Add Transfer</button>
+                        <button id="toggle-transfer-list-view" class="btn-secondary" data-type="transfer">Show All</button>
+                    </div>
+                    <hr class="divider">
+                    <div id="banking-list-container">
+                        <h3>Accounts</h3>
+                        <ul id="account-list" class="item-list"></ul>
+                        <hr class="divider">
+                        <h3>Recurring Transfers</h3>
+                        <ul id="transfer-list" class="item-list"></ul>
+                    </div>
+                </section>
+
+                <section id="liabilities-section" class="app-section tab-panel">
+                    <div class="section-header"><h2>Loans & Credit</h2></div>
+                    <div class="section-controls">
+                        <button id="show-cc-modal-btn" class="btn-primary">Add Liability</button>
+                    </div>
+                    <hr class="divider">
+                    <div id="liabilities-list-container">
+                        <h3>Credit Cards</h3>
+                        <ul id="cc-list" class="item-list"><li><em>No liabilities added yet.</em></li></ul>
+                        </div>
+                </section>
+                
             </div>
-            <hr class="divider">
-            <div id="income-list-container"><h3>Incomes List</h3><ul id="income-list" class="item-list"></ul></div>
-        </section>
-        
-        <section id="expenses-section" class="app-section">
-            <div class="section-header"><h2>Expense Log</h2></div>
-            <div class="section-controls">
-                <button id="show-expense-modal-btn" class="btn-primary">Add Expense</button>
-                <button id="toggle-expense-list-view" class="btn-secondary" data-type="expense">Show All</button>
-            </div>
-            <hr class="divider">
-            <div id="expense-list-container"><h3>Expenses List</h3><ul id="expense-list" class="item-list"></ul></div>
-        </section>
-        
-        <section id="banking-section" class="app-section">
-            <div class="section-header"><h2>Banking & Investment</h2></div>
-            <div class="section-controls">
-                <button id="show-account-modal-btn" class="btn-primary">Add Account</button>
-                <button id="show-transfer-modal-btn" class="btn-primary">Add Transfer</button>
-                <button id="toggle-transfer-list-view" class="btn-secondary" data-type="transfer">Show All</button>
-            </div>
-            <hr class="divider">
-            <div id="banking-list-container">
-                <h3>Accounts</h3>
-                <ul id="account-list" class="item-list"></ul>
-                <hr class="divider">
-                <h3>Recurring Transfers</h3>
-                <ul id="transfer-list" class="item-list"></ul>
-            </div>
-        </section>
         </div>
         <div id="travel-app" class="app-container">
             <section class="app-section">
