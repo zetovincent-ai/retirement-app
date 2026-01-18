@@ -5,8 +5,8 @@
 import * as s from './selectors.js';
 import * as state from './state.js';
 import { supabaseClient } from './supabase.js';
-import { fetchData, getDynamicAmortization } from './data.js';
-import { calculateAmortization, parseUTCDate, getOccurrencesInMonth } from './calculations.js';
+import { fetchData, getDynamicAmortization, getLoanAmortization } from './data.js';
+import { parseUTCDate, getOccurrencesInMonth } from './calculations.js';
 
 // --- Notification Functions ---
 
@@ -258,23 +258,23 @@ export function showExpenseModal(expenseId, prefillData = null) {
     const expenseToEdit = isEditMode && Array.isArray(state.appState.expenses) ? state.appState.expenses.find(e => e.id === expenseId) : null;
     s.modalTitle.textContent = isEditMode ? 'Edit Expense' : 'Add New Expense';
 
-    // --- Account Options (With Grouping) ---
+    // --- Account Options ---
     const bankAccounts = state.appState.accounts.filter(acc => acc.type === 'checking' || acc.type === 'savings');
     const creditCards = state.appState.accounts.filter(acc => acc.type === 'credit_card');
-
-    let accountOptions = '<option value="">-- None --</option>';
     
-    if (bankAccounts.length > 0) {
-        accountOptions += '<optgroup label="Bank Accounts">' + bankAccounts.map(acc => `<option value="${acc.id}">${acc.name}</option>`).join('') + '</optgroup>';
-    }
-    if (creditCards.length > 0) {
-        accountOptions += '<optgroup label="Credit Cards">' + creditCards.map(acc => `<option value="${acc.id}">${acc.name}</option>`).join('') + '</optgroup>';
-    }
-    if (bankAccounts.length === 0 && creditCards.length === 0) {
-        accountOptions = '<option value="" disabled>-- No accounts defined --</option>';
+    // ⭐️ NEW: Liability Accounts for "Pay To" ⭐️
+    const liabilityAccounts = state.appState.accounts.filter(acc => acc.type === 'loan' || acc.type === 'credit_card');
+
+    let payFromOptions = '<option value="">-- None --</option>';
+    if (bankAccounts.length > 0) payFromOptions += '<optgroup label="Bank Accounts">' + bankAccounts.map(acc => `<option value="${acc.id}">${acc.name}</option>`).join('') + '</optgroup>';
+    if (creditCards.length > 0) payFromOptions += '<optgroup label="Credit Cards">' + creditCards.map(acc => `<option value="${acc.id}">${acc.name}</option>`).join('') + '</optgroup>';
+
+    // ⭐️ NEW: "Pay To" Options ⭐️
+    let payToOptions = '<option value="">-- None (Pure Expense) --</option>';
+    if (liabilityAccounts.length > 0) {
+        payToOptions += liabilityAccounts.map(acc => `<option value="${acc.id}">${acc.name}</option>`).join('');
     }
 
-    // --- Modal Body HTML ---
     s.modalBody.innerHTML = `
         <div class="form-group">
             <label for="modal-expense-category">Category:</label>
@@ -287,6 +287,7 @@ export function showExpenseModal(expenseId, prefillData = null) {
                 <option value="Health">Health</option>
                 <option value="Entertainment">Entertainment</option>
                 <option value="Credit Card">Credit Card</option>
+                <option value="Savings/Debt">Savings/Debt</option>
                 <option value="Other">Other</option>
             </select>
         </div>
@@ -296,7 +297,7 @@ export function showExpenseModal(expenseId, prefillData = null) {
         </div>
         <div class="form-group">
             <label for="modal-expense-name">Description / Name:</label>
-            <input type="text" id="modal-expense-name" placeholder="e.g., Electric Bill or Car Payment" required>
+            <input type="text" id="modal-expense-name" placeholder="e.g., Electric Bill or Mortgage Payment" required>
         </div>
         <div class="form-group">
             <label for="modal-expense-interval">Payment Interval:</label>
@@ -318,14 +319,29 @@ export function showExpenseModal(expenseId, prefillData = null) {
             <label for="modal-expense-date">Payment Start Date:</label>
             <input type="date" id="modal-expense-date" required>
         </div>
+        <div class="form-group">
+            <label for="modal-expense-end-date">End Date (Optional):</label>
+            <input type="date" id="modal-expense-end-date">
+        </div>
 
-        <div class="form-group"><label for="modal-expense-end-date">End Date (Optional):</label><input type="date" id="modal-expense-end-date"></div>
-
-        <div class="form-group"><label for="modal-expense-payment-account">Pay From Account:</label><select id="modal-expense-payment-account">${accountOptions}</select></div> 
+        <hr class="divider">
+        
+        <div class="form-group">
+            <label for="modal-expense-payment-account">Pay From (Bank/CC):</label>
+            <select id="modal-expense-payment-account">${payFromOptions}</select>
+        </div>
+        
+        <div class="form-group">
+            <label for="modal-expense-pay-to">Pay To Loan/Credit (Optional):</label>
+            <select id="modal-expense-pay-to">${payToOptions}</select>
+            <small style="color:var(--secondary-btn-bg); display:block; margin-top:4px; font-size:0.8rem;">
+                Links this payment to a specific Loan or Credit Card to track payoff.
+            </small>
+        </div>
         
         <div id="advanced-loan-fields" style="display: none;">
             <hr class="divider">
-            <h4>Loan Details (Optional)</h4>
+            <h4>Legacy Loan Details (Optional)</h4>
              <div class="form-group"><label for="modal-loan-interest-rate">Interest Rate (%):</label><input type="number" id="modal-loan-interest-rate" placeholder="e.g., 6.5" min="0" step="0.001"></div>
              <div class="form-group"><label for="modal-loan-total-payments">Total Payments (Months):</label><input type="number" id="modal-loan-total-payments" placeholder="e.g., 360" min="1" step="1"></div>
              <div class="form-group"><label for="modal-loan-original-principal">Original Principal ($):</label><input type="number" id="modal-loan-original-principal" placeholder="e.g., 300000" min="0" step="0.01"></div>
@@ -338,148 +354,100 @@ export function showExpenseModal(expenseId, prefillData = null) {
         </div>
         `;
     
-    // --- Element References ---
     const categorySelect = document.getElementById('modal-expense-category');
     const subTypeContainer = document.getElementById('sub-type-container');
     const subTypeSelect = document.getElementById('modal-expense-sub-type');
     const advancedLoanFields = document.getElementById('advanced-loan-fields');
-    const paymentAmountInput = document.getElementById('modal-expense-amount');
-    const loanInterestInput = document.getElementById('modal-loan-interest-rate');
-    const loanTermInput = document.getElementById('modal-loan-total-payments');
-    const loanPrincipalInput = document.getElementById('modal-loan-original-principal');
     const magiAddBackCheckbox = document.getElementById('modal-expense-magi-addback');
 
-    // --- Loan Calculation ---
-    function calculateAndSetPayment() {
-        const principal = parseFloat(loanPrincipalInput.value);
-        const rate = parseFloat(loanInterestInput.value) / 100.0;
-        const term = parseInt(loanTermInput.value);
-        if (principal > 0 && rate >= 0 && term > 0) {
-            const amortization = calculateAmortization(principal, rate, term);
-            if (amortization) {
-                paymentAmountInput.value = amortization.monthlyPayment.toFixed(2);
-                paymentAmountInput.readOnly = true;
-            }
-        } else {
-            paymentAmountInput.readOnly = false;
-        }
-    }
-
-    // --- Toggle Advanced Fields ---
     const housingSubTypes = `<option value="">-- Select Sub-Type --</option><option value="Rent">Rent</option><option value="Mortgage/Loan">Mortgage/Loan</option><option value="HOA">HOA Dues</option><option value="Other">Other Housing</option>`;
     const transportSubTypes = `<option value="">-- Select Sub-Type --</option><option value="Car Loan">Car Loan</option><option value="Fuel">Fuel</option><option value="Insurance">Insurance</option><option value="Maintenance">Maintenance</option><option value="Other">Other Transport</option>`;
 
     function toggleAdvancedFields() {
         const category = categorySelect.value;
-        let subType = subTypeSelect.value;
-        let showSubTypeDropdown = false;
-        let showLoan = false;
+        const subType = subTypeSelect.value;
         
         if (category === 'Housing') {
-            showSubTypeDropdown = true;
-            if (subTypeSelect.innerHTML !== housingSubTypes) { subTypeSelect.innerHTML = housingSubTypes; }
-            showLoan = (subType === 'Mortgage/Loan');
+            subTypeContainer.style.display = 'grid';
+            if (subTypeSelect.innerHTML !== housingSubTypes) subTypeSelect.innerHTML = housingSubTypes;
         } else if (category === 'Transport') {
-            showSubTypeDropdown = true;
-            if (subTypeSelect.innerHTML !== transportSubTypes) { subTypeSelect.innerHTML = transportSubTypes; }
-            showLoan = (subType === 'Car Loan');
-        } 
-        
-        subTypeContainer.style.display = showSubTypeDropdown ? 'grid' : 'none';
-        advancedLoanFields.style.display = showLoan ? 'block' : 'none';
-        
-        if (showSubTypeDropdown) {
-             const currentOptions = Array.from(subTypeSelect.options).map(opt => opt.value);
-             if (!currentOptions.includes(subType)) {
-                  subTypeSelect.value = '';
-             } else {
-                  subTypeSelect.value = subType;
-             }
+            subTypeContainer.style.display = 'grid';
+            if (subTypeSelect.innerHTML !== transportSubTypes) subTypeSelect.innerHTML = transportSubTypes;
         } else {
-             subTypeSelect.value = '';
+            subTypeContainer.style.display = 'none';
         }
-        calculateAndSetPayment();
+        
+        // Hide Legacy Loan Fields if we are linking to a real account (preferred)
+        const isLegacyLoan = (subType === 'Mortgage/Loan' || subType === 'Car Loan');
+        advancedLoanFields.style.display = isLegacyLoan ? 'block' : 'none';
+        
+        if (category !== 'Housing' && category !== 'Transport') subTypeSelect.value = '';
     }
 
-    // Add listeners
     categorySelect.addEventListener('change', toggleAdvancedFields);
     subTypeSelect.addEventListener('change', toggleAdvancedFields);
-    loanInterestInput.addEventListener('input', calculateAndSetPayment);
-    loanTermInput.addEventListener('input', calculateAndSetPayment);
-    loanPrincipalInput.addEventListener('input', calculateAndSetPayment);
 
-    // --- Populate Data (Edit Mode) ---
     if (isEditMode && expenseToEdit) {
         categorySelect.value = expenseToEdit.category || '';
-        if (expenseToEdit.category === 'Housing') subTypeSelect.innerHTML = housingSubTypes;
-        else if (expenseToEdit.category === 'Transport') subTypeSelect.innerHTML = transportSubTypes;
+        toggleAdvancedFields(); // Init sub-types
         
         document.getElementById('modal-expense-name').value = expenseToEdit.name || '';
         document.getElementById('modal-expense-interval').value = expenseToEdit.interval || 'monthly';
         document.getElementById('modal-expense-amount').value = expenseToEdit.amount || '';
         document.getElementById('modal-expense-date').value = expenseToEdit.start_date || '';
-        document.getElementById('modal-expense-payment-account').value = expenseToEdit.payment_account_id || '';
-        
-        // Populate End Date
         document.getElementById('modal-expense-end-date').value = expenseToEdit.end_date || '';
+        document.getElementById('modal-expense-payment-account').value = expenseToEdit.payment_account_id || '';
 
         if (expenseToEdit.advanced_data) {
              const advData = expenseToEdit.advanced_data;
-             if ((expenseToEdit.category === 'Housing' || expenseToEdit.category === 'Transport') && advData.item_type) {
-                  subTypeSelect.value = advData.item_type;
-             }
-             if (advData.item_type === 'Mortgage/Loan' || advData.item_type === 'Car Loan') {
-                document.getElementById('modal-loan-interest-rate').value = advData.interest_rate ? (advData.interest_rate * 100).toFixed(3) : '';
-                document.getElementById('modal-loan-total-payments').value = advData.total_payments || '';
-                document.getElementById('modal-loan-original-principal').value = advData.original_principal || '';
+             if (advData.item_type) subTypeSelect.value = advData.item_type;
+             
+             // ⭐️ Populate Pay To Link ⭐️
+             if (advData.linked_loan_id) {
+                 document.getElementById('modal-expense-pay-to').value = advData.linked_loan_id;
              }
              
-             // Populate MAGI Checkbox
+             // Populate Legacy fields
+             if (advData.interest_rate) document.getElementById('modal-loan-interest-rate').value = (advData.interest_rate * 100).toFixed(3);
+             if (advData.total_payments) document.getElementById('modal-loan-total-payments').value = advData.total_payments;
+             if (advData.original_principal) document.getElementById('modal-loan-original-principal').value = advData.original_principal;
+             
              magiAddBackCheckbox.checked = !!advData.is_magi_addback;
         }
-        toggleAdvancedFields();
-
+        toggleAdvancedFields(); 
     } else if (prefillData) {
         document.getElementById('modal-expense-date').value = prefillData.startDate;
-        if (prefillData.interval) {
-            document.getElementById('modal-expense-interval').value = prefillData.interval;
-        }
+        if (prefillData.interval) document.getElementById('modal-expense-interval').value = prefillData.interval;
         toggleAdvancedFields();
-    } else if (!isEditMode) {
-         document.getElementById('modal-expense-date').value = new Date().toISOString().split('T')[0];
-         toggleAdvancedFields();
-     }
+    } else {
+        document.getElementById('modal-expense-date').value = new Date().toISOString().split('T')[0];
+        toggleAdvancedFields();
+    }
 
-    // --- Save Handler ---
     state.setOnSave(async () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) { alert("You must be logged in to save data."); return; }
+        if (!user) return;
         
         const category = categorySelect.value;
         const subType = subTypeSelect.value;
-        const startDateValue = document.getElementById('modal-expense-date').value;
-        const endDateValue = document.getElementById('modal-expense-end-date').value; // Get End Date
-        const paymentAccountId = document.getElementById('modal-expense-payment-account').value;
-        
-        let advancedData = null;
-        if ((category === 'Housing' || category === 'Transport') && subType) {
-             advancedData = { item_type: subType };
-             if (subType === 'Mortgage/Loan' || subType === 'Car Loan') {
-                 const rateInput = document.getElementById('modal-loan-interest-rate').value;
-                 const paymentsInput = document.getElementById('modal-loan-total-payments').value;
-                 const principalInput = document.getElementById('modal-loan-original-principal').value;
-                 if (rateInput) advancedData.interest_rate = parseFloat(rateInput) / 100.0;
-                 if (paymentsInput) advancedData.total_payments = parseInt(paymentsInput);
-                 if (principalInput) advancedData.original_principal = parseFloat(principalInput);
-             }
-        } 
+        const payToId = document.getElementById('modal-expense-pay-to').value; // ⭐️ Capture Pay To
 
-        // Handle MAGI Checkbox
-        const isMagiAddBack = magiAddBackCheckbox.checked;
-        if (isMagiAddBack) {
-            if (advancedData === null) { advancedData = {}; }
-            advancedData.is_magi_addback = true;
+        let advancedData = {};
+        if (subType) advancedData.item_type = subType;
+        
+        // ⭐️ Save Pay To Link ⭐️
+        if (payToId) {
+            advancedData.linked_loan_id = parseInt(payToId);
         }
+
+        const rateInput = document.getElementById('modal-loan-interest-rate').value;
+        const paymentsInput = document.getElementById('modal-loan-total-payments').value;
+        const principalInput = document.getElementById('modal-loan-original-principal').value;
+        if (rateInput) advancedData.interest_rate = parseFloat(rateInput) / 100.0;
+        if (paymentsInput) advancedData.total_payments = parseInt(paymentsInput);
+        if (principalInput) advancedData.original_principal = parseFloat(principalInput);
+
+        if (magiAddBackCheckbox.checked) advancedData.is_magi_addback = true;
 
         const formItem = {
             user_id: user.id,
@@ -487,25 +455,21 @@ export function showExpenseModal(expenseId, prefillData = null) {
             name: document.getElementById('modal-expense-name').value.trim(),
             interval: document.getElementById('modal-expense-interval').value,
             amount: parseFloat(document.getElementById('modal-expense-amount').value),
-            start_date: startDateValue ? startDateValue : null,
-            end_date: endDateValue ? endDateValue : null, // Save End Date
-            payment_account_id: paymentAccountId ? parseInt(paymentAccountId) : null,
+            start_date: document.getElementById('modal-expense-date').value || null,
+            end_date: document.getElementById('modal-expense-end-date').value || null,
+            payment_account_id: parseInt(document.getElementById('modal-expense-payment-account').value) || null,
             advanced_data: advancedData
         };
 
-         if (!formItem.category || !formItem.name || isNaN(formItem.amount) || formItem.amount < 0 || !formItem.start_date) {
-             alert("Please fill out required fields (Category, Name, Amount, Start Date).");
-             return;
-        }
-        if ((category === 'Housing' || category === 'Transport') && !subType) {
-             alert(`Please select a Sub-Type for the ${category} category.`);
-             return;
+        if (!formItem.category || !formItem.name || isNaN(formItem.amount) || !formItem.start_date) {
+             alert("Please fill out required fields."); return;
         }
         
         let { error } = isEditMode
             ? await supabaseClient.from('expenses').update(formItem).eq('id', expenseId)
             : await supabaseClient.from('expenses').insert([formItem]).select();
-        if (error) { console.error("Error saving expense:", error); alert(`Error saving expense: ${error.message}`); }
+        
+        if (error) { console.error("Error saving expense:", error); alert(`Error: ${error.message}`); }
         else { await fetchData(); }
         closeModal();
     });
@@ -519,7 +483,6 @@ export function showAccountModal(accountId, allowedTypes = null) {
     const accountToEdit = isEditMode && Array.isArray(state.appState.accounts) ? state.appState.accounts.find(a => a.id === accountId) : null;
     s.modalTitle.textContent = isEditMode ? 'Edit Account' : 'Add New Account';
 
-    // === ⭐️ HTML for Liability fields (Credit Cards AND Loans) ===
     const ccFieldsHTML = `
         <div id="advanced-cc-fields" class="form-group-stack" style="display: none;">
              <hr class="divider">
@@ -530,7 +493,6 @@ export function showAccountModal(accountId, allowedTypes = null) {
         </div>
     `;
 
-    // === ⭐️ Dynamic Option Generation ===
     const allTypes = {
         checking: 'Checking',
         savings: 'Savings',
@@ -539,27 +501,15 @@ export function showAccountModal(accountId, allowedTypes = null) {
         loan: 'Loan (Mortgage, Car, etc.)'
     };
 
-    // If we are Adding and have a filter, use it. If Editing or no filter, show all.
     const typesToShow = (allowedTypes && !isEditMode) ? allowedTypes : Object.keys(allTypes);
-
     let typeOptions = '<option value="">-- Select Type --</option>';
     typesToShow.forEach(key => {
-        if (allTypes[key]) {
-            typeOptions += `<option value="${key}">${allTypes[key]}</option>`;
-        }
+        if (allTypes[key]) typeOptions += `<option value="${key}">${allTypes[key]}</option>`;
     });
 
     s.modalBody.innerHTML = `
-        <div class="form-group">
-            <label for="modal-account-name">Account Name:</label>
-            <input type="text" id="modal-account-name" placeholder="e.g., Chase Checking" required>
-        </div>
-        <div class="form-group">
-            <label for="modal-account-type">Account Type:</label>
-            <select id="modal-account-type" required>
-                ${typeOptions}
-            </select>
-        </div>
+        <div class="form-group"><label for="modal-account-name">Account Name:</label><input type="text" id="modal-account-name" placeholder="e.g., Chase Checking" required></div>
+        <div class="form-group"><label for="modal-account-type">Account Type:</label><select id="modal-account-type" required>${typeOptions}</select></div>
         <div class="form-group">
             <label for="modal-account-balance">Current Balance ($):</label>
             <input type="number" id="modal-account-balance" placeholder="1000" step="0.01" required>
@@ -573,21 +523,16 @@ export function showAccountModal(accountId, allowedTypes = null) {
 
     const typeSelect = document.getElementById('modal-account-type');
     const growthGroup = document.getElementById('growth-rate-group');
-    const balanceInput = document.getElementById('modal-account-balance');
     const ccFields = document.getElementById('advanced-cc-fields');
 
-    // === ⭐️ Event listener to show/hide fields based on type ===
     typeSelect.addEventListener('change', () => {
         const type = typeSelect.value;
         growthGroup.style.display = type === 'investment' ? 'grid' : 'none';
-        // Show liability fields for BOTH credit_card and loan
         ccFields.style.display = (type === 'credit_card' || type === 'loan') ? 'block' : 'none';
     });
 
     if (isEditMode && accountToEdit) {
         document.getElementById('modal-account-name').value = accountToEdit.name || '';
-        
-        // Safety: If the current type isn't in our filtered list (rare edge case), default to showing it anyway
         if (!typesToShow.includes(accountToEdit.type)) {
             const tempOption = document.createElement('option');
             tempOption.value = accountToEdit.type;
@@ -595,14 +540,11 @@ export function showAccountModal(accountId, allowedTypes = null) {
             typeSelect.add(tempOption);
         }
         typeSelect.value = accountToEdit.type || '';
-        
-        balanceInput.value = accountToEdit.current_balance || '';
-        
+        document.getElementById('modal-account-balance').value = accountToEdit.current_balance || '';
         if (accountToEdit.type === 'investment') {
             document.getElementById('modal-account-growth').value = accountToEdit.growth_rate ? (accountToEdit.growth_rate * 100).toFixed(2) : '';
             growthGroup.style.display = 'grid';
         }
-        // === ⭐️ Populate Liability fields on edit ===
         if ((accountToEdit.type === 'credit_card' || accountToEdit.type === 'loan') && accountToEdit.advanced_data) {
              const advData = accountToEdit.advanced_data;
              document.getElementById('modal-cc-limit').value = advData.credit_limit || '';
@@ -610,22 +552,18 @@ export function showAccountModal(accountId, allowedTypes = null) {
              document.getElementById('modal-cc-interest-rate').value = advData.interest_rate ? (advData.interest_rate * 100).toFixed(2) : '';
              ccFields.style.display = 'block';
         }
-
     } else {
          growthGroup.style.display = 'none';
          ccFields.style.display = 'none';
     }
 
-    // === ⭐️ Save logic (No changes needed here) ===
     state.setOnSave(async () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) { return; }
+        if (!user) return;
 
         const type = typeSelect.value;
-        const growthRateInput = document.getElementById('modal-account-growth').value;
         let advancedData = null;
 
-        // === ⭐️ Capture Liability data ===
         if (type === 'credit_card' || type === 'loan') {
             advancedData = { item_type: type };
             const limitInput = document.getElementById('modal-cc-limit').value;
@@ -634,30 +572,16 @@ export function showAccountModal(accountId, allowedTypes = null) {
             if (limitInput) advancedData.credit_limit = parseFloat(limitInput);
             if (statementDayInput) advancedData.statement_day = parseInt(statementDayInput);
             if (rateInput) advancedData.interest_rate = parseFloat(rateInput) / 100.0;
-            
-            if (advancedData.statement_day && (advancedData.statement_day < 1 || advancedData.statement_day > 31)) {
-                 alert("Statement Closing Day must be between 1 and 31.");
-                 return;
-            }
         }
 
         const formItem = {
             user_id: user.id,
             name: document.getElementById('modal-account-name').value.trim(),
             type: type,
-            current_balance: parseFloat(balanceInput.value),
-            growth_rate: (type === 'investment' && growthRateInput) ? parseFloat(growthRateInput) / 100.0 : null,
+            current_balance: parseFloat(document.getElementById('modal-account-balance').value),
+            growth_rate: (type === 'investment') ? parseFloat(document.getElementById('modal-account-growth').value || 0) / 100.0 : null,
             advanced_data: advancedData 
         };
-
-        if (!formItem.name || !formItem.type || isNaN(formItem.current_balance)) {
-            alert("Please fill out Name, Type, and a valid Balance.");
-            return;
-        }
-        if (formItem.type === 'investment' && formItem.growth_rate !== null && isNaN(formItem.growth_rate)) {
-             alert("Please enter a valid growth rate or leave it blank.");
-             return;
-        }
 
         let { error } = isEditMode
             ? await supabaseClient.from('accounts').update(formItem).eq('id', accountId)
@@ -771,64 +695,60 @@ export function showTransferModal(transferId) {
 }
 
 export function showAmortizationModal(expenseId) {
-    console.log(`Showing amortization for expense ID: ${expenseId}`);
     const expenseItem = state.appState.expenses.find(e => e.id === expenseId);
+    if (!expenseItem) return;
 
-    if (!expenseItem || !expenseItem.advanced_data ||
-        (expenseItem.advanced_data.item_type !== 'Mortgage/Loan' && expenseItem.advanced_data.item_type !== 'Car Loan') ) {
-        console.error("Could not find valid loan data (Mortgage/Loan or Car Loan) for this item:", expenseItem);
-        showNotification("No valid loan data found for this item.", "error");
+    const isLegacy = expenseItem.advanced_data && (expenseItem.advanced_data.item_type === 'Mortgage/Loan' || expenseItem.advanced_data.item_type === 'Car Loan');
+    const isLinked = expenseItem.advanced_data && expenseItem.advanced_data.linked_loan_id;
+
+    if (!isLegacy && !isLinked) {
+        showNotification("No loan data found for this item.", "error");
         return;
     }
-
-    const dynamicAmortization = getDynamicAmortization(expenseItem); 
     
-    if (!dynamicAmortization || !dynamicAmortization.schedule || dynamicAmortization.schedule.length === 0) {
-         showNotification("Could not calculate dynamic amortization schedule.", "error");
-         console.error("Dynamic amortization calculation failed for item:", expenseItem);
-         return;
+    // If linked, use the ACCOUNT amortization
+    if (isLinked) {
+        const account = state.appState.accounts.find(a => a.id === expenseItem.advanced_data.linked_loan_id);
+        if (account) {
+            const dynamicAmortization = getLoanAmortization(account);
+            renderAmortizationTable(dynamicAmortization, `Amortization: ${account.name} (Linked)`);
+            return;
+        }
     }
 
-    const schedule = dynamicAmortization.schedule;
-    const trueTotalMonths = dynamicAmortization.trueTotalMonths; 
-    const firstPayment = schedule.length > 0 ? schedule[0].payment : expenseItem.amount; 
+    // Legacy Fallback
+    const dynamicAmortization = getDynamicAmortization(expenseItem); 
+    renderAmortizationTable(dynamicAmortization, `Amortization: ${expenseItem.name}`);
+}
 
-    s.modalTitle.textContent = `Amortization: ${expenseItem.name}`;
-    
-    let tableHTML = `
-        <p><strong>Original Principal:</strong> ${expenseItem.advanced_data.original_principal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
-        <p><strong>Interest Rate:</strong> ${(expenseItem.advanced_data.interest_rate * 100).toFixed(3)}%</p>
-        <p><strong>Actual Term:</strong> ${trueTotalMonths} months</p> 
-        <p><strong>First Calculated Payment:</strong> ${firstPayment.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} (Note: Payments may vary due to edits)</p>
-        <div class="amortization-table-container">
-            <table class="amortization-table">
-                <thead>
-                    <tr><th>Month</th><th>Payment</th><th>Principal</th><th>Interest</th><th>Balance</th></tr>
-                </thead>
-            <tbody>
-    `;
-    
+// Helper (make sure this is in the file too)
+function renderAmortizationTable(data, title) {
+    if (!data || !data.schedule || data.schedule.length === 0) {
+        showNotification("Could not calculate schedule.", "error");
+        return;
+    }
+    s.modalTitle.textContent = title;
+    const schedule = data.schedule;
     const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     
+    let tableHTML = `
+        <div class="amortization-table-container">
+            <table class="amortization-table">
+                <thead><tr><th>Month</th><th>Payment</th><th>Principal</th><th>Interest</th><th>Balance</th></tr></thead>
+            <tbody>`;
     schedule.forEach(row => {
-        const isEdited = Math.abs(row.payment - firstPayment) > 0.01; 
-        const rowClass = isEdited ? 'edited-payment-row' : '';
-        
         tableHTML += `
-            <tr class="${rowClass}">
+            <tr>
                 <td>${row.month}</td>
                 <td>${formatCurrency(row.payment)}</td>
                 <td>${formatCurrency(row.principalPayment)}</td>
                 <td>${formatCurrency(row.interestPayment)}</td>
                 <td>${formatCurrency(row.remainingBalance)}</td>
-            </tr>
-        `;
+            </tr>`;
     });
-    
     tableHTML += `</tbody></table></div>`;
     s.modalBody.innerHTML = tableHTML;
-
-    s.appModal.classList.add('modal--read-only'); // Add class to hide footer
+    s.appModal.classList.add('modal--read-only');
     openModal();
 }
 
@@ -933,85 +853,41 @@ export function showReconcileModal(accountId) {
 export function renderList(items, listElement) {
     listElement.innerHTML = '';
     const listType = listElement.id.includes('income') ? 'income' : 'expense';
-
-    let itemsToRender = [];
-    const isAllView = state.listDisplayMode[listType] === 'all';
-
-    if (isAllView) {
-        // --- "All" View Logic ---
-        itemsToRender = [...items]; // Use all items
-    } else {
-        // --- "Current" View Logic (existing logic) ---
-        const currentDate = new Date();
-        const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
-
-        itemsToRender = items.filter(item => {
-            return getOccurrencesInMonth(item, currentMonthDateUTC).length > 0;
-        });
+    let itemsToRender = [...items]; 
+    if (state.listDisplayMode[listType] !== 'all') {
+        const currentMonthDateUTC = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1));
+        itemsToRender = items.filter(item => getOccurrencesInMonth(item, currentMonthDateUTC).length > 0);
     }
     
-    if (itemsToRender.length === 0) {
-        listElement.innerHTML = `<li>No ${listType}s for this view.</li>`;
-        return;
-    }
+    if (itemsToRender.length === 0) { listElement.innerHTML = `<li>No ${listType}s for this view.</li>`; return; }
     
-    // Sort and render the filtered list
-    itemsToRender.sort((a, b) => {
-        if (a.start_date && b.start_date) return new Date(b.start_date) - new Date(a.start_date);
-        if (a.start_date) return -1;
-        if (b.start_date) return 1;
-        return 0;
-    });
+    itemsToRender.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+    const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
     itemsToRender.forEach(item => {
-        if (!item || item.id === undefined || item.id === null) { console.warn("Skipping rendering invalid item:", item); return; }
+        const name = item.name || 'Unnamed';
+        const formattedAmount = formatCurrency(item.amount);
         const li = document.createElement('li');
-        const formattedAmount = typeof item.amount === 'number' ? item.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : 'N/A';
-        const intervalText = item.interval ? ` / ${item.interval}` : '';
         
-        let dateText = '';
-        if (isAllView) {
-            // "All" view: Show start date
-            if (item.start_date) {
-                try {
-                    const startDate = parseUTCDate(item.start_date);
-                    dateText = ` (Starts: ${startDate.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })})`;
-                } catch (e) {
-                    dateText = ' (Invalid Date)';
-                }
-            }
-        } else {
-            // "Current" view: Show occurrences this month
-            try {
-                const currentDate = new Date();
-                const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
-                const occurrences = getOccurrencesInMonth(item, currentMonthDateUTC);
-                const days = occurrences.map(d => d.getUTCDate()).join(', ');
-                dateText = ` (Day: ${days})`;
-
-            } catch (e) {
-                console.warn(`Invalid date format for item ${item.id}: ${item.start_date}`);
-                dateText = ' (Invalid Date)';
-            }
+        let linkedBadge = '';
+        if (item.advanced_data && item.advanced_data.linked_loan_id) {
+             const account = state.appState.accounts.find(a => a.id === item.advanced_data.linked_loan_id);
+             if (account) linkedBadge = `<span style="font-size:0.8rem; background:#e0e6ed; padding:2px 6px; border-radius:4px; margin-left:5px;">→ ${account.name}</span>`;
         }
         
-        const typeOrCategory = item.type || item.category || 'N/A';
-        const name = item.name || 'Unnamed';
-        let subTypeText = '';
-         if (item.advanced_data && item.advanced_data.item_type && (item.category === 'Housing' || item.category === 'Transport')) {
-              subTypeText = ` - ${item.advanced_data.item_type}`;
-         }
-
+        // Show Schedule button if Legacy OR Linked
         let scheduleButtonHTML = '';
-        if (listType === 'expense' && item.advanced_data?.item_type &&
-           (item.advanced_data.item_type === 'Mortgage/Loan' || item.advanced_data.item_type === 'Car Loan')) {
+        if (item.advanced_data && (
+           (item.advanced_data.item_type === 'Mortgage/Loan' || item.advanced_data.item_type === 'Car Loan') ||
+           item.advanced_data.linked_loan_id
+        )) {
              scheduleButtonHTML = `<button class="schedule-btn btn-secondary" data-id="${item.id}">Schedule</button>`;
         }
 
         li.innerHTML = `
             <div class="item-details">
-                <strong>${name}</strong> (${typeOrCategory}${subTypeText})<br>
-                <span>${formattedAmount}${intervalText}${dateText}</span>
+                <strong>${name}</strong>${linkedBadge}<br>
+                <span>${formattedAmount} / ${item.interval}</span>
             </div>
             <div class="item-controls">
                 ${scheduleButtonHTML}
@@ -1284,12 +1160,10 @@ export function renderAccountsList() {
     // Clear all lists
     s.accountList.innerHTML = ''; 
     s.ccList.innerHTML = ''; 
-    if (s.loanList) s.loanList.innerHTML = ''; // Safety check
+    if (s.loanList) s.loanList.innerHTML = ''; 
 
     if (!state.appState.accounts || state.appState.accounts.length === 0) {
         s.accountList.innerHTML = `<li>No accounts added yet.</li>`;
-        s.ccList.innerHTML = `<li>No credit cards added.</li>`;
-        if(s.loanList) s.loanList.innerHTML = `<li>No loans added.</li>`;
         return;
     }
 
@@ -1301,57 +1175,37 @@ export function renderAccountsList() {
         }
     });
 
-    // Helper (Same as before)
+    // Helper
     const renderGroup = (group, listElement) => {
-        if (group.length > 0) {
-            group.sort((a, b) => a.name.localeCompare(b.name));
-            group.forEach(acc => {
-                const li = document.createElement('li');
-                // Format balance (Negative is Red, Positive is Green/Black)
-                const isNegative = acc.current_balance < 0;
-                const formattedBalance = acc.current_balance.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-                const balanceClass = isNegative ? 'expense-total' : '';
-
-                // Details string
-                let details = '';
-                if ((acc.type === 'credit_card' || acc.type === 'loan') && acc.advanced_data) {
-                    if (acc.advanced_data.interest_rate) details += `${(acc.advanced_data.interest_rate * 100).toFixed(2)}% APR`;
-                    if (acc.advanced_data.statement_day) details += ` • Due Day: ${acc.advanced_data.statement_day}`;
-                }
-                if (acc.type === 'investment' && acc.growth_rate) {
-                    details += ` (${(acc.growth_rate * 100).toFixed(1)}% growth)`;
-                }
-
-                let typeText = acc.type.charAt(0).toUpperCase() + acc.type.slice(1).replace('_', ' ');
-
-                li.innerHTML = `
-                    <div class="item-details">
-                        <strong>${acc.name}</strong> <span style="font-size:0.85rem; color:#666;">${details}</span><br>
-                        <span class="${balanceClass}">Balance: ${formattedBalance}</span>
-                    </div>
-                    <div class="item-controls">
-                        <button class="reconcile-btn btn-secondary" data-id="${acc.id}" data-type="account">Reconcile</button>
-                        <button class="edit-btn" data-id="${acc.id}" data-type="account">Edit</button>
-                        <button class="delete-btn" data-id="${acc.id}" data-type="account">X</button>
-                    </div>`;
-                listElement.appendChild(li);
-            });
-        }
+        if (!group || !listElement) return;
+        group.sort((a, b) => a.name.localeCompare(b.name));
+        group.forEach(acc => {
+            const li = document.createElement('li');
+            const isNegative = acc.current_balance < 0;
+            const balanceClass = isNegative ? 'expense-total' : '';
+            let details = '';
+            if ((acc.type === 'credit_card' || acc.type === 'loan') && acc.advanced_data) {
+                if (acc.advanced_data.interest_rate) details += `${(acc.advanced_data.interest_rate * 100).toFixed(2)}% APR`;
+            }
+            li.innerHTML = `
+                <div class="item-details">
+                    <strong>${acc.name}</strong> <span style="font-size:0.85rem; color:#666;">${details}</span><br>
+                    <span class="${balanceClass}">Balance: ${acc.current_balance.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+                </div>
+                <div class="item-controls">
+                    <button class="reconcile-btn btn-secondary" data-id="${acc.id}" data-type="account">Reconcile</button>
+                    <button class="edit-btn" data-id="${acc.id}" data-type="account">Edit</button>
+                    <button class="delete-btn" data-id="${acc.id}" data-type="account">X</button>
+                </div>`;
+            listElement.appendChild(li);
+        });
     };
 
-    // Render Banks
     renderGroup(groupedAccounts.checking, s.accountList);
     renderGroup(groupedAccounts.savings, s.accountList);
     renderGroup(groupedAccounts.investment, s.accountList);
-
-    // Render Liabilities
     renderGroup(groupedAccounts.credit_card, s.ccList);
     if (s.loanList) renderGroup(groupedAccounts.loan, s.loanList);
-
-    // Empty States
-    if (s.accountList.children.length === 0) s.accountList.innerHTML = '<li>No bank accounts found.</li>';
-    if (s.ccList.children.length === 0) s.ccList.innerHTML = '<li>No credit cards found.</li>';
-    if (s.loanList && s.loanList.children.length === 0) s.loanList.innerHTML = '<li>No loans found.</li>';
 }
 
 export function renderTransfersList() {

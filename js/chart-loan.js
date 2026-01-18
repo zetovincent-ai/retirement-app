@@ -1,252 +1,125 @@
 // === LOAN CHART FUNCTIONS ===
-// This module handles all logic for the new loan forecast chart.
 
 import * as s from './selectors.js';
 import * as state from './state.js';
-import { getDynamicAmortization } from './data.js';
+import { getDynamicAmortization, getLoanAmortization } from './data.js'; 
 import * as calc from './calculations.js';
 
-// Chart.js instance is defined in state.js as loanChartInstance
-// Chart settings are in state.js as loanChartSelections
+const CHART_COLORS = ['#3498db', '#e74c3c', '#9b59b6', '#f1c40f', '#2ecc71', '#1abc9c', '#e67e22', '#95a5a6'];
 
-// Color palette for the chart lines
-const CHART_COLORS = [
-    '#3498db', '#e74c3c', '#9b59b6', '#f1c40f', 
-    '#2ecc71', '#1abc9c', '#e67e22', '#95a5a6'
-];
-
-/**
- * Main initialization function for the loan chart view.
- * Called when the user clicks the "Loans" tab.
- */
 export function initializeLoanChart() {
-    console.log("Initializing loan chart...");
     populateLoanSelect();
     addLoanChartListeners();
-    renderLoanChart(); // Initial render
+    renderLoanChart(); 
 }
 
-/**
- * Adds event listeners for the loan chart controls.
- * This is called once by initializeLoanChart.
- */
-function addLoanChartListeners() {
-    // ⭐️ MODIFIED: Listen for clicks on the checkbox container
-    s.loanChartSelectContainer.addEventListener('click', (event) => {
-        // Only trigger if a checkbox was clicked
-        if (event.target.type !== 'checkbox') return;
-
-        // Find all checked checkboxes
-        const checkedBoxes = s.loanChartSelectContainer.querySelectorAll('input[type="checkbox"]:checked');
-        const selectedLoanIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
-        
-        state.setLoanChartSelections({
-            ...state.loanChartSelections,
-            loans: selectedLoanIds
-        });
-        console.log("Updated loan selection:", state.loanChartSelections.loans);
-        renderLoanChart();
-    });
-
-    s.loanTimeframeSelect.addEventListener('change', () => {
-        const newTimeframe = parseInt(s.loanTimeframeSelect.value);
-        state.setLoanChartSelections({
-            ...state.loanChartSelections,
-            timeframe: newTimeframe
-        });
-        console.log("Updated timeframe:", state.loanChartSelections.timeframe);
-        renderLoanChart();
-    });
-}
-
-/**
- * Populates the checkbox container with all available loans.
- */
 function populateLoanSelect() {
-    const allLoans = state.appState.expenses.filter(exp => 
-        exp.advanced_data &&
-        (exp.advanced_data.item_type === 'Mortgage/Loan' || exp.advanced_data.item_type === 'Car Loan')
+    const container = s.loanChartSelectContainer;
+    container.innerHTML = '';
+    
+    // 1. Find Legacy Loans (Expenses with type Mortgage/Loan)
+    const legacyLoans = state.appState.expenses.filter(e => 
+        e.advanced_data && (e.advanced_data.item_type === 'Mortgage/Loan' || e.advanced_data.item_type === 'Car Loan')
     );
 
-    s.loanChartSelectContainer.innerHTML = ''; // Clear existing options
+    // 2. Find New Loan Accounts (Accounts with type Loan)
+    const loanAccounts = state.appState.accounts.filter(a => a.type === 'loan');
+
+    const allLoans = [
+        ...legacyLoans.map(i => ({ id: i.id, name: i.name, type: 'legacy' })),
+        ...loanAccounts.map(a => ({ id: a.id, name: a.name, type: 'account' }))
+    ];
+
     if (allLoans.length === 0) {
-        s.loanChartSelectContainer.innerHTML = '<p>No loans found.</p>'; // Use a <p> tag
+        container.innerHTML = '<span style="color:#666; font-size:0.9rem;">No loans found. Add a Loan Account or Expense.</span>';
         return;
     }
 
-    // ⭐️ MODIFIED: Create checkboxes instead of options
-    allLoans.forEach(loan => {
-        const checkboxId = `loan-cb-${loan.id}`;
-        
-        const wrapper = document.createElement('div');
-        wrapper.classList.add('checkbox-item');
-        
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = checkboxId;
-        checkbox.value = loan.id;
-        
-        // Pre-check if it was selected before
-        if (state.loanChartSelections.loans.includes(loan.id)) {
-            checkbox.checked = true;
-        }
-
-        const label = document.createElement('label');
-        label.htmlFor = checkboxId;
-        label.textContent = loan.name;
-
-        wrapper.appendChild(checkbox);
-        wrapper.appendChild(label);
-        s.loanChartSelectContainer.appendChild(wrapper);
+    allLoans.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'checkbox-item';
+        div.innerHTML = `
+            <input type="checkbox" id="loan-select-${item.type}-${item.id}" value="${item.type}-${item.id}" checked>
+            <label for="loan-select-${item.type}-${item.id}">${item.name}</label>
+        `;
+        container.appendChild(div);
     });
 }
 
-/**
- * Generates the complete Chart.js data object based on current state.
- * @returns {object} Chart.js data object { labels, datasets }
- */
-function generateLoanChartData() {
-    const { loans: selectedLoanIds, timeframe } = state.loanChartSelections;
-    
-    // 1. Generate Labels (X-axis)
-    // We'll show one label per year
-    const startYear = new Date().getFullYear();
-    const endYear = startYear + timeframe;
-    const labels = [];
-    for (let year = startYear; year <= endYear; year++) {
-        labels.push(year);
-    }
-
-    let maxPrincipal = 0; // To set the Y-axis max
-
-    // 2. Generate Datasets (the lines)
-    const datasets = selectedLoanIds.map((loanId, index) => {
-        const loan = state.appState.expenses.find(exp => exp.id === loanId);
-        if (!loan) return null;
-
-        // Update max Y-axis value
-        if (loan.advanced_data.original_principal > maxPrincipal) {
-            maxPrincipal = loan.advanced_data.original_principal;
-        }
-
-        // Get the full, dynamic amortization schedule
-        const amortization = getDynamicAmortization(loan);
-        if (!amortization) return null;
-
-        const schedule = amortization.schedule;
-        
-        // Use a Map for efficient yearly balance lookup
-        const yearlyBalanceMap = new Map();
-        schedule.forEach(entry => {
-            // Get the year for this payment month
-            // Note: Amortization 'month' is 1-based, not 0-based
-            const paymentDate = new Date(calc.parseUTCDate(loan.start_date).getTime());
-            paymentDate.setUTCMonth(paymentDate.getUTCMonth() + (entry.month - 1));
-            const year = paymentDate.getUTCFullYear();
-
-            // Store the *last* remaining balance for each year
-            yearlyBalanceMap.set(year, entry.remainingBalance);
-        });
-
-        // 3. Build the data array for this loan
-        const data = [];
-        let lastKnownBalance = loan.advanced_data.original_principal;
-        
-        for (const year of labels) {
-            if (yearlyBalanceMap.has(year)) {
-                // We have a balance for this year
-                lastKnownBalance = yearlyBalanceMap.get(year);
-            } else if (year < new Date(calc.parseUTCDate(loan.start_date).getTime()).getUTCFullYear()) {
-                // Year is before the loan started, show original principal
-                lastKnownBalance = loan.advanced_data.original_principal;
-            }
-            // If the year is past the last payment, lastKnownBalance will be 0
-            
-            data.push(lastKnownBalance);
-        }
-        
-        const color = CHART_COLORS[index % CHART_COLORS.length];
-        return {
-            label: loan.name,
-            data: data,
-            borderColor: color,
-            backgroundColor: `${color}33`, // Lighter fill
-            fill: false,
-            tension: 0.1
-        };
-
-    }).filter(ds => ds !== null); // Filter out any nulls
-
-    return {
-        labels,
-        datasets,
-        yAxisMax: maxPrincipal * 1.05 // Add 5% padding
-    };
+function addLoanChartListeners() {
+    s.loanChartSelectContainer.addEventListener('click', (event) => {
+        if (event.target.type !== 'checkbox') return;
+        renderLoanChart();
+    });
+    s.loanTimeframeSelect.addEventListener('change', () => {
+        state.setLoanChartSelections({ ...state.loanChartSelections, timeframe: parseInt(s.loanTimeframeSelect.value) });
+        renderLoanChart();
+    });
 }
 
-/**
- * Renders or updates the loan chart on the canvas.
- */
-async function renderLoanChart() {
-    // Destroy existing chart instance if it exists
-    if (state.loanChartInstance) {
-        state.loanChartInstance.destroy();
-        state.setLoanChartInstance(null);
+function renderLoanChart() {
+    if (!state.loanChartInstance) {
+        const ctx = s.loanChartCanvas.getContext('2d');
+        const newChart = new Chart(ctx, { type: 'line', data: { labels: [], datasets: [] }, options: { responsive: true, maintainAspectRatio: false } });
+        state.setLoanChartInstance(newChart);
     }
     
-    const { labels, datasets, yAxisMax } = generateLoanChartData();
+    const chart = state.loanChartInstance;
+    const checkboxes = s.loanChartSelectContainer.querySelectorAll('input[type="checkbox"]:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => cb.value); 
+    
+    const years = parseInt(s.loanTimeframeSelect.value);
+    const labels = Array.from({ length: years + 1 }, (_, i) => `Year ${i}`);
+    
+    const datasets = [];
+    
+    selectedIds.forEach((val, index) => {
+        const [type, idStr] = val.split('-');
+        const id = parseInt(idStr);
+        let schedule = null;
+        let name = '';
 
-    if (datasets.length === 0) {
-        console.log("No loans selected to render.");
-        // We could draw "Please select a loan" on the canvas here
-        return;
-    }
+        if (type === 'legacy') {
+            const item = state.appState.expenses.find(e => e.id === id);
+            if (item) {
+                name = item.name;
+                const data = getDynamicAmortization(item); 
+                if (data) schedule = data.schedule;
+            }
+        } else if (type === 'account') {
+            const account = state.appState.accounts.find(a => a.id === id);
+            if (account) {
+                name = account.name;
+                const data = getLoanAmortization(account); 
+                if (data) schedule = data.schedule;
+            }
+        }
 
-    const ctx = s.loanChartCanvas.getContext('2d');
-    const newChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: datasets
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom', // Key at the bottom
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) { label += ': '; }
-                            if (context.parsed.y !== null) {
-                                label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
-                            }
-                            return label;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Year'
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Remaining Principal'
-                    },
-                    beginAtZero: true,
-                    max: yAxisMax // Dynamic Y-axis
+        if (schedule) {
+            const dataPoints = [];
+            const startBal = schedule.length > 0 ? (schedule[0].remainingBalance + schedule[0].principalPayment) : 0;
+            dataPoints.push(startBal);
+
+            for (let y = 1; y <= years; y++) {
+                const monthIndex = (y * 12) - 1; 
+                if (monthIndex < schedule.length) {
+                    dataPoints.push(schedule[monthIndex].remainingBalance);
+                } else {
+                    dataPoints.push(0);
                 }
             }
+
+            datasets.push({
+                label: name,
+                data: dataPoints,
+                borderColor: CHART_COLORS[index % CHART_COLORS.length],
+                backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                tension: 0.1
+            });
         }
     });
 
-    state.setLoanChartInstance(newChart);
+    chart.data.labels = labels;
+    chart.data.datasets = datasets;
+    chart.update();
 }
