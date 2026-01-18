@@ -28,8 +28,8 @@ export let loanChartSelections = {
 export let expenseChartDrillDown = false;
 export let expenseChartDetailCategory = null;
 export let listDisplayMode = {
-    income: 'current',
-    expense: 'current',
+    income: 'all',
+    expense: 'all',
     transfer: 'current'
 };
 

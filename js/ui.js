@@ -850,50 +850,42 @@ export function showReconcileModal(accountId) {
 
 // --- List & Chart Rendering Functions ---
 
+// In ui.js
+
 export function renderList(items, listElement) {
     listElement.innerHTML = '';
     const listType = listElement.id.includes('income') ? 'income' : 'expense';
-    let itemsToRender = [...items]; 
+    let renderItems = [...items];
+    
+    // Filter if mode is NOT 'all'
     if (state.listDisplayMode[listType] !== 'all') {
-        const currentMonthDateUTC = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1));
-        itemsToRender = items.filter(item => getOccurrencesInMonth(item, currentMonthDateUTC).length > 0);
+        const utcMonth = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), 1));
+        renderItems = items.filter(i => getOccurrencesInMonth(i, utcMonth).length > 0);
     }
     
-    if (itemsToRender.length === 0) { listElement.innerHTML = `<li>No ${listType}s for this view.</li>`; return; }
-    
-    itemsToRender.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
-    const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    if (renderItems.length === 0) { listElement.innerHTML = `<li>No items found.</li>`; return; }
 
-    itemsToRender.forEach(item => {
-        const name = item.name || 'Unnamed';
-        const formattedAmount = formatCurrency(item.amount);
+    // ⭐️ SORT A-Z BY NAME ⭐️
+    renderItems.sort((a, b) => a.name.localeCompare(b.name));
+
+    const fmt = n => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+    renderItems.forEach(item => {
+        let badge = '';
+        if (item.advanced_data?.linked_loan_id) {
+            const acc = state.appState.accounts.find(a => a.id === item.advanced_data.linked_loan_id);
+            if (acc) badge = `<span style="font-size:0.8rem; background:#e0e6ed; padding:2px 6px; border-radius:4px; margin-left:5px;">→ ${acc.name}</span>`;
+        }
+        
+        let schedBtn = '';
+        if (item.advanced_data?.item_type === 'Mortgage/Loan' || item.advanced_data?.linked_loan_id) {
+            schedBtn = `<button class="schedule-btn btn-secondary" data-id="${item.id}">Schedule</button>`;
+        }
+
         const li = document.createElement('li');
-        
-        let linkedBadge = '';
-        if (item.advanced_data && item.advanced_data.linked_loan_id) {
-             const account = state.appState.accounts.find(a => a.id === item.advanced_data.linked_loan_id);
-             if (account) linkedBadge = `<span style="font-size:0.8rem; background:#e0e6ed; padding:2px 6px; border-radius:4px; margin-left:5px;">→ ${account.name}</span>`;
-        }
-        
-        // Show Schedule button if Legacy OR Linked
-        let scheduleButtonHTML = '';
-        if (item.advanced_data && (
-           (item.advanced_data.item_type === 'Mortgage/Loan' || item.advanced_data.item_type === 'Car Loan') ||
-           item.advanced_data.linked_loan_id
-        )) {
-             scheduleButtonHTML = `<button class="schedule-btn btn-secondary" data-id="${item.id}">Schedule</button>`;
-        }
-
         li.innerHTML = `
-            <div class="item-details">
-                <strong>${name}</strong>${linkedBadge}<br>
-                <span>${formattedAmount} / ${item.interval}</span>
-            </div>
-            <div class="item-controls">
-                ${scheduleButtonHTML}
-                <button class="edit-btn" data-id="${item.id}">Edit</button>
-                <button class="delete-btn" data-id="${item.id}">X</button>
-            </div>`;
+            <div class="item-details"><strong>${item.name}</strong>${badge}<br><span>${fmt(item.amount)} / ${item.interval}</span></div>
+            <div class="item-controls">${schedBtn}<button class="edit-btn" data-id="${item.id}">Edit</button><button class="delete-btn" data-id="${item.id}">X</button></div>`;
         listElement.appendChild(li);
     });
 }
