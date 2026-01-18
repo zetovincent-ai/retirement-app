@@ -517,13 +517,13 @@ export function showAccountModal(accountId) {
     const accountToEdit = isEditMode && Array.isArray(state.appState.accounts) ? state.appState.accounts.find(a => a.id === accountId) : null;
     s.modalTitle.textContent = isEditMode ? 'Edit Account' : 'Add New Account';
 
-    // === ⭐️ NEW: HTML for credit card fields ===
+    // === ⭐️ HTML for Liability fields (Credit Cards AND Loans) ===
     const ccFieldsHTML = `
         <div id="advanced-cc-fields" class="form-group-stack" style="display: none;">
              <hr class="divider">
-             <h4>Credit Card Details (Optional)</h4>
-             <div class="form-group"><label for="modal-cc-limit">Credit Limit ($):</label><input type="number" id="modal-cc-limit" placeholder="e.g., 10000" min="0" step="0.01"></div>
-             <div class="form-group"><label for="modal-cc-statement-day">Statement Closing Day:</label><input type="number" id="modal-cc-statement-day" placeholder="(1-31) e.g., 20" min="1" max="31" step="1"></div>
+             <h4>Liability Details (Optional)</h4>
+             <div class="form-group"><label for="modal-cc-limit">Credit Limit / Orig. Principal ($):</label><input type="number" id="modal-cc-limit" placeholder="e.g., 10000" min="0" step="0.01"></div>
+             <div class="form-group"><label for="modal-cc-statement-day">Due Day / Statement Day:</label><input type="number" id="modal-cc-statement-day" placeholder="(1-31) e.g., 20" min="1" max="31" step="1"></div>
              <div class="form-group"><label for="modal-cc-interest-rate">Interest Rate (APR %):</label><input type="number" id="modal-cc-interest-rate" placeholder="e.g., 21.99" min="0" step="0.01"></div>
         </div>
     `;
@@ -540,11 +540,14 @@ export function showAccountModal(accountId) {
                 <option value="checking">Checking</option>
                 <option value="savings">Savings</option>
                 <option value="investment">Investment</option>
-                <option value="credit_card">Credit Card</option> </select>
+                <option value="credit_card">Credit Card</option>
+                <option value="loan">Loan (Mortgage, Car, etc.)</option> 
+            </select>
         </div>
         <div class="form-group">
             <label for="modal-account-balance">Current Balance ($):</label>
-            <input type="number" id="modal-account-balance" placeholder="1000" min="0" step="0.01" required>
+            <input type="number" id="modal-account-balance" placeholder="1000" step="0.01" required>
+            <small style="color:var(--secondary-btn-bg); display:block; margin-top:4px;">(Enter debts as negative numbers, e.g. -250000)</small>
         </div>
         <div id="growth-rate-group" class="form-group" style="display: none;">
             <label for="modal-account-growth">Est. Annual Growth (%):</label>
@@ -555,13 +558,14 @@ export function showAccountModal(accountId) {
     const typeSelect = document.getElementById('modal-account-type');
     const growthGroup = document.getElementById('growth-rate-group');
     const balanceInput = document.getElementById('modal-account-balance');
-    const ccFields = document.getElementById('advanced-cc-fields'); // ⭐️ ADDED
+    const ccFields = document.getElementById('advanced-cc-fields');
 
-    // === ⭐️ MODIFIED: Event listener to show/hide fields based on type ===
+    // === ⭐️ Event listener to show/hide fields based on type ===
     typeSelect.addEventListener('change', () => {
         const type = typeSelect.value;
         growthGroup.style.display = type === 'investment' ? 'grid' : 'none';
-        ccFields.style.display = type === 'credit_card' ? 'block' : 'none';
+        // Show liability fields for BOTH credit_card and loan
+        ccFields.style.display = (type === 'credit_card' || type === 'loan') ? 'block' : 'none';
     });
 
     if (isEditMode && accountToEdit) {
@@ -573,8 +577,8 @@ export function showAccountModal(accountId) {
             document.getElementById('modal-account-growth').value = accountToEdit.growth_rate ? (accountToEdit.growth_rate * 100).toFixed(2) : '';
             growthGroup.style.display = 'grid';
         }
-        // === ⭐️ ADDED: Populate CC fields on edit ===
-        if (accountToEdit.type === 'credit_card' && accountToEdit.advanced_data) {
+        // === ⭐️ Populate Liability fields on edit ===
+        if ((accountToEdit.type === 'credit_card' || accountToEdit.type === 'loan') && accountToEdit.advanced_data) {
              const advData = accountToEdit.advanced_data;
              document.getElementById('modal-cc-limit').value = advData.credit_limit || '';
              document.getElementById('modal-cc-statement-day').value = advData.statement_day || '';
@@ -587,18 +591,18 @@ export function showAccountModal(accountId) {
          ccFields.style.display = 'none';
     }
 
-    // === ⭐️ MODIFIED: Save logic ===
+    // === ⭐️ Save logic ===
     state.setOnSave(async () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) { return; }
 
         const type = typeSelect.value;
         const growthRateInput = document.getElementById('modal-account-growth').value;
-        let advancedData = null; // ⭐️ ADDED
+        let advancedData = null;
 
-        // === ⭐️ ADDED: Capture CC data ===
-        if (type === 'credit_card') {
-            advancedData = { item_type: 'credit_card' };
+        // === ⭐️ Capture Liability data ===
+        if (type === 'credit_card' || type === 'loan') {
+            advancedData = { item_type: type };
             const limitInput = document.getElementById('modal-cc-limit').value;
             const statementDayInput = document.getElementById('modal-cc-statement-day').value;
             const rateInput = document.getElementById('modal-cc-interest-rate').value;
@@ -618,11 +622,10 @@ export function showAccountModal(accountId) {
             type: type,
             current_balance: parseFloat(balanceInput.value),
             growth_rate: (type === 'investment' && growthRateInput) ? parseFloat(growthRateInput) / 100.0 : null,
-            advanced_data: advancedData // ⭐️ ADDED
+            advanced_data: advancedData 
         };
 
         if (!formItem.name || !formItem.type || isNaN(formItem.current_balance)) {
-            // Note: Balance can be negative for credit cards, so removed < 0 check
             alert("Please fill out Name, Type, and a valid Balance.");
             return;
         }
@@ -1251,53 +1254,79 @@ export function renderBankingSection() {
     renderTransfersList();
 }
 
+// === ⭐️ Updated renderAccountsList to split Loans, Credit Cards, and Banking ===
 export function renderAccountsList() {
-    s.accountList.innerHTML = '';
+    // Clear all lists
+    s.accountList.innerHTML = ''; 
+    s.ccList.innerHTML = ''; 
+    if (s.loanList) s.loanList.innerHTML = ''; // Safety check
+
     if (!state.appState.accounts || state.appState.accounts.length === 0) {
         s.accountList.innerHTML = `<li>No accounts added yet.</li>`;
+        s.ccList.innerHTML = `<li>No credit cards added.</li>`;
+        if(s.loanList) s.loanList.innerHTML = `<li>No loans added.</li>`;
         return;
     }
 
-    const groupedAccounts = { checking: [], savings: [], investment: [], credit_card: [] };
+    // Group them
+    const groupedAccounts = { checking: [], savings: [], investment: [], credit_card: [], loan: [] };
     state.appState.accounts.forEach(acc => {
         if (groupedAccounts[acc.type]) {
             groupedAccounts[acc.type].push(acc);
         }
     });
 
-    const renderGroup = (group, title) => {
+    // Helper (Same as before)
+    const renderGroup = (group, listElement) => {
         if (group.length > 0) {
             group.sort((a, b) => a.name.localeCompare(b.name));
             group.forEach(acc => {
                 const li = document.createElement('li');
+                // Format balance (Negative is Red, Positive is Green/Black)
+                const isNegative = acc.current_balance < 0;
                 const formattedBalance = acc.current_balance.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-                const growthText = acc.type === 'investment' && acc.growth_rate ? ` (${(acc.growth_rate * 100).toFixed(1)}% growth)` : '';
+                const balanceClass = isNegative ? 'expense-total' : '';
 
-                let typeText = acc.type;
-                if (acc.type === 'credit_card') typeText = 'Credit Card';
-                if (acc.type === 'checking') typeText = 'Checking';
-                if (acc.type === 'savings') typeText = 'Savings';
-                if (acc.type === 'investment') typeText = 'Investment';
+                // Details string
+                let details = '';
+                if ((acc.type === 'credit_card' || acc.type === 'loan') && acc.advanced_data) {
+                    if (acc.advanced_data.interest_rate) details += `${(acc.advanced_data.interest_rate * 100).toFixed(2)}% APR`;
+                    if (acc.advanced_data.statement_day) details += ` • Due Day: ${acc.advanced_data.statement_day}`;
+                }
+                if (acc.type === 'investment' && acc.growth_rate) {
+                    details += ` (${(acc.growth_rate * 100).toFixed(1)}% growth)`;
+                }
+
+                let typeText = acc.type.charAt(0).toUpperCase() + acc.type.slice(1).replace('_', ' ');
 
                 li.innerHTML = `
                     <div class="item-details">
-                        <strong>${acc.name}</strong> (${typeText})${growthText}<br>
-                        <span>Balance: ${formattedBalance}</span>
+                        <strong>${acc.name}</strong> <span style="font-size:0.85rem; color:#666;">${details}</span><br>
+                        <span class="${balanceClass}">Balance: ${formattedBalance}</span>
                     </div>
                     <div class="item-controls">
                         <button class="reconcile-btn btn-secondary" data-id="${acc.id}" data-type="account">Reconcile</button>
                         <button class="edit-btn" data-id="${acc.id}" data-type="account">Edit</button>
                         <button class="delete-btn" data-id="${acc.id}" data-type="account">X</button>
                     </div>`;
-                s.accountList.appendChild(li);
+                listElement.appendChild(li);
             });
         }
     };
 
-    renderGroup(groupedAccounts.checking, 'Checking');
-    renderGroup(groupedAccounts.savings, 'Savings');
-    renderGroup(groupedAccounts.investment, 'Investment');
-    renderGroup(groupedAccounts.credit_card, 'Credit Cards');
+    // Render Banks
+    renderGroup(groupedAccounts.checking, s.accountList);
+    renderGroup(groupedAccounts.savings, s.accountList);
+    renderGroup(groupedAccounts.investment, s.accountList);
+
+    // Render Liabilities
+    renderGroup(groupedAccounts.credit_card, s.ccList);
+    if (s.loanList) renderGroup(groupedAccounts.loan, s.loanList);
+
+    // Empty States
+    if (s.accountList.children.length === 0) s.accountList.innerHTML = '<li>No bank accounts found.</li>';
+    if (s.ccList.children.length === 0) s.ccList.innerHTML = '<li>No credit cards found.</li>';
+    if (s.loanList && s.loanList.children.length === 0) s.loanList.innerHTML = '<li>No loans found.</li>';
 }
 
 export function renderTransfersList() {
@@ -1423,8 +1452,7 @@ export function renderEditsLog() {
     logContent.innerHTML = logHTML;
 }
 
-/** 
-* Renders the reconciliation log into its container.
+/** * Renders the reconciliation log into its container.
  */
 export function renderReconciliationList() {
     if (!s.reconciliationViewContent) return;

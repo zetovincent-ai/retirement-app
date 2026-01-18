@@ -66,3 +66,4 @@ export const tabPanels = document.querySelectorAll('.tab-panel');
 export const liabilitiesSection = document.getElementById('liabilities-section');
 export const showCcModalBtn = document.getElementById('show-cc-modal-btn');
 export const ccList = document.getElementById('cc-list');
+export const loanList = document.getElementById('loan-list');
