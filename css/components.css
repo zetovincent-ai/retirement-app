@@ -450,7 +450,7 @@ input:checked + .slider:before {
        2. Amount: 160px (Wider to fit long text)
        3. Actions: 230px (Much wider to fit Schedule + Edit + X)
     */
-    grid-template-columns: 1fr 160px 230px; 
+    grid-template-columns: 1fr 220px 230px; 
     gap: 1rem;
     padding: 0.8rem 1rem;
     background-color: var(--secondary-btn-bg); 
