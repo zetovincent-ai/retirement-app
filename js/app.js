@@ -103,9 +103,13 @@ async function handleBankingListClick(event) {
 function handleGridContentClick(event) {
     const target = event.target;
 
-    // === ⭐️ NEW: Handle Scroll Buttons ===
+    // === ⭐️ NEW: Handle Scroll Buttons (Updated for multiple grids) ===
     if (target.dataset.action === 'scroll-left' || target.dataset.action === 'scroll-right') {
-        const container = document.getElementById('scrollable-grid-container');
+        // Find the controls wrapper
+        const controls = target.closest('.grid-pagination-controls');
+        // The grid container is the immediate next sibling in the DOM
+        const container = controls ? controls.nextElementSibling : null;
+
         if (container) {
             // Scroll width = (450px card width + 24px gap) * 3 months ≈ 1422px
             const scrollAmount = target.dataset.action === 'scroll-left' ? -1425 : 1425;

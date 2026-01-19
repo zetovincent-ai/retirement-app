@@ -402,7 +402,7 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
             <span class="grid-page-label">Horizontal Navigation</span>
             <button class="btn-secondary" data-action="scroll-right">Next 3 Months ▶</button>
         </div>
-        <div class="grid-view-container" id="scrollable-grid-container">
+        <div class="grid-view-container scrollable-grid-region">
     `;
     
     let runningOverallNet = startingNetTotal;

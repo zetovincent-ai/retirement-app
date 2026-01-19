@@ -910,7 +910,7 @@ tbody.collapsed tr:not(.grid-group-header) {
 }
 
 /* Ensure the grid container handles the scrolling, not the parent */
-#scrollable-grid-container {
+#scrollable-grid-region {
     width: 100%;
     overflow-x: auto; /* Allow horizontal scroll */
     padding-bottom: 1rem;
