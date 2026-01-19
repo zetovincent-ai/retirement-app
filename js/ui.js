@@ -1422,7 +1422,6 @@ export function updateDashboard() {
     const incomes = state.appState.incomes || [];
     const expenses = state.appState.expenses || [];
 
-    // Helper to get monthly value
     const getMonthlyMultiplier = (interval) => {
         if (interval === 'monthly') return 1;
         if (interval === 'bi-weekly') return 2; 
@@ -1433,10 +1432,9 @@ export function updateDashboard() {
 
     let totalIncome = incomes.reduce((sum, item) => sum + (item.amount * getMonthlyMultiplier(item.interval)), 0);
     let netWorth = accounts.reduce((sum, item) => sum + item.current_balance, 0);
-
     const fmt = n => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
-    // Render Annual Overview (Net Worth)
+    // Render Annual Overview
     if (s.dashboardSummary) {
         s.dashboardSummary.innerHTML = `
             <div class="summary-item"><h3>Est. Net Worth</h3><p class="${netWorth >= 0 ? 'income-total' : 'expense-total'}">${fmt(netWorth)}</p></div>
@@ -1453,56 +1451,68 @@ export function updateDashboard() {
         `;
     }
 
-    // 2. ⭐️ NEW LOGIC: Liquid Cash (Bank Balance) Summary
+    // 2. ⭐️ NEW LOGIC: Per-Account Liquid Cash Summary
     const bankSummaryEl = document.getElementById('dashboard-bank-summary');
     if (bankSummaryEl) {
         const dashAccounts = accounts.filter(a => a.advanced_data && a.advanced_data.show_on_dashboard);
-        const currentLiquid = dashAccounts.reduce((sum, a) => sum + a.current_balance, 0);
+        dashAccounts.sort((a, b) => a.name.localeCompare(b.name));
 
-        // B. Calculate Remaining Cash Flow for CURRENT MONTH
-        const today = new Date();
-        const currentMonth = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
-        
-        const sumRemaining = (items) => {
-            let total = 0;
-            items.forEach(item => {
-                const occurrences = getOccurrencesInMonth(item, currentMonth);
-                occurrences.forEach(date => {
-                    const occDate = new Date(date);
-                    if (occDate.getDate() >= today.getDate()) {
-                        total += item.amount;
-                    }
-                });
-            });
-            return total;
-        };
-
-        const remainingIncome = sumRemaining(incomes);
-        const remainingExpense = sumRemaining(expenses);
-        const forecastLiquid = currentLiquid + remainingIncome - remainingExpense;
-
-        // C. Render
         if (dashAccounts.length === 0) {
             bankSummaryEl.innerHTML = `<p style="font-size:0.8rem; color:#888;">No accounts selected.<br>Edit an account and check "Show in Dashboard".</p>`;
         } else {
-            // ⭐️ Generate Individual Rows
-            let accountsHTML = dashAccounts.map(acc => `
+            // A. Calculate Forecast Per Account
+            const forecastBalances = {};
+            dashAccounts.forEach(a => forecastBalances[a.id] = a.current_balance);
+            
+            const today = new Date();
+            const currentMonthStart = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
+
+            // B. Add Remaining Income
+            incomes.forEach(item => {
+                if (!item.deposit_account_id || forecastBalances[item.deposit_account_id] === undefined) return;
+                const occurrences = getOccurrencesInMonth(item, currentMonthStart);
+                occurrences.forEach(date => {
+                    const occDate = new Date(date);
+                    if (occDate.getDate() >= today.getDate()) {
+                        forecastBalances[item.deposit_account_id] += item.amount;
+                    }
+                });
+            });
+
+            // C. Subtract Remaining Expenses
+            expenses.forEach(item => {
+                if (!item.payment_account_id || forecastBalances[item.payment_account_id] === undefined) return;
+                const occurrences = getOccurrencesInMonth(item, currentMonthStart);
+                occurrences.forEach(date => {
+                    const occDate = new Date(date);
+                    if (occDate.getDate() >= today.getDate()) {
+                        forecastBalances[item.payment_account_id] -= item.amount;
+                    }
+                });
+            });
+
+            // D. Render HTML
+            let html = `<h4 class="bank-summary-section-header">Current</h4>`;
+            dashAccounts.forEach(acc => {
+                html += `
                 <div class="bank-summary-row">
                     <span class="bank-summary-label">${acc.name}</span>
                     <span class="bank-summary-value">${fmt(acc.current_balance)}</span>
-                </div>
-            `).join('');
+                </div>`;
+            });
 
-            // ⭐️ Append Global Forecast
-            accountsHTML += `
-                <div class="bank-summary-row" style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-color);">
-                    <span class="bank-summary-label">Forecast (End of Month)</span>
-                    <span class="bank-summary-value forecast">${fmt(forecastLiquid)}</span>
-                    <span class="bank-summary-subtext">Includes all selected + pending transactions</span>
-                </div>
-            `;
-            
-            bankSummaryEl.innerHTML = accountsHTML;
+            html += `<h4 class="bank-summary-section-header">Forecast (End of Month)</h4>`;
+            dashAccounts.forEach(acc => {
+                const endBalance = forecastBalances[acc.id];
+                const valClass = endBalance < 0 ? 'bank-summary-value expense-total' : 'bank-summary-value forecast';
+                html += `
+                <div class="bank-summary-row">
+                    <span class="bank-summary-label">${acc.name}</span>
+                    <span class="bank-summary-value ${valClass}">${fmt(endBalance)}</span>
+                </div>`;
+            });
+
+            bankSummaryEl.innerHTML = html;
         }
     }
 }

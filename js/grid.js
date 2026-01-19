@@ -82,51 +82,77 @@ export function renderDashboard() {
 
         // A. Filter for "Show on Dashboard" accounts
         const dashAccounts = accounts.filter(a => a.advanced_data && a.advanced_data.show_on_dashboard);
-        const currentLiquid = dashAccounts.reduce((sum, a) => sum + a.current_balance, 0);
-
-        // B. Calculate Remaining Cash Flow for CURRENT MONTH
-        const currentMonthStart = new Date(Date.UTC(currentYear, currentMonthIndex, 1));
         
-        const sumRemaining = (items) => {
-            let total = 0;
-            items.forEach(item => {
+        // Sort them for consistency
+        dashAccounts.sort((a, b) => a.name.localeCompare(b.name));
+
+        if (dashAccounts.length === 0) {
+            bankSummaryEl.innerHTML = `<p style="font-size:0.8rem; color:var(--text-color); opacity:0.7; padding:0.5rem;">No accounts selected.<br>Edit an account and check "Show in Dashboard".</p>`;
+        } else {
+            // B. Calculate Forecast Per Account
+            // 1. Init forecast with current balances
+            const forecastBalances = {};
+            dashAccounts.forEach(a => forecastBalances[a.id] = a.current_balance);
+
+            const currentMonthStart = new Date(Date.UTC(currentYear, currentMonthIndex, 1));
+
+            // 2. Add Remaining Income
+            incomes.forEach(item => {
+                // Skip if not linked to a dashboard account
+                if (!item.deposit_account_id || forecastBalances[item.deposit_account_id] === undefined) return;
+
+                const occurrences = calc.getOccurrencesInMonth(item, currentMonthStart);
+                occurrences.forEach(date => {
+                    const occDate = new Date(date);
+                    // Only count if it's today or in the future
+                    if (occDate.getDate() >= today.getDate()) {
+                        forecastBalances[item.deposit_account_id] += item.amount;
+                    }
+                });
+            });
+
+            // 3. Subtract Remaining Expenses
+            expenses.forEach(item => {
+                // Skip if not linked to a dashboard account
+                if (!item.payment_account_id || forecastBalances[item.payment_account_id] === undefined) return;
+
                 const occurrences = calc.getOccurrencesInMonth(item, currentMonthStart);
                 occurrences.forEach(date => {
                     const occDate = new Date(date);
                     if (occDate.getDate() >= today.getDate()) {
-                        total += item.amount;
+                        forecastBalances[item.payment_account_id] -= item.amount;
                     }
                 });
             });
-            return total;
-        };
 
-        const remainingIncome = sumRemaining(incomes);
-        const remainingExpense = sumRemaining(expenses);
-        const forecastLiquid = currentLiquid + remainingIncome - remainingExpense;
-
-        // C. Render
-        if (dashAccounts.length === 0) {
-            bankSummaryEl.innerHTML = `<p style="font-size:0.8rem; color:var(--text-color); opacity:0.7; padding:0.5rem;">No accounts selected.<br>Edit an account and check "Show in Dashboard".</p>`;
-        } else {
-            // ⭐️ 1. Generate a row for EACH account
-            let accountsHTML = dashAccounts.map(acc => `
+            // C. Render HTML
+            let html = `<h4 class="bank-summary-section-header">Current</h4>`;
+            
+            // Current Rows
+            dashAccounts.forEach(acc => {
+                html += `
                 <div class="bank-summary-row">
                     <span class="bank-summary-label">${acc.name}</span>
                     <span class="bank-summary-value">${format(acc.current_balance)}</span>
-                </div>
-            `).join('');
+                </div>`;
+            });
 
-            // ⭐️ 2. Append the Global Forecast at the bottom
-            accountsHTML += `
-                <div class="bank-summary-row" style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-color);">
-                    <span class="bank-summary-label">Forecast (End of Month)</span>
-                    <span class="bank-summary-value forecast">${format(forecastLiquid)}</span>
-                    <span class="bank-summary-subtext">Includes all selected + pending transactions</span>
-                </div>
-            `;
-            
-            bankSummaryEl.innerHTML = accountsHTML;
+            html += `<h4 class="bank-summary-section-header">Forecast (End of Month)</h4>`;
+
+            // Forecast Rows
+            dashAccounts.forEach(acc => {
+                const endBalance = forecastBalances[acc.id];
+                // Highlight if negative
+                const valClass = endBalance < 0 ? 'bank-summary-value expense-total' : 'bank-summary-value forecast';
+                
+                html += `
+                <div class="bank-summary-row">
+                    <span class="bank-summary-label">${acc.name}</span>
+                    <span class="bank-summary-value ${valClass}">${format(endBalance)}</span>
+                </div>`;
+            });
+
+            bankSummaryEl.innerHTML = html;
         }
     }
 
@@ -134,6 +160,7 @@ export function renderDashboard() {
     // 2. CURRENT MONTH SUMMARY (Existing Logic)
     // ==========================================
     
+    // Reuse grid logic to ensure numbers match perfectly
     const startOfMonthUTC = new Date(Date.UTC(currentYear, currentMonthIndex, 1));
     const creditCardAccounts = state.appState.accounts.filter(acc => acc.type === 'credit_card');
     const creditCardAccountIds = new Set(creditCardAccounts.map(acc => acc.id));
@@ -160,14 +187,12 @@ export function renderDashboard() {
     const monthlyExpense = getMonthSum(state.appState.expenses, 'expense');
     const monthlyNet = monthlyIncome - monthlyExpense;
     
-    // Note: calculateYTDNet must be available in scope or defined in this file
+    // YTD Calc
     let overallNet = 0;
     try {
-        // We use the local helper function defined at the bottom of grid.js
-        // If this fails, ensure calculateYTDNet is exported or available
-        // For now, we assume it's available in the file as per previous versions
-        // If not, we can just skip it or set to 0
-    } catch (e) { console.warn("YTD Calc skipped"); }
+        // calculateYTDNet is defined at bottom of grid.js, so this call works
+        overallNet = calculateYTDNet(currentYear, currentMonthIndex + 1);
+    } catch (e) { console.warn("YTD Calc error", e); }
 
 
     s.dashboardSummary.innerHTML = `
@@ -187,7 +212,10 @@ export function renderDashboard() {
             <h3>Net Balance</h3>
             <p>${format(monthlyNet)}</p>
         </div>
-        `;
+        <div class="summary-item net-total" style="border-top: none; margin-top: 0.5rem;">
+            <h3>YTD Net</h3>
+            <p>${format(overallNet)}</p>
+        </div>`;
     
     // ==========================================
     // 3. ANNUAL FORECAST (Existing Logic)

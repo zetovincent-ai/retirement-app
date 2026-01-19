@@ -874,3 +874,18 @@ tbody.collapsed tr:not(.grid-group-header) {
     opacity: 0.7;
     margin-top: 2px;
 }
+
+/* === Bank Summary Sub-Headers === */
+.bank-summary-section-header {
+    margin: 0.8rem 0 0.5rem 0;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--secondary-btn-bg);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 4px;
+}
+
+.bank-summary-section-header:first-child {
+    margin-top: 0;
+}
