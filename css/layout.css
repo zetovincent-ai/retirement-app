@@ -193,7 +193,7 @@ body.theme-travel {
 
 /* 2. The Sidebar (Dashboard) */
 .app-sidebar {
-    width: 320px; /* Fixed width */
+    width: 380px; /* Fixed width */
     flex-shrink: 0;
     height: 100%;
     display: flex;
