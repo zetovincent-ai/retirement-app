@@ -1416,7 +1416,6 @@ export function renderReconciliationList() {
 }
 
 // === DASHBOARD LOGIC ===
-
 export function updateDashboard() {
     // 1. Calculate Net Worth (Existing Logic)
     const accounts = state.appState.accounts || [];
@@ -1426,14 +1425,13 @@ export function updateDashboard() {
     // Helper to get monthly value
     const getMonthlyMultiplier = (interval) => {
         if (interval === 'monthly') return 1;
-        if (interval === 'bi-weekly') return 2; // Approx
-        if (interval === 'weekly') return 4;    // Approx
+        if (interval === 'bi-weekly') return 2; 
+        if (interval === 'weekly') return 4;    
         if (interval === 'annually') return 1/12;
         return 0; 
     };
 
     let totalIncome = incomes.reduce((sum, item) => sum + (item.amount * getMonthlyMultiplier(item.interval)), 0);
-    // let totalExpense = expenses.reduce((sum, item) => sum + (item.amount * getMonthlyMultiplier(item.interval)), 0); // Unused for now
     let netWorth = accounts.reduce((sum, item) => sum + item.current_balance, 0);
 
     const fmt = n => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -1458,7 +1456,6 @@ export function updateDashboard() {
     // 2. ⭐️ NEW LOGIC: Liquid Cash (Bank Balance) Summary
     const bankSummaryEl = document.getElementById('dashboard-bank-summary');
     if (bankSummaryEl) {
-        // A. Filter for "Show on Dashboard" accounts
         const dashAccounts = accounts.filter(a => a.advanced_data && a.advanced_data.show_on_dashboard);
         const currentLiquid = dashAccounts.reduce((sum, a) => sum + a.current_balance, 0);
 
@@ -1466,13 +1463,11 @@ export function updateDashboard() {
         const today = new Date();
         const currentMonth = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
         
-        // Helper: Sum items that happen AFTER today in the current month
         const sumRemaining = (items) => {
             let total = 0;
             items.forEach(item => {
                 const occurrences = getOccurrencesInMonth(item, currentMonth);
                 occurrences.forEach(date => {
-                    // Check if date is in the future (or today)
                     const occDate = new Date(date);
                     if (occDate.getDate() >= today.getDate()) {
                         total += item.amount;
@@ -1484,25 +1479,30 @@ export function updateDashboard() {
 
         const remainingIncome = sumRemaining(incomes);
         const remainingExpense = sumRemaining(expenses);
-
-        // Forecast = Current Liquid + (Future Income) - (Future Expense)
         const forecastLiquid = currentLiquid + remainingIncome - remainingExpense;
 
         // C. Render
         if (dashAccounts.length === 0) {
             bankSummaryEl.innerHTML = `<p style="font-size:0.8rem; color:#888;">No accounts selected.<br>Edit an account and check "Show in Dashboard".</p>`;
         } else {
-            bankSummaryEl.innerHTML = `
+            // ⭐️ Generate Individual Rows
+            let accountsHTML = dashAccounts.map(acc => `
                 <div class="bank-summary-row">
-                    <span class="bank-summary-label">Current Balance (Selected)</span>
-                    <span class="bank-summary-value">${fmt(currentLiquid)}</span>
+                    <span class="bank-summary-label">${acc.name}</span>
+                    <span class="bank-summary-value">${fmt(acc.current_balance)}</span>
                 </div>
-                <div class="bank-summary-row">
+            `).join('');
+
+            // ⭐️ Append Global Forecast
+            accountsHTML += `
+                <div class="bank-summary-row" style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-color);">
                     <span class="bank-summary-label">Forecast (End of Month)</span>
                     <span class="bank-summary-value forecast">${fmt(forecastLiquid)}</span>
-                    <span class="bank-summary-subtext">Includes pending income/expenses</span>
+                    <span class="bank-summary-subtext">Includes all selected + pending transactions</span>
                 </div>
             `;
+            
+            bankSummaryEl.innerHTML = accountsHTML;
         }
     }
 }
