@@ -500,7 +500,7 @@ input:checked + .slider:before {
 #income-list li .item-details, 
 #expense-list li .item-details {
     display: grid;
-    grid-template-columns: 1fr 160px; /* Matches Header Amount width */
+    grid-template-columns: 1fr 220px; /* Matches Header Amount width */
     gap: 1rem;
     align-items: center;
 }
