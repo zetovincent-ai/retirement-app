@@ -367,6 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initial UI Setup ---
     ui.loadMode();
     ui.initializeFooter();
+    ui.setupDashboardAccordion();
     
     // --- Auth Listeners ---
     auth.initializeAuthListener(); // Sets up the onAuthStateChange

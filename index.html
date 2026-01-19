@@ -45,11 +45,29 @@
                         <h2>Dashboard</h2>
                         <button id="toggle-dashboard-btn" title="Toggle Dashboard View">Grids & Charts</button>
                     </div>
-                    <div id="dashboard-summary"></div>
-                    <div id="dashboard-forecast" class="dashboard-summary"></div>
-                    <div class="chart-container" id="summary-chart-container">
-                        <canvas id="expense-chart"></canvas>
+
+                    <div class="dashboard-group expanded" id="dash-group-banks">
+                        <h3 class="dashboard-group-header" data-target="dash-content-banks">
+                            <span class="toggle-icon">▼</span> Liquid Cash
+                        </h3>
+                        <div id="dash-content-banks" class="dashboard-group-content">
+                            <div id="dashboard-bank-summary">
+                                <p class="bank-summary-loading">Loading...</p>
+                            </div>
+                        </div>
                     </div>
+
+                    <div class="dashboard-group collapsed" id="dash-group-overview">
+                        <h3 class="dashboard-group-header" data-target="dash-content-overview">
+                            <span class="toggle-icon">▶</span> Annual Overview
+                        </h3>
+                        <div id="dash-content-overview" class="dashboard-group-content" style="display: none;">
+                            <div id="dashboard-summary"></div> <div id="dashboard-forecast" class="dashboard-summary"></div> <div class="chart-container" id="summary-chart-container">
+                                <canvas id="expense-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="expanded-dashboard-content" style="display: none;">
                         <div class="dashboard-tabs">
                             <button class="tab-btn active" data-tab="grids">Grids</button>

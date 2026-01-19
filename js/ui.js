@@ -481,6 +481,7 @@ export function showAccountModal(accountId, allowedTypes = null) {
     const accountToEdit = isEditMode && Array.isArray(state.appState.accounts) ? state.appState.accounts.find(a => a.id === accountId) : null;
     s.modalTitle.textContent = isEditMode ? 'Edit Account' : 'Add New Account';
 
+    // ... (CC Fields Logic - Keep existing HTML string for ccFieldsHTML) ... 
     const ccFieldsHTML = `
         <div id="advanced-cc-fields" class="form-group-stack" style="display: none;">
              <hr class="divider">
@@ -499,7 +500,6 @@ export function showAccountModal(accountId, allowedTypes = null) {
         loan: 'Loan (Mortgage, Car, etc.)'
     };
 
-    // ⭐️ CHANGE: Use the filter if provided, otherwise show all. (Removed !isEditMode check)
     const typesToShow = allowedTypes ? allowedTypes : Object.keys(allTypes);
     
     let typeOptions = '<option value="">-- Select Type --</option>';
@@ -507,6 +507,7 @@ export function showAccountModal(accountId, allowedTypes = null) {
         if (allTypes[key]) typeOptions += `<option value="${key}">${allTypes[key]}</option>`;
     });
 
+    // ⭐️ ADDED: Checkbox for Dashboard Visibility
     s.modalBody.innerHTML = `
         <div class="form-group"><label for="modal-account-name">Account Name:</label><input type="text" id="modal-account-name" placeholder="e.g., Chase Checking" required></div>
         <div class="form-group"><label for="modal-account-type">Account Type:</label><select id="modal-account-type" required>${typeOptions}</select></div>
@@ -515,26 +516,43 @@ export function showAccountModal(accountId, allowedTypes = null) {
             <input type="number" id="modal-account-balance" placeholder="1000" step="0.01" required>
             <small style="color:var(--secondary-btn-bg); display:block; margin-top:4px;">(Enter debts as negative numbers, e.g. -250000)</small>
         </div>
+        
         <div id="growth-rate-group" class="form-group" style="display: none;">
             <label for="modal-account-growth">Est. Annual Growth (%):</label>
             <input type="number" id="modal-account-growth" placeholder="5" min="0" step="0.01">
         </div>
-        ${ccFieldsHTML} `;
+
+        <div id="dashboard-visibility-group" class="form-group-checkbox" style="margin-top:10px;">
+            <input type="checkbox" id="modal-account-dashboard">
+            <label for="modal-account-dashboard">Show in Dashboard "Liquid Cash"</label>
+        </div>
+
+        ${ccFieldsHTML} 
+    `;
 
     const typeSelect = document.getElementById('modal-account-type');
     const growthGroup = document.getElementById('growth-rate-group');
     const ccFields = document.getElementById('advanced-cc-fields');
+    const dashboardCheck = document.getElementById('modal-account-dashboard');
+    const dashGroup = document.getElementById('dashboard-visibility-group');
 
     typeSelect.addEventListener('change', () => {
         const type = typeSelect.value;
         growthGroup.style.display = type === 'investment' ? 'grid' : 'none';
         ccFields.style.display = (type === 'credit_card' || type === 'loan') ? 'block' : 'none';
+        
+        // Only show "Liquid Cash" option for asset accounts, not loans
+        if (['checking', 'savings', 'investment'].includes(type)) {
+            dashGroup.style.display = 'grid';
+        } else {
+            dashGroup.style.display = 'none';
+            dashboardCheck.checked = false; 
+        }
     });
 
     if (isEditMode && accountToEdit) {
         document.getElementById('modal-account-name').value = accountToEdit.name || '';
         
-        // Safety: If the item's current type isn't in our filter list, add it temporarily so it displays correctly
         if (!typesToShow.includes(accountToEdit.type)) {
             const tempOption = document.createElement('option');
             tempOption.value = accountToEdit.type;
@@ -544,6 +562,12 @@ export function showAccountModal(accountId, allowedTypes = null) {
         
         typeSelect.value = accountToEdit.type || '';
         document.getElementById('modal-account-balance').value = accountToEdit.current_balance || '';
+        
+        // ⭐️ LOAD CHECKBOX STATE
+        if (accountToEdit.advanced_data && accountToEdit.advanced_data.show_on_dashboard) {
+            dashboardCheck.checked = true;
+        }
+
         if (accountToEdit.type === 'investment') {
             document.getElementById('modal-account-growth').value = accountToEdit.growth_rate ? (accountToEdit.growth_rate * 100).toFixed(2) : '';
             growthGroup.style.display = 'grid';
@@ -555,9 +579,12 @@ export function showAccountModal(accountId, allowedTypes = null) {
              document.getElementById('modal-cc-interest-rate').value = advData.interest_rate ? (advData.interest_rate * 100).toFixed(2) : '';
              ccFields.style.display = 'block';
         }
+        // Trigger visibility logic
+        typeSelect.dispatchEvent(new Event('change'));
     } else {
          growthGroup.style.display = 'none';
          ccFields.style.display = 'none';
+         dashGroup.style.display = 'none'; // Hidden until type selected
     }
 
     state.setOnSave(async () => {
@@ -565,10 +592,18 @@ export function showAccountModal(accountId, allowedTypes = null) {
         if (!user) return;
 
         const type = typeSelect.value;
-        let advancedData = null;
+        let advancedData = accountToEdit?.advanced_data || {};
+        
+        // ⭐️ SAVE CHECKBOX STATE
+        advancedData.item_type = type; // Ensure type is stored
+        if (dashboardCheck.checked) {
+            advancedData.show_on_dashboard = true;
+        } else {
+            // Remove the key if unchecked so we don't store junk
+            delete advancedData.show_on_dashboard;
+        }
 
         if (type === 'credit_card' || type === 'loan') {
-            advancedData = { item_type: type };
             const limitInput = document.getElementById('modal-cc-limit').value;
             const statementDayInput = document.getElementById('modal-cc-statement-day').value;
             const rateInput = document.getElementById('modal-cc-interest-rate').value;
@@ -1378,4 +1413,123 @@ export function renderReconciliationList() {
         <p>A history of all manual balance adjustments.</p>
         ${logHTML}
     `;
+}
+
+// === DASHBOARD LOGIC ===
+
+export function updateDashboard() {
+    // 1. Calculate Net Worth (Existing Logic)
+    const accounts = state.appState.accounts || [];
+    const incomes = state.appState.incomes || [];
+    const expenses = state.appState.expenses || [];
+
+    // Helper to get monthly value
+    const getMonthlyMultiplier = (interval) => {
+        if (interval === 'monthly') return 1;
+        if (interval === 'bi-weekly') return 2; // Approx
+        if (interval === 'weekly') return 4;    // Approx
+        if (interval === 'annually') return 1/12;
+        return 0; 
+    };
+
+    let totalIncome = incomes.reduce((sum, item) => sum + (item.amount * getMonthlyMultiplier(item.interval)), 0);
+    // let totalExpense = expenses.reduce((sum, item) => sum + (item.amount * getMonthlyMultiplier(item.interval)), 0); // Unused for now
+    let netWorth = accounts.reduce((sum, item) => sum + item.current_balance, 0);
+
+    const fmt = n => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+    // Render Annual Overview (Net Worth)
+    if (s.dashboardSummary) {
+        s.dashboardSummary.innerHTML = `
+            <div class="summary-item"><h3>Est. Net Worth</h3><p class="${netWorth >= 0 ? 'income-total' : 'expense-total'}">${fmt(netWorth)}</p></div>
+        `;
+    }
+
+    // Render Annual Forecast
+    const annualGross = totalIncome * 12;
+    if (s.dashboardForecast) {
+        s.dashboardForecast.innerHTML = `
+            <div class="summary-item"><h3>Calc. Annual Gross Pay</h3><p>${fmt(annualGross)}</p></div>
+            <div class="summary-item"><h3>Est. Annual AGI</h3><p>${fmt(annualGross)}</p></div>
+            <div class="summary-item"><h3>Est. Annual MAGI</h3><p>${fmt(annualGross)}</p></div>
+        `;
+    }
+
+    // 2. ⭐️ NEW LOGIC: Liquid Cash (Bank Balance) Summary
+    const bankSummaryEl = document.getElementById('dashboard-bank-summary');
+    if (bankSummaryEl) {
+        // A. Filter for "Show on Dashboard" accounts
+        const dashAccounts = accounts.filter(a => a.advanced_data && a.advanced_data.show_on_dashboard);
+        const currentLiquid = dashAccounts.reduce((sum, a) => sum + a.current_balance, 0);
+
+        // B. Calculate Remaining Cash Flow for CURRENT MONTH
+        const today = new Date();
+        const currentMonth = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
+        
+        // Helper: Sum items that happen AFTER today in the current month
+        const sumRemaining = (items) => {
+            let total = 0;
+            items.forEach(item => {
+                const occurrences = getOccurrencesInMonth(item, currentMonth);
+                occurrences.forEach(date => {
+                    // Check if date is in the future (or today)
+                    const occDate = new Date(date);
+                    if (occDate.getDate() >= today.getDate()) {
+                        total += item.amount;
+                    }
+                });
+            });
+            return total;
+        };
+
+        const remainingIncome = sumRemaining(incomes);
+        const remainingExpense = sumRemaining(expenses);
+
+        // Forecast = Current Liquid + (Future Income) - (Future Expense)
+        const forecastLiquid = currentLiquid + remainingIncome - remainingExpense;
+
+        // C. Render
+        if (dashAccounts.length === 0) {
+            bankSummaryEl.innerHTML = `<p style="font-size:0.8rem; color:#888;">No accounts selected.<br>Edit an account and check "Show in Dashboard".</p>`;
+        } else {
+            bankSummaryEl.innerHTML = `
+                <div class="bank-summary-row">
+                    <span class="bank-summary-label">Current Balance (Selected)</span>
+                    <span class="bank-summary-value">${fmt(currentLiquid)}</span>
+                </div>
+                <div class="bank-summary-row">
+                    <span class="bank-summary-label">Forecast (End of Month)</span>
+                    <span class="bank-summary-value forecast">${fmt(forecastLiquid)}</span>
+                    <span class="bank-summary-subtext">Includes pending income/expenses</span>
+                </div>
+            `;
+        }
+    }
+}
+
+export function setupDashboardAccordion() {
+    const headers = document.querySelectorAll('.dashboard-group-header');
+    
+    headers.forEach(header => {
+        header.addEventListener('click', () => {
+            const targetId = header.dataset.target;
+            const content = document.getElementById(targetId);
+            const icon = header.querySelector('.toggle-icon');
+            const group = header.parentElement;
+
+            if (content.style.display === 'none') {
+                // Expand
+                content.style.display = 'block';
+                icon.textContent = '▼';
+                group.classList.remove('collapsed');
+                group.classList.add('expanded');
+            } else {
+                // Collapse
+                content.style.display = 'none';
+                icon.textContent = '▶';
+                group.classList.remove('expanded');
+                group.classList.add('collapsed');
+            }
+        });
+    });
 }

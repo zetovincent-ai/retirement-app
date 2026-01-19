@@ -64,17 +64,71 @@ export function renderAll() {
 }
 
 // --- Dashboard Component Renders ---
-
-function renderDashboard() {
+export function renderDashboard() {
     const format = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonthIndex = today.getMonth();
     const monthName = today.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
-    // === 1. Calculate Real-Time Totals for THIS Month ===
-    // We reuse the logic from the grid to ensure numbers match perfectly.
+    // ==========================================
+    // 1. LIQUID CASH (New Top Section)
+    // ==========================================
+    const bankSummaryEl = document.getElementById('dashboard-bank-summary');
+    if (bankSummaryEl) {
+        const accounts = state.appState.accounts || [];
+        const incomes = state.appState.incomes || [];
+        const expenses = state.appState.expenses || [];
+
+        // A. Filter for "Show on Dashboard" accounts
+        const dashAccounts = accounts.filter(a => a.advanced_data && a.advanced_data.show_on_dashboard);
+        const currentLiquid = dashAccounts.reduce((sum, a) => sum + a.current_balance, 0);
+
+        // B. Calculate Remaining Cash Flow for CURRENT MONTH
+        const currentMonthStart = new Date(Date.UTC(currentYear, currentMonthIndex, 1));
+        
+        const sumRemaining = (items) => {
+            let total = 0;
+            items.forEach(item => {
+                const occurrences = calc.getOccurrencesInMonth(item, currentMonthStart);
+                occurrences.forEach(date => {
+                    // Check if date is in the future (or today)
+                    const occDate = new Date(date);
+                    if (occDate.getDate() >= today.getDate()) {
+                        total += item.amount;
+                    }
+                });
+            });
+            return total;
+        };
+
+        const remainingIncome = sumRemaining(incomes);
+        const remainingExpense = sumRemaining(expenses);
+        const forecastLiquid = currentLiquid + remainingIncome - remainingExpense;
+
+        // C. Render
+        if (dashAccounts.length === 0) {
+            bankSummaryEl.innerHTML = `<p style="font-size:0.8rem; color:var(--text-color); opacity:0.7; padding:0.5rem;">No accounts selected.<br>Edit an account and check "Show in Dashboard".</p>`;
+        } else {
+            bankSummaryEl.innerHTML = `
+                <div class="bank-summary-row">
+                    <span class="bank-summary-label">Current Balance</span>
+                    <span class="bank-summary-value">${format(currentLiquid)}</span>
+                </div>
+                <div class="bank-summary-row">
+                    <span class="bank-summary-label">End-of-Month Forecast</span>
+                    <span class="bank-summary-value forecast">${format(forecastLiquid)}</span>
+                    <span class="bank-summary-subtext">Includes pending income/expenses</span>
+                </div>
+            `;
+        }
+    }
+
+    // ==========================================
+    // 2. CURRENT MONTH SUMMARY (Existing Logic)
+    // ==========================================
     
+    // Reuse grid logic to ensure numbers match perfectly
     const startOfMonthUTC = new Date(Date.UTC(currentYear, currentMonthIndex, 1));
     const creditCardAccounts = state.appState.accounts.filter(acc => acc.type === 'credit_card');
     const creditCardAccountIds = new Set(creditCardAccounts.map(acc => acc.id));
@@ -82,13 +136,11 @@ function renderDashboard() {
     const getMonthSum = (items, type) => {
         let sum = 0;
         items.forEach(item => {
-            // Exclude Credit Card expenses from the dashboard (Cash Flow view)
             if (type === 'expense' && creditCardAccountIds.has(item.payment_account_id)) return;
 
             const occurrences = calc.getOccurrencesInMonth(item, startOfMonthUTC);
             occurrences.forEach(occDate => {
                 const statusRecord = findTransactionStatus(item.id, type, occDate);
-                // Use the edited amount if it exists, otherwise the default amount
                 if (statusRecord && statusRecord.edited_amount !== null) {
                     sum += statusRecord.edited_amount;
                 } else {
@@ -102,96 +154,77 @@ function renderDashboard() {
     const monthlyIncome = getMonthSum(state.appState.incomes, 'income');
     const monthlyExpense = getMonthSum(state.appState.expenses, 'expense');
     const monthlyNet = monthlyIncome - monthlyExpense;
+    
+    // Calculate Overall Net (YTD)
+    // calculateYTDNet sums "up to" the index provided, so we pass (index + 1)
+    // Note: calculateYTDNet is a local function at the bottom of grid.js. 
+    // If you get an error here, ensure calculateYTDNet is available or move this logic inside renderDashboard.
+    // Assuming calculateYTDNet is available in the module scope (it is in your file):
+    let overallNet = 0;
+    try {
+        overallNet = calculateYTDNet(currentYear, currentMonthIndex + 1);
+    } catch (e) { console.warn("YTD Calc error", e); }
 
-    // === 2. Calculate Overall Net (YTD) ===
-    // We sum from Jan 1st up to (and including) the current month.
-    // calculateYTDNet sums "up to" the index provided, so we pass (index + 1).
-    const overallNet = calculateYTDNet(currentYear, currentMonthIndex + 1);
 
-    // === 3. Render the Dashboard UI ===
     s.dashboardSummary.innerHTML = `
-        <div style="margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
-            <h3 style="margin: 0; font-size: 1.2rem; color: var(--text-color);">Current Month - ${monthName}</h3>
+        <div style="margin-bottom: 1rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
+            <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-color);">Current Month (${monthName})</h3>
         </div>
         
         <div class="summary-item">
-            <h3 class="income-total">Total Monthly Income</h3>
+            <h3 class="income-total">Income</h3>
             <p class="income-total">${format(monthlyIncome)}</p>
         </div>
         <div class="summary-item">
-            <h3 class="expense-total">Total Monthly Expenses</h3>
+            <h3 class="expense-total">Expenses</h3>
             <p class="expense-total">${format(monthlyExpense)}</p>
         </div>
         <div class="summary-item net-total">
-            <h3>Net Monthly Balance</h3>
+            <h3>Net Balance</h3>
             <p>${format(monthlyNet)}</p>
         </div>
         <div class="summary-item net-total" style="border-top: none; margin-top: 0.5rem;">
-            <h3>Overall Net (YTD)</h3>
+            <h3>YTD Net</h3>
             <p>${format(overallNet)}</p>
         </div>`;
     
-    // --- Forecast Section (Unchanged) ---
-    // A. Net Worth
-    const netWorth = state.appState.accounts.reduce((total, acc) => {
-        if (acc.type === 'credit_card') {
-            return total - acc.current_balance; 
-        }
-        return total + acc.current_balance; 
-    }, 0);
+    // ==========================================
+    // 3. ANNUAL FORECAST (Existing Logic)
+    // ==========================================
+    const netWorth = state.appState.accounts.reduce((total, acc) => total + acc.current_balance, 0);
 
-    // B. Calculated Annual Gross Pay
     const regularPayItems = state.appState.incomes.filter(i => i.type === 'Regular Pay');
     const calculatedAnnualGrossPay = regularPayItems.reduce((total, item) => {
         if (item.advanced_data && item.advanced_data.gross_pay_amount) {
-            const grossPayItem = {
-                amount: item.advanced_data.gross_pay_amount,
-                interval: item.interval
-            };
-            return total + calc.calculateAnnualTotal([grossPayItem]); 
+            return total + calc.calculateAnnualTotal([{...item, amount: item.advanced_data.gross_pay_amount}]); 
         }
         return total + calc.calculateAnnualTotal([item]);
     }, 0);
 
-    // C. Annual Pre-Tax Contributions
-    const annualPreTaxContributions = calc.calculateAnnualTotal(
-        state.appState.incomes,
-        item => item.type === 'Investment Contribution'
-    );
-    
-    // D. Estimated AGI
+    const annualPreTaxContributions = calc.calculateAnnualTotal(state.appState.incomes, i => i.type === 'Investment Contribution');
     const estimatedAGI = calculatedAnnualGrossPay - annualPreTaxContributions;
-
-    // E. Annual MAGI Add-Backs
-    const annualMagiAddBacks = calc.calculateAnnualTotal(
-        state.appState.expenses,
-        item => item.advanced_data && item.advanced_data.is_magi_addback === true
-    );
-    
-    // F. Estimated MAGI
+    const annualMagiAddBacks = calc.calculateAnnualTotal(state.appState.expenses, i => i.advanced_data?.is_magi_addback === true);
     const estimatedMagi = estimatedAGI + annualMagiAddBacks;
     
-    // G. Render Forecast
-    const forecastDiv = document.getElementById('dashboard-forecast');
-    if (forecastDiv) { 
-        forecastDiv.innerHTML = `
-            <div style="margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
-                <h3 style="margin: 0; font-size: 1.2rem; color: var(--text-color);">Annual Forecast</h3>
+    if (s.dashboardForecast) { 
+        s.dashboardForecast.innerHTML = `
+            <div style="margin-bottom: 1rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 1.5rem;">
+                <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-color);">Annual Estimates</h3>
             </div>
             <div class="summary-item">
-                <h3>Est. Net Worth</h3>
+                <h3>Net Worth</h3>
                 <p>${format(netWorth)}</p>
             </div>
             <div class="summary-item">
-                <h3>Calc. Annual Gross Pay</h3>
+                <h3>Gross Pay</h3>
                 <p>${format(calculatedAnnualGrossPay)}</p>
             </div>
             <div class="summary-item">
-                <h3>Est. Annual AGI</h3>
+                <h3>Est. AGI</h3>
                 <p>${format(estimatedAGI)}</p>
             </div>
             <div class="summary-item">
-                <h3>Est. Annual MAGI</h3>
+                <h3>Est. MAGI</h3>
                 <p>${format(estimatedMagi)}</p>
             </div>
         `;
