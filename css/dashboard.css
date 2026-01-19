@@ -889,3 +889,31 @@ tbody.collapsed tr:not(.grid-group-header) {
 .bank-summary-section-header:first-child {
     margin-top: 0;
 }
+
+/* === Grid Pagination Controls === */
+.grid-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background-color: var(--section-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    width: fit-content;
+}
+
+.grid-page-label {
+    font-weight: bold;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+/* Ensure the grid container handles the scrolling, not the parent */
+#scrollable-grid-container {
+    width: 100%;
+    overflow-x: auto; /* Allow horizontal scroll */
+    padding-bottom: 1rem;
+    /* Optional: Hide scrollbar visually if you purely want buttons */
+    /* scrollbar-width: none; */ 
+}

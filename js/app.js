@@ -103,6 +103,17 @@ async function handleBankingListClick(event) {
 function handleGridContentClick(event) {
     const target = event.target;
 
+    // === ⭐️ NEW: Handle Scroll Buttons ===
+    if (target.dataset.action === 'scroll-left' || target.dataset.action === 'scroll-right') {
+        const container = document.getElementById('scrollable-grid-container');
+        if (container) {
+            // Scroll width = (450px card width + 24px gap) * 3 months ≈ 1422px
+            const scrollAmount = target.dataset.action === 'scroll-left' ? -1425 : 1425;
+            container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+        return; 
+    }
+
     // === ⭐️ NEW: Handle Section Toggle (Arrow Click) ===
     if (target.classList.contains('grid-section-toggle')) {
         const tbody = target.closest('tbody');

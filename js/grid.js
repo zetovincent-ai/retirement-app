@@ -370,7 +370,6 @@ export async function renderActiveDashboardContent() {
 }
 
 // --- Grid Rendering ---
-
 export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, startingAccountBalances = null) {
     console.log(`Rendering grid view for ${numberOfMonths} months starting from ${startDate.toISOString()} with starting net: ${startingNetTotal}`);
 
@@ -379,40 +378,34 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
 
     const formatCurrency = (num) => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     const formatDay = date => date.getUTCDate();
-    const toggleIcon = '<span class="grid-section-toggle" title="Toggle Section">▼</span>'; // ⭐️ NEW helper
+    const toggleIcon = '<span class="grid-section-toggle" title="Toggle Section">▼</span>';
 
     // === 1. Identify Credit Card Accounts & Charges ===
     const creditCardAccounts = state.appState.accounts.filter(acc => acc.type === 'credit_card');
     const creditCardAccountIds = new Set(creditCardAccounts.map(acc => acc.id));
-    
-    const creditCardCharges = state.appState.expenses.filter(i => 
-        creditCardAccountIds.has(i.payment_account_id)
-    );
+    const creditCardCharges = state.appState.expenses.filter(i => creditCardAccountIds.has(i.payment_account_id));
     
     // === 2. Filter Main Expense Lists ===
-    const recurringExpenses = state.appState.expenses.filter(i => 
-        i.interval !== 'one-time' && !creditCardAccountIds.has(i.payment_account_id)
-    );
-
+    const recurringExpenses = state.appState.expenses.filter(i => i.interval !== 'one-time' && !creditCardAccountIds.has(i.payment_account_id));
     const oneTimeIncomes = state.appState.incomes.filter(i => i.interval === 'one-time');
-    const oneTimeExpenses = state.appState.expenses.filter(i => 
-        i.interval === 'one-time' && !creditCardAccountIds.has(i.payment_account_id)
-    );
+    const oneTimeExpenses = state.appState.expenses.filter(i => i.interval === 'one-time' && !creditCardAccountIds.has(i.payment_account_id));
 
     // === 3. Split Income into Regular vs TSP ===
     const allRecurringIncomes = state.appState.incomes.filter(i => i.interval !== 'one-time');
-    
-    const tspIncomes = allRecurringIncomes.filter(i => 
-        i.name && i.name.toUpperCase().includes('TSP')
-    );
-    
-    const regularIncomes = allRecurringIncomes.filter(i => 
-        !i.name || !i.name.toUpperCase().includes('TSP')
-    );
+    const tspIncomes = allRecurringIncomes.filter(i => i.name && i.name.toUpperCase().includes('TSP'));
+    const regularIncomes = allRecurringIncomes.filter(i => !i.name || !i.name.toUpperCase().includes('TSP'));
 
-    let finalHTML = '<div class="grid-view-container">';
+    // ⭐️ NEW: Add Pagination Controls at the top
+    let finalHTML = `
+        <div class="grid-pagination-controls">
+            <button class="btn-secondary" data-action="scroll-left">◀ Prev 3 Months</button>
+            <span class="grid-page-label">Horizontal Navigation</span>
+            <button class="btn-secondary" data-action="scroll-right">Next 3 Months ▶</button>
+        </div>
+        <div class="grid-view-container" id="scrollable-grid-container">
+    `;
+    
     let runningOverallNet = startingNetTotal;
-
     let runningAccountBalances;
     if (startingAccountBalances) {
         runningAccountBalances = { ...startingAccountBalances };
@@ -541,7 +534,6 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
             const cardData = generateRows(chargesForThisCard, 'expense', 'No charges this month.');
             
             if (cardData.total > 0 || cardData.html.includes('<tr')) {
-                 // ⭐️ Added toggleIcon below
                  creditCardSectionsHTML += `
                     <tbody class="grid-group-creditcard">
                         <tr class="grid-group-header"><td colspan="3">
@@ -597,11 +589,7 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
         allTransferOccurrences.sort((a, b) => a.occDate.getUTCDate() - b.occDate.getUTCDate());
 
         if (allTransferOccurrences.length > 0) {
-            // ⭐️ Added toggleIcon below (nested inside Banking, treated as sub-header)
-            // Note: Since this row is inside the 'grid-group-banking' tbody, collapsing banking will collapse this too.
-            // If we want this to be separate, it needs its own tbody. For now, it's just a row.
             transferRowsHTML += '<tr class="grid-group-header"><td colspan="3">Monthly Transfers</td></tr>';
-            
             allTransferOccurrences.forEach(({ transfer, occDate }) => {
                 const desc = transfer.description || 'Transfer';
                 const day = formatDay(occDate);
@@ -611,7 +599,6 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
                 if (statusRecord?.status === 'paid') statusClass = 'grid-banking-transfer-row row-paid';
                 if (statusRecord?.status === 'overdue') statusClass = 'grid-banking-transfer-row row-overdue';
                 if (statusRecord?.status === 'highlighted') statusClass = 'grid-banking-transfer-row row-highlighted';
-                
                 let displayAmount = transfer.amount;
                 if (statusRecord && statusRecord.edited_amount !== null) {
                     displayAmount = statusRecord.edited_amount;
@@ -635,7 +622,6 @@ export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, 
         const overallNetTotalFormatted = formatCurrency(runningOverallNet);
 
         // === 4. Construct Final HTML ===
-        // ⭐️ Added toggleIcon to all main sections below
         finalHTML += `
             <div class="month-grid-container">
                 <h3 class="month-grid-header">${monthYear}</h3>
