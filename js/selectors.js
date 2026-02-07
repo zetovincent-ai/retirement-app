@@ -1,5 +1,19 @@
 // === DOM SELECTORS ===
 // All DOM element queries are centralized here and exported.
+// Static selectors are grabbed once at module load (safe with type="module").
+// Dynamic selectors use getEl() for elements that may not exist at load time.
+
+/**
+ * Lazy selector for elements that may be created/destroyed at runtime.
+ * Use this for Travel app sub-views, dynamically rendered content, etc.
+ * @param {string} id - The element ID to query.
+ * @returns {HTMLElement|null}
+ */
+export function getEl(id) {
+    return document.getElementById(id);
+}
+
+// === STATIC SELECTORS (Financial App — always in the DOM) ===
 
 export const currentYearSpan = document.getElementById('current-year');
 export const mainContainer = document.querySelector('main');
@@ -55,15 +69,19 @@ export const loanChartCanvas = document.getElementById('loan-chart-canvas');
 export const loanChartSelectContainer = document.getElementById('loan-chart-select-container');
 export const reconciliationViewContent = document.getElementById('reconciliation-view-content');
 export const loanTimeframeSelect = document.getElementById('loan-timeframe-select');
-// === TRAVEL APP SELECTORS ===
-export const travelAppContainer = document.getElementById('travel-app');
-export const travelList = document.getElementById('travel-list');
-export const addTravelItemBtn = document.getElementById('add-travel-item-btn');
+export const dashboardForecast = document.getElementById('dashboard-forecast');
+
 // === MAIN LAYOUT SELECTORS ===
 export const sectionTabs = document.querySelectorAll('.section-tab-btn');
 export const tabPanels = document.querySelectorAll('.tab-panel');
+
 // === LIABILITIES SELECTORS ===
 export const liabilitiesSection = document.getElementById('liabilities-section');
 export const showCcModalBtn = document.getElementById('show-cc-modal-btn');
 export const ccList = document.getElementById('cc-list');
 export const loanList = document.getElementById('loan-list');
+
+// === TRAVEL APP SELECTORS (use getEl() for sub-views added dynamically) ===
+export const travelAppContainer = document.getElementById('travel-app');
+export const travelList = document.getElementById('travel-list');
+export const addTravelItemBtn = document.getElementById('add-travel-item-btn');

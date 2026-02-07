@@ -6,16 +6,12 @@ import * as state from './state.js';
 import * as ui from './ui.js';
 import * as data from './data.js';
 import * as currency from './currency.js';
-import { parseUTCDate } from './calculations.js';
-import { getExchangeRate, getAvailableCurrencies } from './currency.js';
+import { formatCurrency } from './utils.js';
 
 export function initTravelApp() {
-    // Listener for the "Add Destination" button
     if (s.addTravelItemBtn) {
         s.addTravelItemBtn.addEventListener('click', () => showTripModal());
     }
-    
-    // Listener for Trip List actions (Delete / Edit / Open)
     if (s.travelList) {
         s.travelList.addEventListener('click', handleTravelListClick);
     }
@@ -24,6 +20,7 @@ export function initTravelApp() {
 /**
  * Renders the list of trips.
  * Calculates "Live Purchasing Power" on the fly.
+ * Wrapped in try/catch so a currency API failure doesn't break the whole list.
  */
 export async function renderTripsList() {
     if (!s.travelList) return;
@@ -36,66 +33,82 @@ export async function renderTripsList() {
         return;
     }
 
-    s.travelList.innerHTML = ''; // Clear loading message
+    s.travelList.innerHTML = '';
 
     // Sort by start date
     trips.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 
     for (const trip of trips) {
-        // 1. Fetch Live Rate
-        // We use 'latest' to get the current real-world buying power
-        const currentRate = await currency.getExchangeRate(trip.home_currency, trip.target_currency, 'latest');
-        
-        // 2. Calculate "Plan vs Actual" purchasing power
-        const initialPower = trip.budget_home_currency * trip.initial_exchange_rate; // What you THOUGHT you'd get
-        const currentPower = trip.budget_home_currency * currentRate;                // What you'd get TODAY
-        const delta = currentPower - initialPower;
-        
-        // 3. Formatter for Home Currency (e.g., USD)
-        const formatHome = new Intl.NumberFormat('en-US', { style: 'currency', currency: trip.home_currency }).format;
-        // 4. Formatter for Target Currency (e.g., JPY)
-        const formatTarget = new Intl.NumberFormat('en-US', { style: 'currency', currency: trip.target_currency }).format;
-
-        // 5. Determine Health Arrow
-        let healthHTML = '';
-        if (trip.home_currency !== trip.target_currency) {
-            const isGain = delta >= 0;
-            const colorClass = isGain ? 'income-total' : 'expense-total'; // Reuse green/red classes
-            const arrow = isGain ? '▲' : '▼';
-            const pct = ((delta / initialPower) * 100).toFixed(1);
+        try {
+            // 1. Fetch Live Rate (may fail if API is down)
+            const currentRate = await currency.getExchangeRate(trip.home_currency, trip.target_currency, 'latest');
             
-            healthHTML = `
-                <div style="font-size: 0.85rem; margin-top: 4px;">
-                    <span style="color: var(--secondary-btn-bg);">Planned: ${formatTarget(initialPower)}</span> <br>
-                    <span style="font-weight: bold;">Live Power: ${formatTarget(currentPower)}</span>
-                    <span class="${colorClass}" style="font-weight: bold; margin-left: 5px;">
-                        ${arrow} ${formatTarget(Math.abs(delta))} (${isGain ? '+' : ''}${pct}%)
-                    </span>
+            // 2. Build formatters
+            const formatHome = new Intl.NumberFormat('en-US', { style: 'currency', currency: trip.home_currency }).format;
+            const formatTarget = new Intl.NumberFormat('en-US', { style: 'currency', currency: trip.target_currency }).format;
+
+            // 3. Calculate purchasing power delta
+            let healthHTML = '';
+            if (trip.home_currency !== trip.target_currency && currentRate !== null) {
+                const initialPower = trip.budget_home_currency * trip.initial_exchange_rate;
+                const currentPower = trip.budget_home_currency * currentRate;
+                const delta = currentPower - initialPower;
+                const isGain = delta >= 0;
+                const colorClass = isGain ? 'income-total' : 'expense-total';
+                const arrow = isGain ? '▲' : '▼';
+                const pct = ((delta / initialPower) * 100).toFixed(1);
+                
+                healthHTML = `
+                    <div class="trip-health">
+                        <span class="trip-health-planned">Planned: ${formatTarget(initialPower)}</span><br>
+                        <span class="trip-health-live">Live Power: ${formatTarget(currentPower)}</span>
+                        <span class="trip-health-delta ${colorClass}">
+                            ${arrow} ${formatTarget(Math.abs(delta))} (${isGain ? '+' : ''}${pct}%)
+                        </span>
+                    </div>
+                `;
+            } else if (currentRate === null) {
+                healthHTML = `<div class="trip-domestic-label">Exchange rate unavailable — check connection.</div>`;
+            } else {
+                healthHTML = `<div class="trip-domestic-label">Domestic Trip (No Exchange Rate)</div>`;
+            }
+
+            const dateRange = `${trip.start_date} to ${trip.end_date}`;
+            
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div class="item-details">
+                    <span class="trip-card-name">${trip.name}</span> 
+                    <span class="trip-card-dates">(${dateRange})</span>
+                    <div class="trip-card-budget">
+                        Budget: ${formatHome(trip.budget_home_currency)}
+                    </div>
+                    ${healthHTML}
+                </div>
+                <div class="item-controls">
+                    <button class="edit-btn" data-id="${trip.id}">Edit</button>
+                    <button class="delete-btn" data-id="${trip.id}">X</button>
                 </div>
             `;
-        } else {
-            healthHTML = `<div style="font-size: 0.85rem; color: var(--text-color);">Domestic Trip (No Exchange Rate)</div>`;
-        }
+            s.travelList.appendChild(li);
 
-        const dateRange = `${trip.start_date} to ${trip.end_date}`;
-        
-        // 6. Build the Card HTML
-        const li = document.createElement('li');
-        li.innerHTML = `
-            <div class="item-details">
-                <strong style="font-size: 1.1rem;">${trip.name}</strong> 
-                <span style="font-size: 0.9rem; color: var(--secondary-btn-bg);">(${dateRange})</span>
-                <div style="margin-top: 5px;">
-                    <strong>Budget: ${formatHome(trip.budget_home_currency)}</strong>
+        } catch (err) {
+            // Render the trip card without live rate data rather than failing silently
+            console.warn(`Failed to render trip "${trip.name}" with live rates:`, err);
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div class="item-details">
+                    <span class="trip-card-name">${trip.name}</span>
+                    <span class="trip-card-dates">(${trip.start_date} to ${trip.end_date})</span>
+                    <div class="trip-domestic-label">Could not load live exchange rate.</div>
                 </div>
-                ${healthHTML}
-            </div>
-            <div class="item-controls">
-                <button class="edit-btn" data-id="${trip.id}">Edit</button>
-                <button class="delete-btn" data-id="${trip.id}">X</button>
-            </div>
-        `;
-        s.travelList.appendChild(li);
+                <div class="item-controls">
+                    <button class="edit-btn" data-id="${trip.id}">Edit</button>
+                    <button class="delete-btn" data-id="${trip.id}">X</button>
+                </div>
+            `;
+            s.travelList.appendChild(li);
+        }
     }
 }
 
@@ -106,9 +119,7 @@ async function handleTravelListClick(event) {
 
     if (target.classList.contains('delete-btn')) {
         await data.deleteTrip(id);
-        // Re-render handled by data.fetchData() -> data.js -> renderAll? 
-        // We might need to manually trigger renderTripsList if renderAll doesn't cover it yet.
-        renderTripsList();
+        renderTripsList(); // Direct call — no self-import needed
     } else if (target.classList.contains('edit-btn')) {
         showTripModal(id);
     }
@@ -116,7 +127,6 @@ async function handleTravelListClick(event) {
 
 /**
  * Shows the modal to Add or Edit a trip.
- * Now fetches dynamic currencies from the API.
  */
 export async function showTripModal(tripId = null) {
     const isEdit = tripId !== null;
@@ -125,7 +135,6 @@ export async function showTripModal(tripId = null) {
     s.modalTitle.textContent = isEdit ? 'Edit Trip' : 'Plan New Trip';
 
     // 1. Fetch Dynamic Currencies from API
-    // We use 'await' here so the modal doesn't render empty options
     const currencies = await currency.getAvailableCurrencies();
     
     // 2. Generate Options (Sorted Alphabetically by Code)
@@ -158,7 +167,7 @@ export async function showTripModal(tripId = null) {
                 ${currencyOptions}
             </select>
         </div>
-        <div id="rate-preview" style="font-size: 0.9rem; text-align: right; color: var(--secondary-btn-bg); margin-top: 5px;">
+        <div id="rate-preview" class="trip-rate-preview">
             Current Rate: Loading...
         </div>
     `;
@@ -166,23 +175,24 @@ export async function showTripModal(tripId = null) {
     const currencySelect = document.getElementById('trip-target-currency');
     const ratePreview = document.getElementById('rate-preview');
     
-    // Set default value (Trip's currency if editing, otherwise JPY, fallback to first available)
+    // Set default value
     if (trip && currencies[trip.target_currency]) {
         currencySelect.value = trip.target_currency;
     } else {
-        // Default to JPY if available, otherwise just pick the first one in the list
         currencySelect.value = currencies['JPY'] ? 'JPY' : Object.keys(currencies)[0];
     }
 
     // --- Helper to update rate preview ---
     const updateRatePreview = async () => {
         const target = currencySelect.value;
-        const rate = await currency.getExchangeRate('USD', target, 'latest'); // Assuming USD home for now
-        ratePreview.textContent = `Current Rate: 1 USD = ${rate} ${target}`;
+        const rate = await currency.getExchangeRate('USD', target, 'latest');
+        ratePreview.textContent = rate !== null 
+            ? `Current Rate: 1 USD = ${rate} ${target}`
+            : `Current Rate: Unavailable`;
     };
     
     currencySelect.addEventListener('change', updateRatePreview);
-    updateRatePreview(); // Run once on open
+    updateRatePreview();
 
     // --- Save Handler ---
     state.setOnSave(async () => {
@@ -197,21 +207,18 @@ export async function showTripModal(tripId = null) {
             return;
         }
 
-        // Fetch the rate at the moment of saving (The "Anchor" rate)
         let initialRate = trip ? trip.initial_exchange_rate : null;
         
-        // If it's a new trip, OR if we want to reset the baseline, fetch new rate.
-        // Currently logic: Only fetch if we don't have one (New Trip).
         if (!initialRate) {
             initialRate = await currency.getExchangeRate('USD', targetCurr, 'latest');
         }
 
         const tripData = {
-            id: tripId, // undefined if new
+            id: tripId,
             name,
             start_date: start,
             end_date: end,
-            home_currency: 'USD', // Hardcoded for now
+            home_currency: 'USD',
             target_currency: targetCurr,
             budget_home_currency: budget,
             initial_exchange_rate: initialRate
@@ -220,15 +227,7 @@ export async function showTripModal(tripId = null) {
         const success = await data.saveTrip(tripData);
         if (success) {
             ui.closeModal();
-            // Ensure renderTripsList is imported or available in scope
-            // If this function is inside travel.js, just call it directly:
-            // renderTripsList(); 
-            // If you are exporting it from the same file, `this.renderTripsList` might not work depending on context.
-            // Best practice in module: call the exported function directly if it's in the same file.
-            
-            // Assuming renderTripsList is in the same file:
-            const { renderTripsList } = await import('./travel.js');
-            renderTripsList();
+            renderTripsList(); // Direct call — no self-import
         }
     });
 

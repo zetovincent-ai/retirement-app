@@ -1,0 +1,70 @@
+/* TRAVEL.CSS
+   Styles for the Trip Planner module.
+   Extracted from inline styles in travel.js for proper theming & dark mode support.
+*/
+
+/* === Trip Card Layout === */
+.trip-card .item-details {
+    flex: 1;
+}
+
+.trip-card-name {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.trip-card-dates {
+    font-size: 0.9rem;
+    color: var(--secondary-btn-bg);
+}
+
+.trip-card-budget {
+    margin-top: 5px;
+    font-weight: bold;
+}
+
+/* === Exchange Rate Health Indicator === */
+.trip-health {
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
+.trip-health-planned {
+    color: var(--secondary-btn-bg);
+}
+
+.trip-health-live {
+    font-weight: bold;
+}
+
+.trip-health-delta {
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+.trip-domestic-label {
+    font-size: 0.85rem;
+    color: var(--text-color);
+}
+
+/* === Rate Preview in Modal === */
+.trip-rate-preview {
+    font-size: 0.9rem;
+    text-align: right;
+    color: var(--secondary-btn-bg);
+    margin-top: 5px;
+}
+
+/* === Account Details (inline style cleanup from ui.js) === */
+.account-detail-info {
+    font-size: 0.85rem;
+    color: var(--secondary-btn-bg);
+}
+
+.linked-loan-badge {
+    font-size: 0.8rem;
+    background: var(--background-color);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 5px;
+}
