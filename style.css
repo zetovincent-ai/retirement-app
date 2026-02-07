@@ -1,8 +1,4 @@
-/* MAIN STYLESHEET
-  This file is now just a "table of contents".
-  All styles are imported from the /css/ folder.
-*/
-
+/* MAIN STYLESHEET — Table of contents */
 @import url('./css/base.css');
 @import url('./css/layout.css');
 @import url('./css/components.css');

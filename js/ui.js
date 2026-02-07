@@ -7,6 +7,7 @@ import * as state from './state.js';
 import { supabaseClient } from './supabase.js';
 import { fetchData, getDynamicAmortization, getLoanAmortization } from './data.js';
 import { parseUTCDate, getOccurrencesInMonth } from './calculations.js';
+import { formatCurrency } from './utils.js';
 
 // --- Notification Functions ---
 
@@ -767,7 +768,6 @@ function renderAmortizationTable(data, title) {
     }
     s.modalTitle.textContent = title;
     const schedule = data.schedule;
-    const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     
     let tableHTML = `
         <div class="amortization-table-container">
@@ -797,7 +797,6 @@ export function showReconcileModal(accountId) {
         return;
     }
 
-   const formatCurrency = (num) => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     
     s.modalTitle.textContent = `Reconcile: ${account.name}`;
     s.modalBody.innerHTML = `
@@ -848,7 +847,6 @@ export function showReconcileModal(accountId) {
             return;
         }
 
-        console.log(`Reconciling account ${accountId}. Old: ${oldBalance}, New: ${newBalance}, Adj: ${adjustment}`);
 
         try {
             // --- Step 1: Update the account balance ---
@@ -906,8 +904,6 @@ export function renderList(items, listElement) {
     // ⭐️ SORT A-Z BY NAME ⭐️
     renderItems.sort((a, b) => a.name.localeCompare(b.name));
 
-    const fmt = n => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-
     renderItems.forEach(item => {
         let badge = '';
         if (item.advanced_data?.linked_loan_id) {
@@ -922,7 +918,7 @@ export function renderList(items, listElement) {
 
         const li = document.createElement('li');
         li.innerHTML = `
-            <div class="item-details"><strong>${item.name}</strong>${badge}<br><span>${fmt(item.amount)} / ${item.interval}</span></div>
+            <div class="item-details"><strong>${item.name}</strong>${badge}<br><span>${formatCurrency(item.amount)} / ${item.interval}</span></div>
             <div class="item-controls">${schedBtn}<button class="edit-btn" data-id="${item.id}">Edit</button><button class="delete-btn" data-id="${item.id}">X</button></div>`;
         listElement.appendChild(li);
     });
@@ -948,12 +944,10 @@ export function renderExpenseChart(isExpandedView = false) {
     const creditCardAccountIds = new Set(state.appState.accounts.filter(acc => acc.type === 'credit_card').map(acc => acc.id));
     const currentDate = new Date();
     const currentMonthDateUTC = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), 1));
-    const formatCurrency = (num) => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     
     // === ⭐️ 2. Check if we are in "Details List" mode ⭐️ ===
     if (isExpandedView && state.expenseChartDetailCategory !== null) {
         // --- RENDER DETAILS LIST ---
-        console.log(`Rendering details list for category: ${state.expenseChartDetailCategory}`);
         
         // Hide canvas, show details list
         canvasElement.style.display = 'none';
@@ -1123,11 +1117,9 @@ export function renderExpenseChart(isExpandedView = false) {
         ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-color') || '#333';
         ctx.fillText('No data to display for this month', canvasElement.width / 2, canvasElement.height / 2);
         ctx.restore();
-        console.log("No expense data to render chart for current month.");
         return;
     }
 
-    console.log(`Rendering expense chart on canvas: ${canvasElement.id} with labels:`, labels, "and data:", data);
     try {
          const newChart = new Chart(ctx, {
               type: 'pie',
@@ -1220,7 +1212,7 @@ export function renderAccountsList() {
             li.innerHTML = `
                 <div class="item-details">
                     <strong>${acc.name}</strong> <span style="font-size:0.85rem; color:#666;">${details}</span><br>
-                    <span class="${balanceClass}">Balance: ${acc.current_balance.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+                    <span class="${balanceClass}">Balance: ${formatCurrency(acc.current_balance)}</span>
                 </div>
                 <div class="item-controls">
                     <button class="reconcile-btn btn-secondary" data-id="${acc.id}" data-type="account">Reconcile</button>
@@ -1243,7 +1235,6 @@ export function renderTransfersList() {
     
     let itemsToRender = [];
     const isAllView = state.listDisplayMode.transfer === 'all';
-    const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
     if (isAllView) {
         // --- "All" View Logic ---
@@ -1326,9 +1317,6 @@ export function renderEditsLog() {
     editedTransactions.sort((a, b) => new Date(a.occurrence_date) - new Date(b.occurrence_date));
 
     let logHTML = '<ul class="edits-log-list">';
-    // === ⭐️ FIX IS HERE ===
-    const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-    // === END FIX ===
 
     editedTransactions.forEach(edit => {
         let itemName = 'Unknown Item'; // Default
@@ -1376,7 +1364,6 @@ export function renderReconciliationList() {
     // Sort by date, newest first
     logs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-    const formatCurrency = (num) => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     
     let logHTML = '<ul class="reconciliation-log-list">';
 
@@ -1413,108 +1400,6 @@ export function renderReconciliationList() {
         <p>A history of all manual balance adjustments.</p>
         ${logHTML}
     `;
-}
-
-// === DASHBOARD LOGIC ===
-export function updateDashboard() {
-    // 1. Calculate Net Worth (Existing Logic)
-    const accounts = state.appState.accounts || [];
-    const incomes = state.appState.incomes || [];
-    const expenses = state.appState.expenses || [];
-
-    const getMonthlyMultiplier = (interval) => {
-        if (interval === 'monthly') return 1;
-        if (interval === 'bi-weekly') return 2; 
-        if (interval === 'weekly') return 4;    
-        if (interval === 'annually') return 1/12;
-        return 0; 
-    };
-
-    let totalIncome = incomes.reduce((sum, item) => sum + (item.amount * getMonthlyMultiplier(item.interval)), 0);
-    let netWorth = accounts.reduce((sum, item) => sum + item.current_balance, 0);
-    const fmt = n => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-
-    // Render Annual Overview
-    if (s.dashboardSummary) {
-        s.dashboardSummary.innerHTML = `
-            <div class="summary-item"><h3>Est. Net Worth</h3><p class="${netWorth >= 0 ? 'income-total' : 'expense-total'}">${fmt(netWorth)}</p></div>
-        `;
-    }
-
-    // Render Annual Forecast
-    const annualGross = totalIncome * 12;
-    if (s.dashboardForecast) {
-        s.dashboardForecast.innerHTML = `
-            <div class="summary-item"><h3>Calc. Annual Gross Pay</h3><p>${fmt(annualGross)}</p></div>
-            <div class="summary-item"><h3>Est. Annual AGI</h3><p>${fmt(annualGross)}</p></div>
-            <div class="summary-item"><h3>Est. Annual MAGI</h3><p>${fmt(annualGross)}</p></div>
-        `;
-    }
-
-    // 2. ⭐️ NEW LOGIC: Per-Account Liquid Cash Summary
-    const bankSummaryEl = document.getElementById('dashboard-bank-summary');
-    if (bankSummaryEl) {
-        const dashAccounts = accounts.filter(a => a.advanced_data && a.advanced_data.show_on_dashboard);
-        dashAccounts.sort((a, b) => a.name.localeCompare(b.name));
-
-        if (dashAccounts.length === 0) {
-            bankSummaryEl.innerHTML = `<p style="font-size:0.8rem; color:#888;">No accounts selected.<br>Edit an account and check "Show in Dashboard".</p>`;
-        } else {
-            // A. Calculate Forecast Per Account
-            const forecastBalances = {};
-            dashAccounts.forEach(a => forecastBalances[a.id] = a.current_balance);
-            
-            const today = new Date();
-            const currentMonthStart = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));
-
-            // B. Add Remaining Income
-            incomes.forEach(item => {
-                if (!item.deposit_account_id || forecastBalances[item.deposit_account_id] === undefined) return;
-                const occurrences = getOccurrencesInMonth(item, currentMonthStart);
-                occurrences.forEach(date => {
-                    const occDate = new Date(date);
-                    if (occDate.getDate() >= today.getDate()) {
-                        forecastBalances[item.deposit_account_id] += item.amount;
-                    }
-                });
-            });
-
-            // C. Subtract Remaining Expenses
-            expenses.forEach(item => {
-                if (!item.payment_account_id || forecastBalances[item.payment_account_id] === undefined) return;
-                const occurrences = getOccurrencesInMonth(item, currentMonthStart);
-                occurrences.forEach(date => {
-                    const occDate = new Date(date);
-                    if (occDate.getDate() >= today.getDate()) {
-                        forecastBalances[item.payment_account_id] -= item.amount;
-                    }
-                });
-            });
-
-            // D. Render HTML
-            let html = `<h4 class="bank-summary-section-header">Current</h4>`;
-            dashAccounts.forEach(acc => {
-                html += `
-                <div class="bank-summary-row">
-                    <span class="bank-summary-label">${acc.name}</span>
-                    <span class="bank-summary-value">${fmt(acc.current_balance)}</span>
-                </div>`;
-            });
-
-            html += `<h4 class="bank-summary-section-header">Forecast (End of Month)</h4>`;
-            dashAccounts.forEach(acc => {
-                const endBalance = forecastBalances[acc.id];
-                const valClass = endBalance < 0 ? 'bank-summary-value expense-total' : 'bank-summary-value forecast';
-                html += `
-                <div class="bank-summary-row">
-                    <span class="bank-summary-label">${acc.name}</span>
-                    <span class="bank-summary-value ${valClass}">${fmt(endBalance)}</span>
-                </div>`;
-            });
-
-            bankSummaryEl.innerHTML = html;
-        }
-    }
 }
 
 export function setupDashboardAccordion() {

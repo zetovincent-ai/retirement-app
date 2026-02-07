@@ -10,12 +10,3 @@
 export function formatCurrency(num) {
     return num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
-
-/**
- * Formats a UTC date's day-of-month.
- * @param {Date} date - A UTC Date object.
- * @returns {number} The day of the month (1-31).
- */
-export function formatDay(date) {
-    return date.getUTCDate();
-}

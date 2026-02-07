@@ -35,7 +35,6 @@ async function handleEmailAuth(event) {
             showNotification("Sign-up successful! Please check your email to confirm your account.", "success");
             closeAuthModal();
         } else {
-            // This case might happen if user exists but is unconfirmed
             showNotification("Login successful!", "success");
             closeAuthModal();
         }
@@ -47,15 +46,12 @@ async function handleEmailAuth(event) {
 }
 
 async function handleLogout() {
-    console.log("Logout function called");
     const { error } = await supabaseClient.auth.signOut();
     if (error) {
         console.error('Error logging out:', error);
         showNotification(`Logout Error: ${error.message}`, 'error');
-    } else {
-        console.log("Logout successful via function call.");
-        // Auth state change will handle the rest
     }
+    // Auth state change listener will handle the rest
 }
 
 export function updateUserStatus(user) {
@@ -66,14 +62,14 @@ export function updateUserStatus(user) {
         `;
         const logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) {
-             logoutBtn.removeEventListener('click', handleLogout); // Clean up
+             logoutBtn.removeEventListener('click', handleLogout);
              logoutBtn.addEventListener('click', handleLogout);
         }
     } else {
         s.userStatus.innerHTML = `<button id="login-btn" class="btn-primary">Login / Sign Up</button>`;
         const loginBtn = document.getElementById('login-btn');
         if (loginBtn) {
-             loginBtn.removeEventListener('click', openAuthModal); // Clean up
+             loginBtn.removeEventListener('click', openAuthModal);
              loginBtn.addEventListener('click', openAuthModal);
         }
     }
@@ -88,10 +84,13 @@ export function initializeAuthListener() {
         if (session) {
             fetchData();
         } else {
-            // User logged out, clear state
+            // User logged out — clear ALL state keys (FIX: was missing reconciliation_log & trips)
             const { setAppState } = await import('./state.js');
             const { renderAll } = await import('./grid.js');
-            setAppState({ incomes: [], expenses: [], transactions: [], accounts: [], transfers: [] });
+            setAppState({ 
+                incomes: [], expenses: [], transactions: [], accounts: [], 
+                transfers: [], reconciliation_log: [], trips: [] 
+            });
             renderAll();
         }
     });
@@ -99,7 +98,6 @@ export function initializeAuthListener() {
 
 // --- Event Listeners ---
 
-// We export a function to attach listeners, which app.js will call
 export function addAuthEventListeners() {
     s.authModalCloseBtn.addEventListener('click', closeAuthModal);
     s.authModal.addEventListener('click', (event) => { 

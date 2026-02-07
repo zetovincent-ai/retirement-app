@@ -9,8 +9,8 @@ const CHART_COLORS = ['#3498db', '#e74c3c', '#9b59b6', '#f1c40f', '#2ecc71', '#1
 export function initializeLoanChart() {
     populateLoanSelect();
 
-    // Only bind listeners once — tracked via state flag
-    if (!state.charts.loanChartInitialized) {
+    // Only bind listeners once — tracked via state flag instead of fragile cloneNode
+    if (!state.loanChartInitialized) {
         addLoanChartListeners();
         state.setLoanChartInitialized(true);
     }
@@ -52,14 +52,14 @@ function addLoanChartListeners() {
 
 function handleTimeframeChange() {
     state.setLoanChartSelections({ 
-        ...state.charts.loanChartSelections, 
+        ...state.loanChartSelections, 
         timeframe: parseInt(s.loanTimeframeSelect.value) 
     });
     renderLoanChart();
 }
 
 function renderLoanChart() {
-    if (!state.charts.loanChartInstance) {
+    if (!state.loanChartInstance) {
         const ctx = s.loanChartCanvas.getContext('2d');
         const newChart = new Chart(ctx, { 
             type: 'line', 
@@ -69,7 +69,7 @@ function renderLoanChart() {
         state.setLoanChartInstance(newChart);
     }
     
-    const chart = state.charts.loanChartInstance;
+    const chart = state.loanChartInstance;
     const checkboxes = s.loanChartSelectContainer.querySelectorAll('input[type="checkbox"]:checked');
     const selectedIds = Array.from(checkboxes).map(cb => cb.value); 
     

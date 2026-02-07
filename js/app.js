@@ -26,12 +26,10 @@ async function handleListClick(event) {
     const listId = listElement.id;
 
     if (target.classList.contains('edit-btn')) {
-        console.log(`Edit button clicked for ID ${id} in list ${listId}`);
         if (listId === 'income-list') ui.showIncomeModal(id);
         else if (listId === 'expense-list') ui.showExpenseModal(id);
     }
     else if (target.classList.contains('delete-btn')) {
-        console.log(`Delete button clicked for ID ${id} in list ${listId}`);
         if (confirm("Are you sure you want to delete this item?")) {
              const tableName = listId === 'income-list' ? 'incomes' : 'expenses';
              const { error } = await supabaseClient.from(tableName).delete().eq('id', id);
@@ -40,13 +38,11 @@ async function handleListClick(event) {
                  ui.showNotification(`Error deleting item: ${error.message}`, 'error');
              }
              else { 
-                 console.log(`Successfully deleted item ID ${id} from ${tableName}`); 
                  await data.fetchData(); 
              }
         }
     }
     else if (target.classList.contains('schedule-btn')) {
-         console.log(`Schedule button clicked for ID ${id}`);
          ui.showAmortizationModal(id);
     }
 }
@@ -62,7 +58,6 @@ async function handleBankingListClick(event) {
     if (isNaN(id)) { console.error(`Invalid ID found: ${idString}`); return; }
 
     if (target.classList.contains('edit-btn')) {
-        console.log(`Edit ${type} ID ${id}`);
         if (type === 'account') {
             // ⭐️ CHANGE: Determine allowed types based on the Section ID
             const sectionId = event.currentTarget.id;
@@ -79,7 +74,6 @@ async function handleBankingListClick(event) {
         else if (type === 'transfer') ui.showTransferModal(id);
 
     } else if (target.classList.contains('delete-btn')) {
-        console.log(`Delete ${type} ID ${id}`);
         const tableName = type === 'account' ? 'accounts' : 'transfers';
         if (confirm(`Are you sure you want to delete this ${type}?`)) {
              const { error } = await supabaseClient.from(tableName).delete().eq('id', id);
@@ -88,12 +82,10 @@ async function handleBankingListClick(event) {
                  ui.showNotification(`Error: ${error.message}`, 'error');
              }
              else { 
-                 console.log(`Successfully deleted ${type} ID ${id}`); 
                  await data.fetchData(); 
              }
         }
     } else if (target.classList.contains('reconcile-btn')) {
-        console.log(`Reconcile ${type} ID ${id}`);
         if (type === 'account') {
             ui.showReconcileModal(id);
         }
@@ -140,7 +132,6 @@ function handleGridContentClick(event) {
         grid.renderYearlyConfigUI();
         state.setLastNumYears(null);
         state.setLastOpenYear(null);
-        console.log("State cleared on Reset");
         return;
     }
 
@@ -161,13 +152,11 @@ function handleGridContentClick(event) {
             startingNetTotal += (grid.calculateYearlyTotals(state.appState.incomes, y) - grid.calculateYearlyTotals(state.appState.expenses, y));
             yearStartAccountBalances = grid.calculateAccountBalancesForYear(y, yearStartAccountBalances);
         }
-        console.log(`Starting balances for ${clickedYear}:`, yearStartAccountBalances);
 
         const startDate = new Date(Date.UTC(clickedYear, 0, 1));
         s.gridDetailContent.innerHTML = grid.renderGridView(12, startDate, startingNetTotal, yearStartAccountBalances);
 
         state.setLastOpenYear(clickedYear);
-        console.log(`State updated: lastOpenYear=${state.lastOpenYear}`);
         return;
     }
 
@@ -495,13 +484,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Global
     document.addEventListener('click', handleDocumentClick);
 
-    console.log("Application initialized.");
-
     // App Nav Listener 
     const appNavBar = document.querySelector('.app-nav-bar');
     if (appNavBar) {
         appNavBar.addEventListener('click', handleAppSwitch);
     }
-
-    console.log("Application initialized.");
 });

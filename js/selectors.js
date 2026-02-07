@@ -5,7 +5,7 @@
 
 /**
  * Lazy selector for elements that may be created/destroyed at runtime.
- * Use this for Travel app sub-views, dynamically rendered content, etc.
+ * Use for Trip Planner sub-views, dynamically rendered content, etc.
  * @param {string} id - The element ID to query.
  * @returns {HTMLElement|null}
  */
@@ -13,7 +13,7 @@ export function getEl(id) {
     return document.getElementById(id);
 }
 
-// === STATIC SELECTORS (Financial App — always in the DOM) ===
+// === STATIC SELECTORS ===
 
 export const currentYearSpan = document.getElementById('current-year');
 export const mainContainer = document.querySelector('main');

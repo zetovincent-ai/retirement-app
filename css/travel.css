@@ -4,10 +4,6 @@
 */
 
 /* === Trip Card Layout === */
-.trip-card .item-details {
-    flex: 1;
-}
-
 .trip-card-name {
     font-size: 1.1rem;
     font-weight: bold;

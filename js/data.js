@@ -11,10 +11,8 @@ import { renderAll } from './grid.js';
 // --- Core Data Fetch ---
 
 export async function fetchData() {
-    console.log("Attempting to fetch data...");
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
-         console.log("No user logged in for fetchData, clearing local state.");
          state.setAppState({ 
              incomes: [], expenses: [], transactions: [], accounts: [], transfers: [], 
              reconciliation_log: [], trips: [] 
@@ -22,7 +20,6 @@ export async function fetchData() {
          renderAll(); 
          return;
     }
-    console.log("Fetching data for user:", user.id);
 
     const [
         { data: incomes, error: incomesError },
@@ -43,8 +40,9 @@ export async function fetchData() {
     ]);
 
     if (incomesError || expensesError || transactionsError || accountsError || transfersError || reconciliationError || tripsError) {
-        console.error("Error fetching data:", incomesError || expensesError || transactionsError);
-        return;
+        console.error("Error fetching data:", incomesError || expensesError || transactionsError || accountsError || transfersError || reconciliationError || tripsError);
+        showNotification("Error loading data. Please try refreshing.", "error");
+        return; // Early return — don't update state with partial/empty data
     }
 
     state.setAppState({
@@ -57,21 +55,17 @@ export async function fetchData() {
         trips: trips || []
     });
 
-    console.log("Data fetched successfully. App State:", state.appState);
     renderAll();
     
-    if (typeof window.renderTripsList === 'function') {
-        window.renderTripsList();
-    } else {
-        import('./travel.js').then(module => {
-            if (module.renderTripsList) module.renderTripsList();
-        });
-    }
+    // Render trips list if travel module is loaded
+    import('./travel.js').then(module => {
+        if (module.renderTripsList) module.renderTripsList();
+    });
 }
 
 // --- Transaction Status Management ---
 
-// ⭐️ Helper to ensure we always work with YYYY-MM-DD strings
+// Helper to ensure we always work with YYYY-MM-DD strings
 function ensureDateString(dateInput) {
     if (typeof dateInput === 'string') return dateInput.split('T')[0];
     if (dateInput instanceof Date) return dateInput.toISOString().split('T')[0];
@@ -79,7 +73,6 @@ function ensureDateString(dateInput) {
 }
 
 export function findTransactionStatus(itemId, itemType, date) {
-    // ⭐️ FIX: Handle both String and Date objects
     const dateString = ensureDateString(date);
 
     return state.appState.transactions.find(t => 
@@ -93,9 +86,8 @@ export async function saveTransactionStatus(itemId, itemType, date, status) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
 
-    // ⭐️ FIX: Handle both String and Date objects
     const dateString = ensureDateString(date);
-    const existingRecord = findTransactionStatus(itemId, itemType, date); // Pass original 'date' (helper handles it)
+    const existingRecord = findTransactionStatus(itemId, itemType, date);
 
     if (existingRecord) {
         const { error } = await supabaseClient
@@ -123,7 +115,6 @@ export async function saveTransactionAmount(itemId, itemType, date, originalAmou
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
 
-    // ⭐️ FIX: Handle both String and Date objects
     const dateString = ensureDateString(date);
     const existingRecord = findTransactionStatus(itemId, itemType, date);
 
@@ -216,9 +207,7 @@ export async function deleteTrip(tripId) {
     } else {
         showNotification("Trip deleted.", "success");
         await fetchData();
-         import('./travel.js').then(module => {
-            if (module.renderTripsList) module.renderTripsList();
-        });
+        // renderTripsList is called directly from travel.js handleTravelListClick
     }
 }
 

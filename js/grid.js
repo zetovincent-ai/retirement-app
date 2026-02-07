@@ -7,6 +7,7 @@ import * as state from './state.js';
 import * as ui from './ui.js';
 import * as calc from './calculations.js';
 import { findTransactionStatus } from './data.js';
+import { formatCurrency } from './utils.js';
 // === ⭐️ NEW STATIC IMPORT ===
 import * as loanChart from './chart-loan.js';
 
@@ -19,7 +20,6 @@ export function renderAll() {
     ui.renderBankingSection();
 
     if (state.lastNumYears !== null) {
-        console.log(`Restoring state: ${state.lastNumYears} years, open year: ${state.lastOpenYear}`);
         // Set state directly
         state.setActiveDashboardTab('grids');
         state.setActiveGridView('yearly');
@@ -65,7 +65,7 @@ export function renderAll() {
 
 // --- Dashboard Component Renders ---
 export function renderDashboard() {
-    const format = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    const format = formatCurrency;
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonthIndex = today.getMonth();
@@ -274,7 +274,6 @@ export function setActiveDashboardTab(tabId) {
      if (state.activeDashboardTab === 'grids' && tabId !== 'grids') {
          state.setLastNumYears(null);
          state.setLastOpenYear(null);
-         console.log("State cleared: Switched away from grids tab");
      }
 
     state.setActiveDashboardTab(tabId);
@@ -300,7 +299,6 @@ export function setActiveGridView(viewId) {
     if (state.activeGridView === 'yearly' && viewId !== 'yearly') {
         state.setLastNumYears(null);
         state.setLastOpenYear(null);
-        console.log("State cleared: Switched away from yearly view");
     }
 
     state.setActiveGridView(viewId);
@@ -347,7 +345,6 @@ export async function renderActiveDashboardContent() {
             // This sums Jan->Nov to give us the "Starting Balance" for Dec 1st
             const ytdNetTotal = calculateYTDNet(currentYear, currentMonthIndex);
             
-            console.log(`Rolling Net Total (Jan - Month ${currentMonthIndex}):`, ytdNetTotal);
 
             // Pass ytdNetTotal as the 3rd argument (startingNetTotal)
             s.gridMonthlyContent.innerHTML = renderGridView(months, today, ytdNetTotal, null);
@@ -371,12 +368,10 @@ export async function renderActiveDashboardContent() {
 
 // --- Grid Rendering ---
 export function renderGridView(numberOfMonths, startDate, startingNetTotal = 0, startingAccountBalances = null) {
-    console.log(`Rendering grid view for ${numberOfMonths} months starting from ${startDate.toISOString()} with starting net: ${startingNetTotal}`);
 
     const startOfMonthUTC = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
     const months = calc.getMonthsToRender(startOfMonthUTC, numberOfMonths);
 
-    const formatCurrency = (num) => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     const formatDay = date => date.getUTCDate();
     const toggleIcon = '<span class="grid-section-toggle" title="Toggle Section">▼</span>';
 
@@ -737,7 +732,6 @@ export function renderYearlySummaryTable(numYears, isRestoring = false) {
     const tableContainer = s.gridYearlySummaryPanel.querySelector('#yearly-summary-table-container');
     if (!tableContainer) { return; }
     
-    const formatCurrency = num => num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     const startYear = new Date().getFullYear();
     let runningOverallNet = 0;
     let tableHTML = `
@@ -778,10 +772,8 @@ export function renderYearlySummaryTable(numYears, isRestoring = false) {
     if (!isRestoring) {
         state.setLastNumYears(numYears);
         state.setLastOpenYear(null);
-        console.log(`State updated (not restoring): lastNumYears=${state.lastNumYears}, lastOpenYear=${state.lastOpenYear}`);
     } else {
          state.setLastNumYears(numYears);
-         console.log(`State maintained (restoring): lastNumYears=${state.lastNumYears}, lastOpenYear=${state.lastOpenYear}`);
     }
 }
 

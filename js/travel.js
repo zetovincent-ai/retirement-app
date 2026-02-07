@@ -19,8 +19,7 @@ export function initTravelApp() {
 
 /**
  * Renders the list of trips.
- * Calculates "Live Purchasing Power" on the fly.
- * Wrapped in try/catch so a currency API failure doesn't break the whole list.
+ * Wrapped in try/catch per trip so a currency API failure doesn't break the whole list.
  */
 export async function renderTripsList() {
     if (!s.travelList) return;
@@ -93,7 +92,7 @@ export async function renderTripsList() {
             s.travelList.appendChild(li);
 
         } catch (err) {
-            // Render the trip card without live rate data rather than failing silently
+            // Render trip card without live rate data rather than failing silently
             console.warn(`Failed to render trip "${trip.name}" with live rates:`, err);
             const li = document.createElement('li');
             li.innerHTML = `
