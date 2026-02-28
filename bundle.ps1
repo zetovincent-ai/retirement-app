@@ -1,5 +1,5 @@
 # Define the output file name
-$OutputFile = "RFI_ALL_FILES.md"
+$OutputFile = "SUNFLOWER_RETIRE_ALL_FILES.md"
 
 # Clear the old file if it exists, and start fresh
 Set-Content -Path $OutputFile -Value "# Jarvis Repository Payload`n"
